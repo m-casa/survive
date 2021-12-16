@@ -67,6 +67,7 @@ public class ClassicCharacter : Character
     #region METHODS
 
     /// <summary>
+    /// Overrides GetMaxSpeed.
     /// The maximum speed for current movement mode, factoring walking movement direction.
     /// </summary>
 

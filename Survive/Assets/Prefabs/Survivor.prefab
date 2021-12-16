@@ -399,7 +399,7 @@ SkinnedMeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3078960783350290254}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_MotionVectors: 1
@@ -507,7 +507,7 @@ GameObject:
   - component: {fileID: 5647588312393094506}
   m_Layer: 0
   m_Name: Survivor
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -597,12 +597,12 @@ MonoBehaviour:
   _actions: {fileID: -944628639613478452, guid: 4e508dd0f74fd5847ba68bf27ffc1e2f, type: 3}
   _rotationRate: 130
   _rotationMode: 0
-  _maxWalkSpeed: 2
+  _maxWalkSpeed: 1.5
   _minAnalogWalkSpeed: 0
   _maxAcceleration: 20
   _brakingDecelerationWalking: 20
   _groundFriction: 8
-  _sprintSpeedMultiplier: 2
+  _sprintSpeedMultiplier: 2.5
   _sprintAccelerationMultiplier: 1
   _maxFallSpeed: 40
   _brakingDecelerationFalling: 0
@@ -622,8 +622,8 @@ MonoBehaviour:
   _useRootMotion: 0
   _camera: {fileID: 0}
   _forwardSpeedMultiplier: 1
-  _backwardSpeedMultiplier: 0.5
-  _strafeSpeedMultiplier: 0
+  _backwardSpeedMultiplier: 0.75
+  _strafeSpeedMultiplier: 1
   animancer: {fileID: 5647588312393094506}
 --- !u!114 &5647588312393094506
 MonoBehaviour:
@@ -641,12 +641,12 @@ MonoBehaviour:
   _ActionOnDisable: 0
   _PlayAutomatically: 1
   _Animations:
-  - {fileID: 7400000, guid: b456ce504811a4e4e9d7af6f6e328a22, type: 2}
-  - {fileID: 7400000, guid: ea10029c1ca0d8e46ac0053ec2018dd8, type: 2}
-  - {fileID: 7400000, guid: 5903f1905d76fc842a24a4fe1f20761f, type: 2}
-  - {fileID: 7400000, guid: ecfddd451410274419088c859eeca7bb, type: 2}
-  - {fileID: 7400000, guid: feb9833a5cba4f44088482ea8244d487, type: 2}
-  - {fileID: 7400000, guid: 46d640369ffc5f54d8b71453108a162f, type: 2}
+  - {fileID: 7400000, guid: 60b04fe302186fd4f8e7cf2921ac7895, type: 2}
+  - {fileID: 7400000, guid: 3ff2286d79da03a4b9712fcd9dd1d054, type: 2}
+  - {fileID: 7400000, guid: efe6211d2ee26b445b10be9a8f282cb1, type: 2}
+  - {fileID: 7400000, guid: 33ba6c06ad51ef841be01a38aa22ce58, type: 2}
+  - {fileID: 7400000, guid: 06aea0ac236e98a45b062d6585c324fe, type: 2}
+  - {fileID: 7400000, guid: b2b2a3deb2b1a344ca5b09c0fa12d436, type: 2}
 --- !u!1 &4436838359386075247
 GameObject:
   m_ObjectHideFlags: 0
@@ -810,7 +810,7 @@ SkinnedMeshRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5696313851276939157}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_MotionVectors: 1
