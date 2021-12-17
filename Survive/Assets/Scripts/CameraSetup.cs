@@ -6,13 +6,10 @@ public class CameraSetup : MonoBehaviour
 
     private GameObject cinemachineCamera;
 
-    void Awake()
-    {
-        cinemachineCamera = CameraManager.Instance.GetCinemachineCamera();
-    }
-
     void Start()
     {
+        cinemachineCamera = CameraManager.Instance.GetCinemachineCamera();
+
         foreach (GameObject cam in virtualCameras)
         {
             cam.transform.parent = cinemachineCamera.transform;
