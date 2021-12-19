@@ -1,6 +1,7 @@
 using Animancer;
 using ECM2.Characters;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class ClassicCharacter : Character
 {
@@ -27,6 +28,8 @@ public class ClassicCharacter : Character
     #endregion
 
     #region FIELDS
+
+    protected bool _interactButtonPressed;
 
     #endregion
 
@@ -64,17 +67,49 @@ public class ClassicCharacter : Character
 
     #endregion
 
-    #region METHODS
+    #region INPUT ACTIONS
 
     /// <summary>
-    /// Overrides GetMaxSpeed.
-    /// The maximum speed for current movement mode, factoring walking movement direction.
+    /// Interact InputAction.
     /// </summary>
 
-    public override float GetMaxSpeed()
+    protected InputAction interactInputAction { get; set; }
+
+    /// <summary>
+    /// Turn InputAction.
+    /// </summary>
+
+    protected InputAction turnInputAction { get; set; }
+
+    #endregion
+
+    #region INPUT ACTION HANDLERS
+
+    /// <summary>
+    /// Interact input action handler.
+    /// </summary>
+
+    protected virtual void OnInteract(InputAction.CallbackContext context)
     {
-        return base.GetMaxSpeed() * GetSpeedMultiplier();
+        if (context.started || context.performed)
+            Interact();
+        else if (context.canceled)
+            StopInteracting();
     }
+
+    /// <summary>
+    /// Turn input action handler.
+    /// </summary>
+
+    protected virtual void OnTurn(InputAction.CallbackContext context)
+    {
+        if (context.started || context.performed)
+            Turn();
+    }
+
+    #endregion
+
+    #region METHODS
 
     /// <summary>
     /// Overrides SetupPlayerInput method.
@@ -100,6 +135,25 @@ public class ClassicCharacter : Character
             sprintInputAction.started += OnSprint;
             sprintInputAction.performed += OnSprint;
             sprintInputAction.canceled += OnSprint;
+        }
+
+        // Setup Interact input action handlers
+
+        interactInputAction = actions.FindAction("Interact");
+        if (sprintInputAction != null)
+        {
+            interactInputAction.started += OnInteract;
+            interactInputAction.performed += OnInteract;
+            interactInputAction.canceled += OnInteract;
+        }
+
+        // Setup Turn input action handlers
+
+        turnInputAction = actions.FindAction("Turn");
+        if (turnInputAction != null)
+        {
+            turnInputAction.started += OnTurn;
+            turnInputAction.performed += OnTurn;
         }
     }
 
@@ -130,7 +184,7 @@ public class ClassicCharacter : Character
 
         if (_sprintButtonPressed)
         {
-            ChangeSprintState(movementInput);
+            UpdateSprintState(movementInput);
         }
 
         // Perform rotation
@@ -148,7 +202,7 @@ public class ClassicCharacter : Character
 
     protected override void Animate()
     {
-        ChangeMovementAnimation();
+        UpdateMovementAnimation();
     }
 
     /// <summary>
@@ -190,6 +244,50 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Called when the object becomes enabled and active (OnEnabled).
+    /// If overriden, must call base method in order to fully initialize the class.
+    /// </summary>
+
+    protected override void OnOnEnable()
+    {
+        // Init Character
+
+        base.OnOnEnable();
+
+        // Enable input actions (if any)
+
+        interactInputAction?.Enable();
+        turnInputAction?.Enable();
+    }
+
+    /// <summary>
+    /// Called when the behaviour becomes disabled (OnDisable).
+    /// If overriden, must call base method in order to fully de-initialize the class.
+    /// </summary>
+
+    protected override void OnOnDisable()
+    {
+        // De-Init Character
+
+        base.OnOnDisable();
+
+        // Disable input actions (if any)
+
+        interactInputAction?.Disable();
+        turnInputAction?.Disable();
+    }
+
+    /// <summary>
+    /// Overrides GetMaxSpeed.
+    /// The maximum speed for current movement mode, factoring walking movement direction.
+    /// </summary>
+
+    public override float GetMaxSpeed()
+    {
+        return base.GetMaxSpeed() * GetSpeedMultiplier();
+    }
+
+    /// <summary>
     /// The current speed multiplier based on movement direction,
     /// eg: walking forward, walking backwards or strafing side to side.
     /// </summary>
@@ -215,22 +313,52 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Request the Character to start interacting.
+    /// The request is processed on the next FixedUpdate.
+    /// </summary>
+
+    public virtual void Interact()
+    {
+        _interactButtonPressed = true;
+    }
+
+    /// <summary>
+    /// Request the Character to stop interacting.
+    /// The request is processed on the next FixedUpdate.
+    /// </summary>
+
+    public virtual void StopInteracting()
+    {
+        _interactButtonPressed = false;
+    }
+
+    /// <summary>
+    /// Request the Character to start turning.
+    /// The request is processed on the next FixedUpdate.
+    /// </summary>
+
+    public virtual void Turn()
+    {
+
+    }
+
+    /// <summary>
     /// Updates the character's movement animation.
     /// </summary>
 
-    private void ChangeMovementAnimation()
+    private void UpdateMovementAnimation()
     {
         Vector2 movementInput = GetMovementInput();
 
         if (movementInput != Vector2.zero)
         {
             // We're moving by direction
-            ChangeDirectionalAnimation(movementInput);
+            UpdateDirectionalAnimation(movementInput);
         }
         else
         {
             // We're not moving, so use an idle animation
-            ChangeIdleAnimation();
+            UpdateIdleAnimation();
         }
     }
 
@@ -238,7 +366,7 @@ public class ClassicCharacter : Character
     /// Updates the character's directional animation.
     /// </summary>
 
-    private void ChangeDirectionalAnimation(Vector2 movementInput)
+    private void UpdateDirectionalAnimation(Vector2 movementInput)
     {
         // Moving forward
         if (movementInput.y > 0f )//&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
@@ -276,9 +404,25 @@ public class ClassicCharacter : Character
     /// Updates the character's idle animation.
     /// </summary>
 
-    private void ChangeIdleAnimation()
+    private void UpdateIdleAnimation()
     {
         animancer.TryPlay("Idle", 0.25f);
+    }
+
+    /// <summary>
+    /// Only allow the player to sprint forward
+    /// </summary>
+
+    private void UpdateSprintState(Vector2 movementInput)
+    {
+        if (movementInput.y > 0f)
+        {
+            Sprint();
+        }
+        else if (movementInput.y <= 0f)
+        {
+            StopSprinting();
+        }
     }
 
     /// <summary>
@@ -301,22 +445,6 @@ public class ClassicCharacter : Character
         else
         {
             rotationRate = 130f;
-        }
-    }
-
-    /// <summary>
-    /// Only allow the player to sprint forward
-    /// </summary>
-
-    private void ChangeSprintState(Vector2 movementInput)
-    {
-        if (movementInput.y > 0f)
-        {
-            Sprint();
-        }
-        else if (movementInput.y <= 0f)
-        {
-            StopSprinting();
         }
     }
 
