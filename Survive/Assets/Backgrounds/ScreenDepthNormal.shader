@@ -59,7 +59,7 @@ Shader "Hidden/ScreenDepthNormal"
                 // Just invert the colors
                 //col.rgb = 1 - col.rgb;
 
-                // Test if working? Yes
+                // Test green coloring
                 //col.r = 0; col.g = 1;
 
                 return col;

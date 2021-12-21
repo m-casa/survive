@@ -28,10 +28,13 @@ public class ScreenDepthNormal : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        // Render source to screen
-        //Graphics.Blit(source, destination);
+        if (mat != null)
+        {
+            // Render source to screen
+            //Graphics.Blit(source, destination);
 
-        // Render source to screen with shader
-        Graphics.Blit(source, destination, mat);
+            // Render source to screen with shader
+            Graphics.Blit(source, destination, mat);
+        }
     }
 }
