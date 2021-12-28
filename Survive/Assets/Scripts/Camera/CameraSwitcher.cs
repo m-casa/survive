@@ -6,11 +6,13 @@ public class CameraSwitcher : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        virtualCamera.SetActive(true);
+        if (other.CompareTag("Player"))
+            virtualCamera.SetActive(true);
     }
 
     private void OnTriggerExit(Collider other)
     {
-        virtualCamera.SetActive(false);
+        if (other.CompareTag("Player"))
+            virtualCamera.SetActive(false);
     }
 }

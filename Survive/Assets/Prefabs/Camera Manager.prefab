@@ -146,8 +146,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cfuStatus: PSXEffects v1.18.3 - version ahead?!
-  sections: 00000000
-  customRes: {x: 640, y: 360}
+  sections: 00000100
+  customRes: {x: 140, y: 105}
   resolutionFactor: 3
   limitFramerate: -1
   skipFrames: 0
@@ -160,10 +160,10 @@ MonoBehaviour:
   colorDepth: 5
   scanlines: 1
   scanlineIntensity: 5
-  ditherTexture: {fileID: 0}
+  ditherTexture: {fileID: 2800000, guid: 79b0fc6d8c2fcd54b84b49a2a2ebe7d8, type: 3}
   dithering: 1
   ditherThreshold: 1
-  ditherIntensity: 2
+  ditherIntensity: 5
   maxDarkness: 20
   subtractFade: 0
   favorRed: 0.07

@@ -1,5 +1,6 @@
 using Animancer;
 using ECM2.Characters;
+using SensorToolkit;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -28,6 +29,11 @@ public class ClassicCharacter : Character
     [Tooltip("The animancer component.")]
     [SerializeField]
     private AnimancerComponent animancer;
+
+    [Header("Sensors")]
+    [Tooltip("The Trigger Sensor.")]
+    [SerializeField]
+    private TriggerSensor triggerSensor;
 
     #endregion
 
@@ -354,6 +360,15 @@ public class ClassicCharacter : Character
     public virtual void Interact()
     {
         _interactButtonPressed = true;
+
+        if (triggerSensor.DetectedObjects.Count != 0)
+        {
+            GameObject nearestGameObject = triggerSensor.DetectedObjectsOrderedByDistance[0];
+            IInteractable<GameObject> interactable = nearestGameObject.GetComponent<IInteractable<GameObject>>();
+            
+            if (interactable != null)
+                interactable.Interact(gameObject);
+        }  
     }
 
     /// <summary>
