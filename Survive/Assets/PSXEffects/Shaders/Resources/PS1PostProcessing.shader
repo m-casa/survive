@@ -88,38 +88,17 @@ Shader "Hidden/PS1PostProcessing"
 					-3, 1, -4, 0,
 					3, -1, 2, -2
 				};
-				int lut[DITHER_COLORS];
-				uint j = (uint(pos.x) & 3) * 4 + uint(pos.y) & 3;
-				for (int i = 0; i < DITHER_COLORS; i++) {
-					int value;
-					#if defined(_SHADER_API_GLES3) || defined(_SHADER_API_METAL)
-					for (int x = 0; x < 16; x++)
-						if (x == j)
-							value = i + DITHER_THRESHOLDS[x] * (intensity * 100);
-					#else
-					value = i + DITHER_THRESHOLDS[j] * (intensity * 100);
-					#endif
-					value = clamp(value, 0, DITHER_COLORS - 1);
-					lut[i] = value;
-				}
+				uint index = (uint(pos.x) & 3) * 4 + (uint(pos.y) & 3);
 
 				#if defined(_SHADER_API_GLES3) || defined(_SHADER_API_METAL)
-				uint j = c.r * (DITHER_COLORS - 1);
-				for (int x = 0; x < DITHER_COLORS; x++)
-					if (x == j)
-						c.r = lut[x];
-				j = c.g * (DITHER_COLORS - 1);
-				for (int x = 0; x < DITHER_COLORS; x++)
-					if (x == j)
-						c.g = lut[x];
-				j = c.b * (DITHER_COLORS - 1);
-				for (int x = 0; x < DITHER_COLORS; x++)
-					if (x == j)
-						c.b = lut[x];
+				for (int x = 0; x < DITHER_COLORS; x++) {
+					if (x == index) {
+						c.rgb = clamp(x.rgb * (DITHER_COLORS - 1) + DITHER_THRESHOLDS[x] * (intensity * 100), fixed3(0, 0, 0), fixed3(DITHER_COLORS - 1, DITHER_COLORS - 1, DITHER_COLORS - 1));
+						break;
+					}
+				}
 				#else
-				c.r = lut[c.r * (DITHER_COLORS-1)];
-				c.g = lut[c.g * (DITHER_COLORS-1)];
-				c.b = lut[c.b * (DITHER_COLORS-1)];
+				c.rgb = clamp(c.rgb * (DITHER_COLORS - 1) + DITHER_THRESHOLDS[index] * (intensity * 100), fixed3(0, 0, 0), fixed3(DITHER_COLORS - 1, DITHER_COLORS - 1, DITHER_COLORS - 1));
 				#endif
 				c /= DITHER_COLORS;
 				return c;

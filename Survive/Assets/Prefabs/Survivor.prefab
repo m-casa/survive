@@ -195,7 +195,7 @@ CapsuleCollider:
   m_Material: {fileID: 13400000, guid: 7ea3cfdfc72c2e046bcc3d60af503cad, type: 2}
   m_IsTrigger: 0
   m_Enabled: 1
-  m_Radius: 0.25
+  m_Radius: 0.35
   m_Height: 1.85
   m_Direction: 1
   m_Center: {x: 0, y: 0.925, z: 0}
@@ -212,7 +212,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _constrainToPlane: 0
-  _capsuleRadius: 0.25
+  _capsuleRadius: 0.35
   _capsuleHeight: 1.85
   _slopeLimit: 60
   _stepOffset: 0.45

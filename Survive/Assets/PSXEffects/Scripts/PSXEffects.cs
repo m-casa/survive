@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 [ExecuteInEditMode]
 public class PSXEffects : MonoBehaviour {
 
-	public System.Version version = new System.Version("1.18.2");
+	public System.Version version = new System.Version("1.18.3");
 	public string cfuStatus = "PSXEffects";
 	public bool[] sections = { true, true, true, false };
 
