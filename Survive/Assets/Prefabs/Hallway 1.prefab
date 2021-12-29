@@ -92,7 +92,7 @@ CapsuleCollider:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
-  m_Radius: 0.5377848
+  m_Radius: 0.5
   m_Height: 1.5507563
   m_Direction: 1
   m_Center: {x: -0.15539683, y: -0.0049252897, z: 0.53647244}
@@ -2582,7 +2582,7 @@ GameObject:
   m_Layer: 0
   m_Name: Exit
   m_TagString: Untagged
-  m_Icon: {fileID: 5132851093641282708, guid: 0000000000000000d000000000000000, type: 0}
+  m_Icon: {fileID: -5442936267250999957, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -7946,7 +7946,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7114179048161836321}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 4.35, y: 0, z: 6.15}
+  m_LocalPosition: {x: 4.375, y: 0, z: 6.15}
   m_LocalScale: {x: 1.25, y: 1.2499999, z: 1}
   m_Children: []
   m_Father: {fileID: 5353688846545962740}
@@ -8011,7 +8011,7 @@ CapsuleCollider:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
-  m_Radius: 0.38552028
+  m_Radius: 0.3
   m_Height: 0.5726841
   m_Direction: 1
   m_Center: {x: -0.000000029802322, y: 0, z: 0.38552028}

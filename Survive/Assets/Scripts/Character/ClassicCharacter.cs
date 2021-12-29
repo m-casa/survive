@@ -28,7 +28,7 @@ public class ClassicCharacter : Character
     [Header("Animation Objects")]
     [Tooltip("The animancer component.")]
     [SerializeField]
-    private AnimancerComponent animancer;
+    private NamedAnimancerComponent animancer;
 
     [Header("Sensors")]
     [Tooltip("The Trigger Sensor.")]
@@ -351,6 +351,15 @@ public class ClassicCharacter : Character
     protected virtual Quaternion GetQuickTurnRotation()
     {
         return _quickTurnRotation;
+    }
+
+    /// <summary>
+    /// Returns true if Character is interacting.
+    /// </summary>
+
+    public virtual bool IsInteracting()
+    {
+        return _interactButtonPressed;
     }
 
     /// <summary>
