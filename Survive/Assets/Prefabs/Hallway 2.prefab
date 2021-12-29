@@ -1366,6 +1366,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a470d50cd3d29e43b427f4af04de414, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  transitionDuration: 1
   exitPoint: {fileID: 6363321123821389827}
 --- !u!1 &6889840315873535787
 GameObject:

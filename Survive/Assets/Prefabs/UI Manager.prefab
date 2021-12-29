@@ -12,8 +12,6 @@ GameObject:
   - component: {fileID: 4916405264198154431}
   - component: {fileID: 4916405264198154430}
   - component: {fileID: 4916405264198154417}
-  - component: {fileID: 4916405264198154416}
-  - component: {fileID: 4916405264198154418}
   m_Layer: 5
   m_Name: Crossfade
   m_TagString: Untagged
@@ -90,43 +88,6 @@ CanvasGroup:
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
---- !u!95 &4916405264198154416
-Animator:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4916405264198154428}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
---- !u!114 &4916405264198154418
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4916405264198154428}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c75c0dcb6d50eb64abd727a90406ca2b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _Animator: {fileID: 4916405264198154416}
-  _ActionOnDisable: 0
-  _PlayAutomatically: 0
-  _Animations:
-  - {fileID: 7400000, guid: 1a282f91eab753f46b7e409465f64b7a, type: 2}
-  - {fileID: 7400000, guid: fd3a7bd7bc6638c47b0e6aaaab008ff7, type: 2}
 --- !u!1 &4916405264849934019
 GameObject:
   m_ObjectHideFlags: 0
@@ -172,7 +133,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cce0618b415d0124bab0de786844e0ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  crossfadeAnimancer: {fileID: 4916405264198154418}
+  _crossfadeGroup: {fileID: 4916405264198154417}
 --- !u!1 &4916405265503235920
 GameObject:
   m_ObjectHideFlags: 0

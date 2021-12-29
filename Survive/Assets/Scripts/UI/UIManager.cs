@@ -1,11 +1,10 @@
-using Animancer;
 using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [SerializeField] private NamedAnimancerComponent crossfadeAnimancer;
+    [SerializeField] private CanvasGroup _crossfadeGroup;
 
     private void Awake()
     {
@@ -23,13 +22,8 @@ public class UIManager : MonoBehaviour
         Instance = this;
     }
 
-    public void StartCrossfade()
+    public CanvasGroup GetCrossfadeGroup()
     {
-        crossfadeAnimancer.TryPlay("Start");
-    }
-
-    public void EndCrossfade()
-    {
-        crossfadeAnimancer.TryPlay("End");
+        return _crossfadeGroup;
     }
 }

@@ -1,4 +1,4 @@
 public interface IInteractable<T>
 {
-    public void Interact(T character);
+    public void Interact(T player);
 }
