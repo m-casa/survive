@@ -5120,7 +5120,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a470d50cd3d29e43b427f4af04de414, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  transitionDuration: 1
+  transitionDuration: 0.6
   exitPoint: {fileID: 2183571998783062196}
 --- !u!1 &5354659171540838918
 GameObject:

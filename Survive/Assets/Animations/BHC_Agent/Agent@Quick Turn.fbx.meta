@@ -21,7 +21,10 @@ ModelImporter:
     rigImportErrors: 
     rigImportWarnings: 
     animationImportErrors: 
-    animationImportWarnings: 
+    animationImportWarnings: "\nClip 'mixamo.com' has import animation warnings that
+      might lower retargeting quality:\nNote: Activate translation DOF on avatar
+      to improve retargeting quality.\n\t'Chest' is inbetween humanoid transforms
+      and has rotation animation that will be discarded.\n"
     animationRetargetingWarnings: 
     animationDoRetargetingWarnings: 0
     importAnimatedCustomProperties: 0
@@ -217,13 +220,8 @@ ModelImporter:
     - name: BioSuit
       parentName: BHC_Agent(Clone)
       position: {x: -0, y: 0.8907875, z: 0}
-      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 71.7353, y: 71.7353, z: 71.7353}
-    - name: Filter
-      parentName: BHC_Agent(Clone)
-      position: {x: -0, y: 0.8907874, z: 0}
-      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 71.7353, y: 71.7353, z: 71.7353}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 0.717353, y: 0.717353, z: 0.717353}
     - name: Armature
       parentName: BHC_Agent(Clone)
       position: {x: -0, y: 0.8907875, z: 0}

@@ -247,13 +247,13 @@ namespace ECM2.Characters
 
         [Header("Root Motion")]
         [Tooltip("Should animation determines the Character's movement ?")]
-        [SerializeField]
+        //[SerializeField]
         private bool _useRootMotion;
         
         [Header("Camera")]
         [Tooltip("Reference to the Player's Camera.\n" +
                  "If assigned, the Character's movement will be relative to this camera, otherwise movement will be relative to world axis.")]
-        [SerializeField]
+        //[SerializeField]
         private Camera _camera;
 
         #endregion

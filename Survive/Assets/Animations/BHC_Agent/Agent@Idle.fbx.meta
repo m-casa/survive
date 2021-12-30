@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: a5808698e66972349897cdb7a6ab3b04
+guid: 9991418d4ee501242a4f297a6e0385c1
 ModelImporter:
   serializedVersion: 20200
   internalIDToNameTable:
@@ -220,13 +220,8 @@ ModelImporter:
     - name: BioSuit
       parentName: BHC_Agent(Clone)
       position: {x: -0, y: 0.8907875, z: 0}
-      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 71.7353, y: 71.7353, z: 71.7353}
-    - name: Filter
-      parentName: BHC_Agent(Clone)
-      position: {x: -0, y: 0.8907874, z: 0}
-      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 71.7353, y: 71.7353, z: 71.7353}
+      rotation: {x: 0, y: -0, z: -0, w: 1}
+      scale: {x: 0.717353, y: 0.717353, z: 0.717353}
     - name: Armature
       parentName: BHC_Agent(Clone)
       position: {x: -0, y: 0.8907875, z: 0}

@@ -1,6 +1,7 @@
 using Animancer;
 using ECM2.Characters;
 using SensorToolkit;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -35,9 +36,21 @@ public class ClassicCharacter : Character
     [SerializeField]
     private TriggerSensor triggerSensor;
 
+    [Header("Materials")]
+    [Tooltip("The Character's mesh.")]
+    [SerializeField]
+    private SkinnedMeshRenderer characterMesh;
+
+    [Tooltip("The Character's transparent material.")]
+    [SerializeField]
+    private Material transparentMaterial;
+
     #endregion
 
     #region FIELDS
+
+    protected Material defaultMaterial;
+    protected float crossfadeDuration = 0.6f;
 
     protected bool _interactButtonPressed;
 
@@ -282,6 +295,19 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Called when the script instance is being loaded (Awake).
+    /// If overriden, must call base method in order to fully initialize the class.
+    /// </summary>
+
+    protected override void OnAwake()
+    {
+        base.OnAwake();
+
+        // Cache the character's default material
+        defaultMaterial = characterMesh.material;
+    }
+
+    /// <summary>
     /// Called when the object becomes enabled and active (OnEnabled).
     /// If overriden, must call base method in order to fully initialize the class.
     /// </summary>
@@ -354,6 +380,110 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Updates the Character's animation to quick turn.
+    /// </summary>
+
+    protected virtual void PlayQuickTurnAnimation()
+    {
+        animancer.TryPlay("Quick Turn", 0.25f);
+    }
+
+    /// <summary>
+    /// Updates the Character's movement animation.
+    /// </summary>
+
+    protected virtual void PlayMovementAnimation()
+    {
+        Vector2 movementInput = GetMovementInput();
+
+        // We're not moving
+        if (movementInput == Vector2.zero)
+        {
+            animancer.TryPlay("Idle", 0.25f);
+        }
+
+        // Moving forward
+        else if (movementInput.y > 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
+        {
+            if (IsSprinting())
+            {
+                animancer.TryPlay("Run", 0.25f);
+            }
+            else
+            {
+                animancer.TryPlay("Walk", 0.25f);
+            }
+        }
+
+        // Moving backwards
+        else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
+        {
+            animancer.TryPlay("Walk Backwards", 0.25f);
+        }
+
+        // Turning left
+        else if (movementInput.x < 0)
+        {
+            animancer.TryPlay("Turn Left", 0.25f);
+        }
+
+        // Turning right
+        else if (movementInput.x > 0f)
+        {
+            animancer.TryPlay("Turn Right", 0.25f);
+        }
+    }
+
+    /// <summary>
+    /// Only allow the Character to sprint forward
+    /// </summary>
+
+    protected virtual void UpdateSprintState(Vector2 movementInput)
+    {
+        if (movementInput.y > 0.0f)
+        {
+            Sprint();
+        }
+        else if (movementInput.y <= 0.0f)
+        {
+            StopSprinting();
+        }
+    }
+
+    /// <summary>
+    /// Set the Character's rotation rate based on the their input.
+    /// </summary>
+
+    protected virtual void SetRotationRate(Vector2 movementInput)
+    {
+        if (movementInput.y != 0.0f)
+        {
+            if (IsSprinting())
+            {
+                rotationRate = 180f;
+            }
+            else
+            {
+                rotationRate = 90f;
+            }
+        }
+        else
+        {
+            rotationRate = 130f;
+        }
+    }
+
+    /// <summary>
+    /// Set the Character's quick turn rotation.
+    /// </summary>
+
+    protected virtual void SetQuickTurnRotation()
+    {
+        // The quick turn will always be 180 degrees from the current rotation
+        _quickTurnRotation = characterMovement.rotation * Quaternion.AngleAxis(180f, Vector3.up);
+    }
+
+    /// <summary>
     /// Returns true if Character is interacting.
     /// </summary>
 
@@ -422,107 +552,43 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Updates the Character's animation to quick turn.
+    /// Change the Character's material to solid or transparent.
     /// </summary>
 
-    private void PlayQuickTurnAnimation()
+    public virtual void ChangeTransparency()
     {
-        animancer.TryPlay("Quick Turn", 0.25f);
-    }
-
-    /// <summary>
-    /// Updates the Character's movement animation.
-    /// </summary>
-
-    private void PlayMovementAnimation()
-    {
-        Vector2 movementInput = GetMovementInput();
-
-        // We're not moving
-        if (movementInput == Vector2.zero)
+        if (characterMesh.material == defaultMaterial)
         {
-            animancer.TryPlay("Idle", 0.25f);
-        }
-
-        // Moving forward
-        else if (movementInput.y > 0f ) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
-        {
-            if (IsSprinting())
-            {
-                animancer.TryPlay("Run", 0.25f);
-            }
-            else
-            {
-                animancer.TryPlay("Walk", 0.25f);
-            }
-        }
-
-        // Moving backwards
-        else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
-        {
-            animancer.TryPlay("Walk Backwards", 0.25f);
-        }
-
-        // Turning left
-        else if (movementInput.x < 0)
-        {
-            animancer.TryPlay("Turn Left", 0.25f);
-        }
-
-        // Turning right
-        else if (movementInput.x > 0f)
-        {
-            animancer.TryPlay("Turn Right", 0.25f);
-        }
-    }
-
-    /// <summary>
-    /// Only allow the Character to sprint forward
-    /// </summary>
-
-    private void UpdateSprintState(Vector2 movementInput)
-    {
-        if (movementInput.y > 0.0f)
-        {
-            Sprint();
-        }
-        else if (movementInput.y <= 0.0f)
-        {
-            StopSprinting();
-        }
-    }
-
-    /// <summary>
-    /// Set the Character's rotation rate based on the their input.
-    /// </summary>
-
-    private void SetRotationRate(Vector2 movementInput)
-    {
-        if (movementInput.y != 0.0f)
-        {
-            if (IsSprinting())
-            {
-                rotationRate = 180f;
-            }
-            else
-            {
-                rotationRate = 90f;
-            }
+            characterMesh.material = transparentMaterial;
         }
         else
         {
-            rotationRate = 130f;
+            characterMesh.material = defaultMaterial;
         }
     }
 
     /// <summary>
-    /// Set the Character's quick turn rotation.
+    /// Fade the Character in or out.
     /// </summary>
 
-    private void SetQuickTurnRotation()
+    public virtual IEnumerator CharacterFade(float start, float end)
     {
-        // The quick turn will always be 180 degrees from the current rotation
-        _quickTurnRotation = characterMovement.rotation * Quaternion.AngleAxis(180f, Vector3.up);
+        Color tempColor = characterMesh.material.color;
+
+        for (float t = 0f; t < crossfadeDuration; t += Time.deltaTime)
+        {
+            float normalizedTime = t / crossfadeDuration;
+
+            // Right here, you can now use normalizedTime as the third parameter in any Lerp from start to end
+            tempColor.a = Mathf.Lerp(start, end, normalizedTime);
+            characterMesh.material.color = tempColor;
+
+            yield return null;
+        }
+
+        // Without this, the value will end at something like 0.9992367
+        tempColor.a = end;
+        characterMesh.material.color = tempColor;
     }
 
     #endregion
