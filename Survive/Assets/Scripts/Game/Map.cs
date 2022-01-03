@@ -3,15 +3,15 @@ using UnityEngine;
 public class Map : MonoBehaviour
 {
     [SerializeField] private GameObject _cinemachineCamera;
-    [SerializeField] private CanvasGroup _crossfadeGroup;
+    [SerializeField] private Transition _transition;
 
     public GameObject GetCinemachineCamera()
     {
         return _cinemachineCamera;
     }
 
-    public CanvasGroup GetCrossfadeGroup()
+    public Transition GetTransition()
     {
-        return _crossfadeGroup;
+        return _transition;
     }
 }

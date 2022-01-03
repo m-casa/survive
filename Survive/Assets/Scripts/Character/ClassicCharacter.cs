@@ -50,7 +50,6 @@ public class ClassicCharacter : Character
     #region FIELDS
 
     protected Material defaultMaterial;
-    protected float crossfadeDuration = 0.6f;
 
     protected bool _interactButtonPressed;
 
@@ -146,6 +145,85 @@ public class ClassicCharacter : Character
     #endregion
 
     #region METHODS
+
+    /// <summary>
+    /// Called when the script instance is being loaded (Awake).
+    /// If overriden, must call base method in order to fully initialize the class.
+    /// </summary>
+
+    protected override void OnAwake()
+    {
+        base.OnAwake();
+
+        // Cache the character's default material
+        defaultMaterial = characterMesh.material;
+    }
+
+    /// <summary>
+    /// Called when the object becomes enabled and active (OnEnabled).
+    /// If overriden, must call base method in order to fully initialize the class.
+    /// </summary>
+
+    protected override void OnOnEnable()
+    {
+        // Init Character
+        base.OnOnEnable();
+
+        // Enable input actions (if any)
+        interactInputAction?.Enable();
+        quickTurnInputAction?.Enable();
+    }
+
+    /// <summary>
+    /// Called when the behaviour becomes disabled (OnDisable).
+    /// If overriden, must call base method in order to fully de-initialize the class.
+    /// </summary>
+
+    protected override void OnOnDisable()
+    {
+        // De-Init Character
+        base.OnOnDisable();
+
+        // Disable input actions (if any)
+        interactInputAction?.Disable();
+        quickTurnInputAction?.Disable();
+    }
+
+    /// <summary>
+    /// Overrides OnReset.
+    /// Resets speed multipliers.
+    /// </summary>
+
+    protected override void OnReset()
+    {
+        // Character defaults
+        base.OnReset();
+
+        // Speed multiplier defaults
+        forwardSpeedMultiplier = 1.0f;
+        backwardSpeedMultiplier = 0.75f;
+        strafeSpeedMultiplier = 1.0f;
+        quickTurnSpeed = 380f;
+
+        SetRotationMode(RotationMode.None);
+    }
+
+    /// <summary>
+    /// Overrides OnOnValidate.
+    /// Validates speed multipliers.
+    /// </summary>
+
+    protected override void OnOnValidate()
+    {
+        // Validates Character fields
+        base.OnOnValidate();
+
+        // Validate speed multipliers
+        forwardSpeedMultiplier = _forwardSpeedMultiplier;
+        backwardSpeedMultiplier = _backwardSpeedMultiplier;
+        strafeSpeedMultiplier = _strafeSpeedMultiplier;
+        quickTurnSpeed = _quickTurnSpeed;
+    }
 
     /// <summary>
     /// Overrides SetupPlayerInput method.
@@ -256,85 +334,6 @@ public class ClassicCharacter : Character
         {
             PlayMovementAnimation();
         }
-    }
-
-    /// <summary>
-    /// Overrides OnReset.
-    /// Resets speed multipliers.
-    /// </summary>
-
-    protected override void OnReset()
-    {
-        // Character defaults
-        base.OnReset();
-
-        // Speed multiplier defaults
-        forwardSpeedMultiplier = 1.0f;
-        backwardSpeedMultiplier = 0.75f;
-        strafeSpeedMultiplier = 1.0f;
-        quickTurnSpeed = 380f;
-
-        SetRotationMode(RotationMode.None);
-    }
-
-    /// <summary>
-    /// Overrides OnOnValidate.
-    /// Validates speed multipliers.
-    /// </summary>
-
-    protected override void OnOnValidate()
-    {
-        // Validates Character fields
-        base.OnOnValidate();
-
-        // Validate speed multipliers
-        forwardSpeedMultiplier = _forwardSpeedMultiplier;
-        backwardSpeedMultiplier = _backwardSpeedMultiplier;
-        strafeSpeedMultiplier = _strafeSpeedMultiplier;
-        quickTurnSpeed = _quickTurnSpeed;
-    }
-
-    /// <summary>
-    /// Called when the script instance is being loaded (Awake).
-    /// If overriden, must call base method in order to fully initialize the class.
-    /// </summary>
-
-    protected override void OnAwake()
-    {
-        base.OnAwake();
-
-        // Cache the character's default material
-        defaultMaterial = characterMesh.material;
-    }
-
-    /// <summary>
-    /// Called when the object becomes enabled and active (OnEnabled).
-    /// If overriden, must call base method in order to fully initialize the class.
-    /// </summary>
-
-    protected override void OnOnEnable()
-    {
-        // Init Character
-        base.OnOnEnable();
-
-        // Enable input actions (if any)
-        interactInputAction?.Enable();
-        quickTurnInputAction?.Enable();
-    }
-
-    /// <summary>
-    /// Called when the behaviour becomes disabled (OnDisable).
-    /// If overriden, must call base method in order to fully de-initialize the class.
-    /// </summary>
-
-    protected override void OnOnDisable()
-    {
-        // De-Init Character
-        base.OnOnDisable();
-
-        // Disable input actions (if any)
-        interactInputAction?.Disable();
-        quickTurnInputAction?.Disable();
     }
 
     /// <summary>
@@ -484,6 +483,30 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Fade the Character in or out.
+    /// </summary>
+
+    protected virtual IEnumerator CharacterFade(float start, float end, float duration)
+    {
+        Color tempColor = characterMesh.material.color;
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            float normalizedTime = t / duration;
+
+            // Right here, you can now use normalizedTime as the third parameter in any Lerp from start to end
+            tempColor.a = Mathf.Lerp(start, end, normalizedTime);
+            characterMesh.material.color = tempColor;
+
+            yield return null;
+        }
+
+        // Without this, the value will end at something like 0.9992367
+        tempColor.a = end;
+        characterMesh.material.color = tempColor;
+    }
+
+    /// <summary>
     /// Returns true if Character is interacting.
     /// </summary>
 
@@ -568,27 +591,12 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Fade the Character in or out.
+    /// Call the CharacterFade method.
     /// </summary>
 
-    public virtual IEnumerator CharacterFade(float start, float end)
+    public virtual void StartFade(float start, float end, float duration)
     {
-        Color tempColor = characterMesh.material.color;
-
-        for (float t = 0f; t < crossfadeDuration; t += Time.deltaTime)
-        {
-            float normalizedTime = t / crossfadeDuration;
-
-            // Right here, you can now use normalizedTime as the third parameter in any Lerp from start to end
-            tempColor.a = Mathf.Lerp(start, end, normalizedTime);
-            characterMesh.material.color = tempColor;
-
-            yield return null;
-        }
-
-        // Without this, the value will end at something like 0.9992367
-        tempColor.a = end;
-        characterMesh.material.color = tempColor;
+        StartCoroutine(CharacterFade(start, end, duration));
     }
 
     #endregion
