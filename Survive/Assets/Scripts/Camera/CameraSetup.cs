@@ -8,7 +8,7 @@ public class CameraSetup : MonoBehaviour
 
     void Start()
     {
-        cinemachineCamera = CameraManager.Instance.GetCinemachineCamera();
+        cinemachineCamera = GetComponentInParent<Map>().GetCinemachineCamera();
 
         foreach (GameObject virtualCamera in virtualCameras)
         {

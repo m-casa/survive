@@ -8,9 +8,9 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
     private CanvasGroup crossfadeGroup;
     private float crossfadeDuration = 0.6f;
 
-    private void Start()
+    void Start()
     {
-        crossfadeGroup = UIManager.Instance.GetCrossfadeGroup();
+        crossfadeGroup = GetComponentInParent<Map>().GetCrossfadeGroup();
     }
 
     public void Interact(GameObject player)
