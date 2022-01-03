@@ -1,10 +1,17 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Transition : MonoBehaviour
 {
+    [SerializeField] private MainMenu mainMenu;
     [SerializeField] private CanvasGroup flashCanvasGroup;
     [SerializeField] private CanvasGroup fadeCanvasGroup;
+
+    void Start()
+    {
+        StartFade(1.0f, 0.0f, 1.5f);
+    }
 
     public void StartFade(float start, float end, float duration)
     {
@@ -59,5 +66,11 @@ public class Transition : MonoBehaviour
     {
         yield return StartCoroutine(ScreenFlash(0.0f, 1.0f, 0.15f));
         yield return StartCoroutine(ScreenFade(0.0f, 1.0f, 1.5f));
+
+        mainMenu.HostLobby();
+        StartCoroutine(ScreenFade(1.0f, 0.0f, 0.25f));
+
+        yield return new WaitForSeconds(3f);
+        SceneManager.LoadScene("OnlineScene");
     }
 }

@@ -252,7 +252,7 @@ MonoBehaviour:
   shadowType: 0
   ditherSky: 1
   ditherType: 2
---- !u!21 &952015262
+--- !u!21 &982364164
 Material:
   serializedVersion: 6
   m_ObjectHideFlags: 0
@@ -368,7 +368,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &8848189406622409339
+--- !u!1001 &5278278700260977042
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -430,6 +430,6 @@ PrefabInstance:
     - target: {fileID: 5847968048258821720, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
       propertyPath: m_Material
       value: 
-      objectReference: {fileID: 952015262}
+      objectReference: {fileID: 982364164}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d72291c363d037740a9e82124f0e53ea, type: 3}

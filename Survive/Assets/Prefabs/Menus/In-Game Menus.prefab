@@ -156,6 +156,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39431b10365a60a42b18e34fe12f804c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainMenu: {fileID: 0}
   flashCanvasGroup: {fileID: 0}
   fadeCanvasGroup: {fileID: 5280297164824093101}
 --- !u!1 &5280297164824093088
