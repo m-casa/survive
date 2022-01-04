@@ -1,7 +1,9 @@
 using Animancer;
 using ECM2.Characters;
+using Mirror;
 using SensorToolkit;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -31,6 +33,10 @@ public class ClassicCharacter : Character
     [SerializeField]
     private NamedAnimancerComponent animancer;
 
+    [Tooltip("The script for networkking animations.")]
+    [SerializeField]
+    private NetworkAnimations networkAnimations;
+
     [Header("Sensors")]
     [Tooltip("The Trigger Sensor.")]
     [SerializeField]
@@ -44,6 +50,20 @@ public class ClassicCharacter : Character
     [Tooltip("The Character's transparent material.")]
     [SerializeField]
     private Material transparentMaterial;
+
+    [Tooltip("The Character's shadow.")]
+    [SerializeField]
+    private GameObject blobShadow;
+
+    [Header("To Disable")]
+    [Tooltip("A list of game objects to disable for the local player.")]
+    [SerializeField]
+    private List<GameObject> disableList;
+
+    [Header("To Enable")]
+    [Tooltip("A list of game objects to enable for the local player.")]
+    [SerializeField]
+    private List<GameObject> enableList;
 
     #endregion
 
@@ -160,16 +180,51 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Overrides OnStartAuthority.
+    /// Setup the local player's authority.
+    /// </summary>
+
+    public override void OnStartAuthority()
+    {
+        // Disable game objects not used by the local player
+        foreach (GameObject item in disableList)
+        {
+            item.SetActive(false);
+        }
+
+        // Enable game objects used by the local player
+        foreach (GameObject item in enableList)
+        {
+            item.SetActive(true);
+        }
+    }
+
+    /// <summary>
+    /// Extends OnStart.
+    /// Only allow inputs on the local player's character.
+    /// </summary>
+
+    protected override void OnStart()
+    {
+        base.OnStart();
+
+        if (!isLocalPlayer)
+        {
+            UnsubFromInputActions();
+            ResetInputActions();
+        }
+    }
+
+    /// <summary>
     /// Called when the object becomes enabled and active (OnEnabled).
     /// If overriden, must call base method in order to fully initialize the class.
     /// </summary>
 
     protected override void OnOnEnable()
     {
-        // Init Character
-        base.OnOnEnable();
-
         // Enable input actions (if any)
+        movementInputAction?.Enable();
+        sprintInputAction?.Enable();
         interactInputAction?.Enable();
         quickTurnInputAction?.Enable();
     }
@@ -181,10 +236,9 @@ public class ClassicCharacter : Character
 
     protected override void OnOnDisable()
     {
-        // De-Init Character
-        base.OnOnDisable();
-
         // Disable input actions (if any)
+        movementInputAction?.Disable();
+        sprintInputAction?.Disable();
         interactInputAction?.Disable();
         quickTurnInputAction?.Disable();
     }
@@ -226,6 +280,66 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Overrides OnUpdate.
+    /// Only actively update the local player's state;
+    /// </summary>
+
+    protected override void OnUpdate()
+    {
+        if (isLocalPlayer)
+            base.OnUpdate();
+    }
+
+    /// <summary>
+    /// Unsub from all input action handlers.
+    /// </summary>
+
+    protected virtual void UnsubFromInputActions()
+    {
+        // Unsub from Sprint input action handler
+        if (sprintInputAction != null)
+        {
+            sprintInputAction.started -= OnSprint;
+            sprintInputAction.performed -= OnSprint;
+            sprintInputAction.canceled -= OnSprint;
+        }
+
+        // Unsub from Interact input action handlers
+        if (interactInputAction != null)
+        {
+            interactInputAction.started -= OnInteract;
+            interactInputAction.performed -= OnInteract;
+            interactInputAction.canceled -= OnInteract;
+        }
+
+        // Unsub from Quick Turn input action handlers
+        if (quickTurnInputAction != null)
+        {
+            quickTurnInputAction.started -= OnQuickTurn;
+            quickTurnInputAction.performed -= OnQuickTurn;
+        }
+    }
+
+    /// <summary>
+    /// Reset all input actions.
+    /// </summary>
+
+    protected virtual void ResetInputActions()
+    {
+        // Reset Movement input action
+        movementInputAction = null;
+
+        // Reset Sprint input action
+        sprintInputAction = null;
+
+        // Reset Interact input action
+        interactInputAction = null;
+
+        // Reset Quick Turn input action
+        quickTurnInputAction = null;
+    }
+
+    /// <summary>
     /// Overrides SetupPlayerInput method.
     /// Sets up InputActions for tank controls.
     /// </summary>
@@ -250,7 +364,7 @@ public class ClassicCharacter : Character
 
         // Setup Interact input action handlers
         interactInputAction = actions.FindAction("Interact");
-        if (sprintInputAction != null)
+        if (interactInputAction != null)
         {
             interactInputAction.started += OnInteract;
             interactInputAction.performed += OnInteract;
@@ -385,6 +499,7 @@ public class ClassicCharacter : Character
     protected virtual void PlayQuickTurnAnimation()
     {
         animancer.TryPlay("Quick Turn", 0.25f);
+        CmdChangeAnimationClip("Quick Turn");
     }
 
     /// <summary>
@@ -399,6 +514,7 @@ public class ClassicCharacter : Character
         if (movementInput == Vector2.zero)
         {
             animancer.TryPlay("Idle", 0.25f);
+            CmdChangeAnimationClip("Idle");
         }
 
         // Moving forward
@@ -407,10 +523,12 @@ public class ClassicCharacter : Character
             if (IsSprinting())
             {
                 animancer.TryPlay("Run", 0.25f);
+                CmdChangeAnimationClip("Run");
             }
             else
             {
                 animancer.TryPlay("Walk", 0.25f);
+                CmdChangeAnimationClip("Walk");
             }
         }
 
@@ -418,18 +536,21 @@ public class ClassicCharacter : Character
         else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
         {
             animancer.TryPlay("Walk Backwards", 0.25f);
+            CmdChangeAnimationClip("Walk Backwards");
         }
 
         // Turning left
         else if (movementInput.x < 0)
         {
             animancer.TryPlay("Turn Left", 0.25f);
+            CmdChangeAnimationClip("Turn Left");
         }
 
         // Turning right
         else if (movementInput.x > 0f)
         {
             animancer.TryPlay("Turn Right", 0.25f);
+            CmdChangeAnimationClip("Turn Right");
         }
     }
 
@@ -488,6 +609,12 @@ public class ClassicCharacter : Character
 
     protected virtual IEnumerator CharacterFade(float start, float end, float duration)
     {
+        if (end != 0.0f)
+        {
+            characterMesh.enabled = true;
+            blobShadow.SetActive(true);
+        }
+
         Color tempColor = characterMesh.material.color;
 
         for (float t = 0f; t < duration; t += Time.deltaTime)
@@ -504,6 +631,71 @@ public class ClassicCharacter : Character
         // Without this, the value will end at something like 0.9992367
         tempColor.a = end;
         characterMesh.material.color = tempColor;
+
+        if (end == 0.0f)
+        {
+            characterMesh.enabled = false;
+            blobShadow.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Sends a command to the server, giving it
+    ///  the updated animation clip of this character.
+    /// </summary>
+
+    [Command]
+    protected virtual void CmdChangeAnimationClip(string animationClip)
+    {
+        networkAnimations.SetAnimationClip(animationClip);
+    }
+
+    /// <summary>
+    /// Sends a command to the server, telling it
+    ///  to change this character's transperency.
+    /// </summary>
+
+    [Command]
+    protected virtual void CmdChangeTransparency()
+    {
+        RpcChangeTransparency();
+    }
+
+    /// <summary>
+    /// Changes the transparency of the character 
+    ///  for the player that made this call.
+    /// </summary>
+    [ClientRpc(includeOwner = false)]
+    protected virtual void RpcChangeTransparency()
+    {
+        if (characterMesh.material == defaultMaterial)
+        {
+            characterMesh.material = transparentMaterial;
+        }
+        else
+        {
+            characterMesh.material = defaultMaterial;
+        }
+    }
+
+    /// <summary>
+    /// Sends a command to the server, telling it
+    ///  to start fading this character.
+    /// </summary>
+
+    [Command]
+    protected virtual void CmdStartFade(float start, float end, float duration)
+    {
+        RpcStartFade(start, end, duration);
+    }
+
+    /// <summary>
+    /// Fades the character for the player that made this call.
+    /// </summary>
+    [ClientRpc(includeOwner = false)]
+    protected virtual void RpcStartFade(float start, float end, float duration)
+    {
+        StartCoroutine(CharacterFade(start, end, duration));
     }
 
     /// <summary>
@@ -588,6 +780,8 @@ public class ClassicCharacter : Character
         {
             characterMesh.material = defaultMaterial;
         }
+
+        CmdChangeTransparency();
     }
 
     /// <summary>
@@ -597,6 +791,16 @@ public class ClassicCharacter : Character
     public virtual void StartFade(float start, float end, float duration)
     {
         StartCoroutine(CharacterFade(start, end, duration));
+        CmdStartFade(start, end, duration);
+    }
+
+    /// <summary>
+    /// Syncs this character's current animation accross all clients
+    /// </summary>
+
+    public virtual void SyncAnimationClip(string newAnimationClip)
+    {
+        animancer.TryPlay(newAnimationClip, 0.25f);
     }
 
     #endregion

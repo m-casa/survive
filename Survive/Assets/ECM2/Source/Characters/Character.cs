@@ -1,6 +1,7 @@
 ﻿using ECM2.Common;
 using ECM2.Components;
 using ECM2.Helpers;
+using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -58,7 +59,7 @@ namespace ECM2.Characters
     /// 
     /// </summary>
 
-    public class Character : MonoBehaviour, ICharacterMovementCallbacks
+    public class Character : NetworkBehaviour, ICharacterMovementCallbacks
     {
         #region EDITOR EXPOSED FIELDS
 

@@ -1,3 +1,4 @@
+using Mirror;
 using UnityEngine;
 
 public class CameraSwitcher : MonoBehaviour
@@ -6,13 +7,13 @@ public class CameraSwitcher : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (other.gameObject == NetworkClient.localPlayer.gameObject)
             virtualCamera.SetActive(true);
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (other.gameObject == NetworkClient.localPlayer.gameObject)
             virtualCamera.SetActive(false);
     }
 }

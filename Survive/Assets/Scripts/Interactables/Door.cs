@@ -26,12 +26,13 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
         character.ChangeTransparency();
         character.StartFade(1.0f, 0.0f, 0.5f);
         transition.StartFade(0.0f, 1.0f, 0.5f);
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(.75f);
 
         character.transform.position = exitPoint.transform.position;
         character.transform.rotation = exitPoint.transform.rotation;
 
         // End the door transition
+        yield return new WaitForSeconds(.75f);
         character.StartFade(0.0f, 1.0f, 0.5f);
         transition.StartFade(1.0f, 0.0f, 0.5f);
         yield return new WaitForSeconds(0.5f);

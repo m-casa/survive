@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class Transition : MonoBehaviour
 {
@@ -18,9 +17,14 @@ public class Transition : MonoBehaviour
         StartCoroutine(ScreenFade(start, end, duration));
     }
 
-    public void StartSceneTransition()
+    public void StartHostTransition()
     {
-        StartCoroutine(SceneTransition());
+        StartCoroutine(HostTransition());
+    }
+
+    public void StartJoinTransition()
+    {
+        StartCoroutine(JoinTransition());
     }
 
     private IEnumerator ScreenFlash(float start, float end, float duration)
@@ -62,15 +66,21 @@ public class Transition : MonoBehaviour
         fadeCanvasGroup.alpha = end;
     }
 
-    private IEnumerator SceneTransition()
+    private IEnumerator HostTransition()
     {
         yield return StartCoroutine(ScreenFlash(0.0f, 1.0f, 0.15f));
         yield return StartCoroutine(ScreenFade(0.0f, 1.0f, 1.5f));
 
+        StartCoroutine(ScreenFade(1.0f, 0.0f, 1.5f));
         mainMenu.HostLobby();
-        StartCoroutine(ScreenFade(1.0f, 0.0f, 0.25f));
+    }
 
-        yield return new WaitForSeconds(3f);
-        SceneManager.LoadScene("OnlineScene");
+    private IEnumerator JoinTransition()
+    {
+        yield return StartCoroutine(ScreenFlash(0.0f, 1.0f, 0.15f));
+        yield return StartCoroutine(ScreenFade(0.0f, 1.0f, 1.5f));
+
+        StartCoroutine(ScreenFade(1.0f, 0.0f, 1.5f));
+        mainMenu.JoinLocally();
     }
 }
