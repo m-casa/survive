@@ -180,11 +180,25 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Called when the object becomes enabled and active (OnEnabled).
+    /// If overriden, must call base method in order to fully initialize the class.
+    /// </summary>
+
+    protected override void OnOnEnable()
+    {
+        base.OnOnEnable();
+
+        // Enable input actions (if any)
+        interactInputAction?.Enable();
+        quickTurnInputAction?.Enable();
+    }
+
+    /// <summary>
     /// Overrides OnStartAuthority.
     /// Setup the local player's authority.
     /// </summary>
 
-    public override void OnStartAuthority()
+    public override void OnStartLocalPlayer()
     {
         // Disable game objects not used by the local player
         foreach (GameObject item in disableList)
@@ -216,31 +230,19 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Called when the object becomes enabled and active (OnEnabled).
-    /// If overriden, must call base method in order to fully initialize the class.
-    /// </summary>
-
-    protected override void OnOnEnable()
-    {
-        // Enable input actions (if any)
-        movementInputAction?.Enable();
-        sprintInputAction?.Enable();
-        interactInputAction?.Enable();
-        quickTurnInputAction?.Enable();
-    }
-
-    /// <summary>
     /// Called when the behaviour becomes disabled (OnDisable).
     /// If overriden, must call base method in order to fully de-initialize the class.
     /// </summary>
 
     protected override void OnOnDisable()
     {
+        base.OnOnDisable();
+
         // Disable input actions (if any)
-        movementInputAction?.Disable();
-        sprintInputAction?.Disable();
         interactInputAction?.Disable();
         quickTurnInputAction?.Disable();
+
+        UnsubFromInputActions();
     }
 
     /// <summary>
@@ -764,6 +766,28 @@ public class ClassicCharacter : Character
     public virtual void StopQuickTurning()
     {
         _isQuickTurning = false;
+    }
+
+    /// <summary>
+    /// Enables the player's controls.
+    /// </summary>
+
+    public virtual void EnableControls()
+    {
+        movementInputAction.Enable();
+        interactInputAction.Enable();
+        quickTurnInputAction.Enable();
+    }
+
+    /// <summary>
+    /// Disables the player's controls.
+    /// </summary>
+
+    public virtual void DisableControls()
+    {
+        movementInputAction.Disable();
+        interactInputAction.Disable();
+        quickTurnInputAction.Disable();
     }
 
     /// <summary>

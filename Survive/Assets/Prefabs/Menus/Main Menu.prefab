@@ -676,7 +676,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 8848189407080983822}
         m_TargetAssemblyTypeName: Transition, Assembly-CSharp
-        m_MethodName: StartSceneTransition
+        m_MethodName: StartHostTransition
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -960,7 +960,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &5847968048475830924
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1035,7 +1035,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 8848189407080983822}
         m_TargetAssemblyTypeName: Transition, Assembly-CSharp
-        m_MethodName: StartSceneTransition
+        m_MethodName: StartJoinTransition
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

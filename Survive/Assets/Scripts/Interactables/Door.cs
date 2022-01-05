@@ -22,7 +22,7 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
         ClassicCharacter character = player.GetComponent<ClassicCharacter>();
 
         // Start the door transition
-        character.actions.Disable();
+        character.DisableControls();
         character.ChangeTransparency();
         character.StartFade(1.0f, 0.0f, 0.5f);
         transition.StartFade(0.0f, 1.0f, 0.5f);
@@ -37,6 +37,6 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
         transition.StartFade(1.0f, 0.0f, 0.5f);
         yield return new WaitForSeconds(0.5f);
         character.ChangeTransparency();
-        character.actions.Enable();
+        character.EnableControls();
     }
 }

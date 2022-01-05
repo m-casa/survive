@@ -263,10 +263,6 @@ PrefabInstance:
       propertyPath: m_Camera
       value: 
       objectReference: {fileID: 40059187}
-    - target: {fileID: 5847968047565073806, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: StartHostTransition
-      objectReference: {fileID: 0}
     - target: {fileID: 5847968047592909966, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
       propertyPath: m_RootOrder
       value: 1
@@ -314,10 +310,6 @@ PrefabInstance:
     - target: {fileID: 5847968047592909969, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
       propertyPath: m_Name
       value: Main Menu
-      objectReference: {fileID: 0}
-    - target: {fileID: 5847968048475830925, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
-      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: StartJoinTransition
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d72291c363d037740a9e82124f0e53ea, type: 3}
