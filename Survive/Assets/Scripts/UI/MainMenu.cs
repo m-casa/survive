@@ -2,6 +2,7 @@ using HeathenEngineering.SteamworksIntegration;
 using Mirror;
 using Steamworks;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MainMenu : MonoBehaviour
 {
@@ -111,5 +112,10 @@ public class MainMenu : MonoBehaviour
         title.SetActive(true);
         lobbyButtons.SetActive(true);
         connecting.SetActive(false);
+
+        foreach (Button button in lobbyButtons.GetComponentsInChildren<Button>())
+        {
+            button.interactable = true;
+        }
     }
 }

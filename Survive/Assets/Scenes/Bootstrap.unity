@@ -20,13 +20,13 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientSkyColor: {r: 0.39215687, g: 0.39215687, b: 0.39215687, a: 1}
+  m_AmbientEquatorColor: {r: 0, g: 0, b: 0, a: 1}
+  m_AmbientGroundColor: {r: 0.039215688, g: 0.039215688, b: 0.039215688, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: eac2ef371405749e0bd050b4c3272f16, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074014, b: 0.3587274, a: 1}
+  m_IndirectSpecularColor: {r: 0.041091345, g: 0.07253561, b: 0.12543699, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -123,6 +123,63 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &268254585
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_RootOrder
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810554, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4587551183990810555, guid: f45948587d049884e9e96e23bb93324e, type: 3}
+      propertyPath: m_Name
+      value: Game Manager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f45948587d049884e9e96e23bb93324e, type: 3}
 --- !u!1 &599847650
 GameObject:
   m_ObjectHideFlags: 0
@@ -219,7 +276,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 171675568055481898, guid: a78888d980bf38c4cba3b488cf763289, type: 3}
       propertyPath: m_RootOrder
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 171675568055481898, guid: a78888d980bf38c4cba3b488cf763289, type: 3}
       propertyPath: m_LocalPosition.x
@@ -265,6 +322,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Steam Network Manager
       objectReference: {fileID: 0}
+    - target: {fileID: 171675568055481899, guid: a78888d980bf38c4cba3b488cf763289, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a78888d980bf38c4cba3b488cf763289, type: 3}
 --- !u!1001 &3700062512016739133
@@ -278,13 +339,9 @@ PrefabInstance:
       propertyPath: m_Name
       value: Network Manager
       objectReference: {fileID: 0}
-    - target: {fileID: 1817182554414097446, guid: 6e4c12f62b0e1374ea254c568bf84da8, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 1817182554414097447, guid: 6e4c12f62b0e1374ea254c568bf84da8, type: 3}
       propertyPath: m_RootOrder
-      value: 2
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 1817182554414097447, guid: 6e4c12f62b0e1374ea254c568bf84da8, type: 3}
       propertyPath: m_LocalPosition.x
@@ -339,9 +396,13 @@ PrefabInstance:
       propertyPath: m_Name
       value: Steamworks Behaviour
       objectReference: {fileID: 0}
+    - target: {fileID: 6570177339607600017, guid: 194ef08d26659a74e863a7db5c573927, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6570177339607600046, guid: 194ef08d26659a74e863a7db5c573927, type: 3}
       propertyPath: m_RootOrder
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6570177339607600046, guid: 194ef08d26659a74e863a7db5c573927, type: 3}
       propertyPath: m_LocalPosition.x

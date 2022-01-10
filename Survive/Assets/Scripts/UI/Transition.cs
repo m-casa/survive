@@ -7,7 +7,7 @@ public class Transition : MonoBehaviour
     [SerializeField] private CanvasGroup flashCanvasGroup;
     [SerializeField] private CanvasGroup fadeCanvasGroup;
 
-    void Start()
+    void Awake()
     {
         StartFade(1.0f, 0.0f, 1.5f);
     }

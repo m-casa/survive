@@ -9,7 +9,7 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
 
     void Awake()
     {
-        transition = GetComponentInParent<Map>().GetTransition();
+        transition = GetComponentInParent<MansionSetup>().GetTransition();
     }
 
     public void Interact(GameObject player)
@@ -21,21 +21,26 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
     {
         ClassicCharacter character = player.GetComponent<ClassicCharacter>();
 
-        // Start the door transition
+        // Disable the player's controls
         character.DisableControls();
         character.ChangeTransparency();
+
+        // Start the door transition
         character.StartFade(1.0f, 0.0f, 0.5f);
         transition.StartFade(0.0f, 1.0f, 0.5f);
         yield return new WaitForSeconds(.75f);
 
+        // Move the Character to the next room
         character.transform.position = exitPoint.transform.position;
         character.transform.rotation = exitPoint.transform.rotation;
+        yield return new WaitForSeconds(.75f);
 
         // End the door transition
-        yield return new WaitForSeconds(.75f);
         character.StartFade(0.0f, 1.0f, 0.5f);
         transition.StartFade(1.0f, 0.0f, 0.5f);
         yield return new WaitForSeconds(0.5f);
+
+        // Re-enable the player's controls
         character.ChangeTransparency();
         character.EnableControls();
     }

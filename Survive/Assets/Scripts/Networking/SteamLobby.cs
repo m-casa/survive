@@ -14,11 +14,12 @@ public class SteamLobby : MonoBehaviour
     protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
     protected Callback<LobbyEnter_t> lobbyEnter;
     protected Callback<LobbyChatUpdate_t> lobbyChatUpdate;
+    protected Callback<GameOverlayActivated_t> gameOverlayActivated;
 
     /// <summary>
     /// Steam API will initialize after Awake, so check for the API on Start.
     /// </summary>
-    
+
     void Start()
     {
         // Make sure the Steam API is available (Steam is running)
@@ -29,6 +30,7 @@ public class SteamLobby : MonoBehaviour
         gameLobbyJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnGameLobbyJoinRequested);
         lobbyEnter = Callback<LobbyEnter_t>.Create(OnLobbyEnter);
         lobbyChatUpdate = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
+        gameOverlayActivated = Callback<GameOverlayActivated_t>.Create(OnGameOverlayActivated);
     }
 
     /// <summary>
@@ -108,6 +110,18 @@ public class SteamLobby : MonoBehaviour
             // If the host left, we should also leave the lobby
             if (callback.m_ulSteamIDUserChanged.ToString() == hostAddress)
                 SteamMatchmaking.LeaveLobby(new CSteamID(callback.m_ulSteamIDLobby));
+        }
+    }
+
+    protected virtual void OnGameOverlayActivated(GameOverlayActivated_t callback)
+    {
+        if (callback.m_bActive == 1)
+        {
+
+        }
+        else
+        {
+
         }
     }
 }

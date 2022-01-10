@@ -28,7 +28,7 @@ public class ClassicCharacter : Character
     [SerializeField]
     private float _quickTurnSpeed;
 
-    [Header("Animation Objects")]
+    [Header("Animation")]
     [Tooltip("The animancer component.")]
     [SerializeField]
     private NamedAnimancerComponent animancer;
@@ -175,7 +175,7 @@ public class ClassicCharacter : Character
     {
         base.OnAwake();
 
-        // Cache the character's default material
+        // Cache the Character's default material
         defaultMaterial = characterMesh.material;
     }
 
@@ -215,7 +215,7 @@ public class ClassicCharacter : Character
 
     /// <summary>
     /// Extends OnStart.
-    /// Only allow inputs on the local player's character.
+    /// Only allow inputs on the local player's Character.
     /// </summary>
 
     protected override void OnStart()
@@ -407,7 +407,7 @@ public class ClassicCharacter : Character
 
         if (_sprintButtonPressed)
         {
-            UpdateSprintState(movementInput);
+            SetSprintState(movementInput);
         }
 
         // Perform quick turn rotation
@@ -557,10 +557,10 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Only allow the Character to sprint forward
+    /// Only allow the Character to sprint forward.
     /// </summary>
 
-    protected virtual void UpdateSprintState(Vector2 movementInput)
+    protected virtual void SetSprintState(Vector2 movementInput)
     {
         if (movementInput.y > 0.0f)
         {
@@ -643,7 +643,7 @@ public class ClassicCharacter : Character
 
     /// <summary>
     /// Sends a command to the server, giving it
-    ///  the updated animation clip of this character.
+    ///  the updated animation clip of this Character.
     /// </summary>
 
     [Command]
@@ -654,7 +654,7 @@ public class ClassicCharacter : Character
 
     /// <summary>
     /// Sends a command to the server, telling it
-    ///  to change this character's transperency.
+    ///  to change this Character's transperency.
     /// </summary>
 
     [Command]
@@ -664,25 +664,18 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Changes the transparency of the character 
+    /// Changes the transparency of the Character 
     ///  for the player that made this call.
     /// </summary>
     [ClientRpc(includeOwner = false)]
     protected virtual void RpcChangeTransparency()
     {
-        if (characterMesh.material == defaultMaterial)
-        {
-            characterMesh.material = transparentMaterial;
-        }
-        else
-        {
-            characterMesh.material = defaultMaterial;
-        }
+        ChangeTransparency();
     }
 
     /// <summary>
     /// Sends a command to the server, telling it
-    ///  to start fading this character.
+    ///  to start fading this Character.
     /// </summary>
 
     [Command]
@@ -692,8 +685,9 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Fades the character for the player that made this call.
+    /// Fades the Character for the player that made this call.
     /// </summary>
+    
     [ClientRpc(includeOwner = false)]
     protected virtual void RpcStartFade(float start, float end, float duration)
     {
@@ -791,6 +785,15 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
+    /// Syncs this Character's current animation accross all clients
+    /// </summary>
+
+    public virtual void SyncAnimationClip(string newAnimationClip)
+    {
+        animancer.TryPlay(newAnimationClip, 0.25f);
+    }
+
+    /// <summary>
     /// Change the Character's material to solid or transparent.
     /// </summary>
 
@@ -805,7 +808,10 @@ public class ClassicCharacter : Character
             characterMesh.material = defaultMaterial;
         }
 
-        CmdChangeTransparency();
+        // The local player needs to let other clients know
+        //  to change the transparency for this character
+        if (isLocalPlayer)
+            CmdChangeTransparency();
     }
 
     /// <summary>
@@ -815,16 +821,8 @@ public class ClassicCharacter : Character
     public virtual void StartFade(float start, float end, float duration)
     {
         StartCoroutine(CharacterFade(start, end, duration));
+
         CmdStartFade(start, end, duration);
-    }
-
-    /// <summary>
-    /// Syncs this character's current animation accross all clients
-    /// </summary>
-
-    public virtual void SyncAnimationClip(string newAnimationClip)
-    {
-        animancer.TryPlay(newAnimationClip, 0.25f);
     }
 
     #endregion

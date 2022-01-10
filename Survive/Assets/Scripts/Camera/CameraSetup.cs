@@ -8,7 +8,7 @@ public class CameraSetup : MonoBehaviour
 
     void Awake()
     {
-        cinemachineCamera = GetComponentInParent<Map>().GetCinemachineCamera();
+        cinemachineCamera = GetComponentInParent<MansionSetup>().GetCinemachineCamera();
 
         foreach (GameObject virtualCamera in virtualCameras)
         {
