@@ -2,8 +2,14 @@ using UnityEngine;
 
 public class MansionSetup : MonoBehaviour
 {
-    [SerializeField] private GameObject _cinemachineCamera;
     [SerializeField] private Transition _transition;
+
+    private GameObject _cinemachineCamera;
+
+    void Awake()
+    {
+        _cinemachineCamera = CameraManager.Instance.GetCinemachineCamera();
+    }
 
     public GameObject GetCinemachineCamera()
     {

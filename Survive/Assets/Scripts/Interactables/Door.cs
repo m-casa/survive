@@ -7,7 +7,7 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
 
     private Transition transition;
 
-    void Awake()
+    void Start()
     {
         transition = GetComponentInParent<MansionSetup>().GetTransition();
     }

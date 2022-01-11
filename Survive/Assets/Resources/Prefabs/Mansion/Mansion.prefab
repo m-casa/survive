@@ -43,5 +43,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ddc2cf9aa50ecf4e98f9d4b103f0b54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cinemachineCamera: {fileID: 0}
   _transition: {fileID: 0}

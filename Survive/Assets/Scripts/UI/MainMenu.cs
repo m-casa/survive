@@ -6,12 +6,27 @@ using UnityEngine.UI;
 
 public class MainMenu : MonoBehaviour
 {
+    [SerializeField] private Canvas canvas;
     [SerializeField] private GameObject title;
     [SerializeField] private GameObject lobbyButtons;
     [SerializeField] private GameObject connecting;
 
     protected Callback<LobbyCreated_t> lobbyCreated;
     protected Callback<LobbyEnter_t> lobbyEnter;
+
+    /// <summary>
+    /// Setup the canvas to use the main camera for screen space.
+    /// </summary>
+
+    void Awake()
+    {
+        canvas.worldCamera = Camera.main;
+        canvas.planeDistance = 0.12f;
+    }
+
+    /// <summary>
+    /// Steam API will initialize after Awake, so check for the API on Start.
+    /// </summary>
 
     void Start()
     {

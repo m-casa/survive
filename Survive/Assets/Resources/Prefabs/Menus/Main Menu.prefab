@@ -534,7 +534,7 @@ Canvas:
   serializedVersion: 3
   m_RenderMode: 1
   m_Camera: {fileID: 0}
-  m_PlaneDistance: 0.1
+  m_PlaneDistance: 0.12
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
   m_OverrideSorting: 0
@@ -755,6 +755,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7fe4ecca7ad92846b1b07717e5d1bf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  canvas: {fileID: 5847968047461418226}
   title: {fileID: 5847968048957331703}
   lobbyButtons: {fileID: 5847968048865626849}
   connecting: {fileID: 5278278700180215139}

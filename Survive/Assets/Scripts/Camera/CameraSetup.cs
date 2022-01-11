@@ -6,7 +6,7 @@ public class CameraSetup : MonoBehaviour
 
     private GameObject cinemachineCamera;
 
-    void Awake()
+    void Start()
     {
         cinemachineCamera = GetComponentInParent<MansionSetup>().GetCinemachineCamera();
 
