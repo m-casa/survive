@@ -1,16 +1,15 @@
-﻿using ECM2.Common;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
-namespace ECM2.Characters
+namespace EasyCharacterMovement
 {
     /// <summary>
     /// AgentCharacter.    
-    /// The AgentCharacter is a customized Character derived class adding navigation and pathfinding capabilities (NavMesh, NavMeshAgent).
+    /// The AgentCharacter is a customized Character derived class adding navigation and path finding capabilities (NavMesh, NavMeshAgent).
     /// This allows you to create characters that can intelligently move around the game world, using navigation meshes (player or AI controlled).
 
-    /// This implements a typical click-to-move behavior.
+    /// By default, this implements a typical click-to-move behavior.
     /// </summary>
 
     [RequireComponent(typeof(NavMeshAgent))]
@@ -18,7 +17,7 @@ namespace ECM2.Characters
     {
         #region EDITOR EXPOSED FIELDS
 
-        [Header("Navigation")]
+        [Space(15f)]
         [Tooltip("Should the agent brake automatically to avoid overshooting the destination point? \n" +
                  "If true, the agent will brake automatically as it nears the destination.")]
         [SerializeField]
@@ -207,8 +206,8 @@ namespace ECM2.Characters
             agent.velocity = GetVelocity();
             agent.nextPosition = GetPosition();
 
-            agent.radius = characterMovement.capsuleRadius;
-            agent.height = IsCrouching() ? crouchedHeight : characterMovement.capsuleHeight;
+            agent.radius = characterMovement.radius;
+            agent.height = IsCrouching() ? crouchedHeight : unCrouchedHeight;
         }
 
         /// <summary>
@@ -292,18 +291,72 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Extends OnMove method to handle PathFollowing state.
+        /// Extends Move method to handle PathFollowing state.
         /// </summary>
 
-        protected override void OnMove()
+        protected override void Move()
         {
             // Handle PathFollowing state
 
             PathFollowing();
-            
+
             // Call base implementation (e.g. Default movement modes and states).
 
-            base.OnMove();
+            base.Move();
+        }
+
+        /// <summary>
+        /// Setup player InputActions (if any).
+        /// </summary>
+
+        protected override void InitPlayerInput()
+        {
+            // Init base character controller input actions (if any)
+
+            base.InitPlayerInput();
+
+            // Attempts to cache and init this InputActions (if any)
+
+            if (inputActions == null)
+                return;
+
+            mousePositionInputAction = inputActions["Mouse Position"];
+            mousePositionInputAction?.Enable();
+            
+            mouseClickInputAction = inputActions["Mouse Click"];
+            if (mouseClickInputAction != null)
+            {
+                mouseClickInputAction.started += OnMouseClick;
+                mouseClickInputAction.performed += OnMouseClick;
+                mouseClickInputAction.canceled += OnMouseClick;
+
+                mouseClickInputAction.Enable();
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from input action events and disable input actions.
+        /// </summary>
+
+        protected override void DeinitPlayerInput()
+        {
+            base.DeinitPlayerInput();
+
+            if (mousePositionInputAction != null)
+            {
+                mousePositionInputAction.Disable();
+                mousePositionInputAction = null;
+            }
+            
+            if (mouseClickInputAction != null)
+            {
+                mouseClickInputAction.started -= OnMouseClick;
+                mouseClickInputAction.performed -= OnMouseClick;
+                mouseClickInputAction.canceled -= OnMouseClick;
+
+                mouseClickInputAction.Disable();
+                mouseClickInputAction = null;
+            }
         }
 
         /// <summary>
@@ -314,7 +367,7 @@ namespace ECM2.Characters
         {
             // Should handle input here ?
 
-            if (actions == null)
+            if (inputActions == null)
                 return;
 
             // Movement (click-to-move)
@@ -325,49 +378,21 @@ namespace ECM2.Characters
 
                 Ray ray = camera.ScreenPointToRay(mousePosition);
 
-                LayerMask groundMask = characterMovement.groundMask;
+                LayerMask groundMask = characterMovement.collisionLayers;
 
-                QueryTriggerInteraction queryTriggerInteraction = characterMovement.collideWithTriggers
-                    ? QueryTriggerInteraction.Collide
-                    : QueryTriggerInteraction.Ignore;
+                QueryTriggerInteraction triggerInteraction = characterMovement.triggerInteraction;
 
-                if (Physics.Raycast(ray, out RaycastHit hitResult, Mathf.Infinity, groundMask, queryTriggerInteraction))
+                if (Physics.Raycast(ray, out RaycastHit hitResult, Mathf.Infinity, groundMask, triggerInteraction))
                     MoveToLocation(hitResult.point);
             }
             else if (!IsPathFollowing())
             {
-                // Default movement input. Allow to controll the agent with keyboard or controller too
+                // Default movement input. Allow to control the agent with keyboard or controller too
 
                 base.HandleInput();
             }
         }
         
-        /// <summary>
-        /// Setup player InputActions (if any).
-        /// </summary>
-
-        protected override void SetupPlayerInput()
-        {
-            // Init base character controller input actions (if any)
-
-            base.SetupPlayerInput();
-
-            // Attempts to cache and init this InputActions (if any)
-
-            if (actions == null)
-                return;
-
-            mousePositionInputAction = actions["Mouse Position"];            
-            
-            mouseClickInputAction = actions["Mouse Click"];
-            if (mouseClickInputAction != null)
-            {
-                mouseClickInputAction.started += OnMouseClick;
-                mouseClickInputAction.performed += OnMouseClick;
-                mouseClickInputAction.canceled += OnMouseClick;
-            }
-        }        
-
         /// <summary>
         /// Our Reset method. Set this default values.
         /// If overriden, must call base method in order to fully initialize the class.
@@ -402,40 +427,6 @@ namespace ECM2.Characters
 
             brakingDistance = _brakingDistance;
             stoppingDistance = _stoppingDistance;
-        }
-
-        /// <summary>
-        /// Called when the object becomes enabled and active (OnEnabled).
-        /// If overriden, must call base method in order to fully initialize the class.
-        /// </summary>
-
-        protected override void OnOnEnable()
-        {
-            // Init base class
-
-            base.OnOnEnable();
-
-            // Enable this input actions (if any)
-
-            mousePositionInputAction?.Enable();
-            mouseClickInputAction?.Enable();
-        }
-
-        /// <summary>
-        /// Called when the behaviour becomes disabled (OnDisable).
-        /// If overriden, must call base method in order to fully de-initialize the class.
-        /// </summary>
-
-        protected override void OnOnDisable()
-        {
-            // De-Init base class
-
-            base.OnOnDisable();
-
-            // Disable this input actions (if any)
-
-            mousePositionInputAction?.Disable();
-            mouseClickInputAction?.Disable();
         }
 
         /// <summary>

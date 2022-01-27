@@ -99,9 +99,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cfuStatus: PSXEffects v1.18.3 - version ahead?!
-  sections: 00000000
-  customRes: {x: 2560, y: 1080}
-  resolutionFactor: 1
+  sections: 01000000
+  customRes: {x: 640, y: 360}
+  resolutionFactor: 3
   limitFramerate: -1
   skipFrames: 0
   affineMapping: 0

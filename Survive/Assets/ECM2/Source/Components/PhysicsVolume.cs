@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ECM2.Components
+namespace EasyCharacterMovement
 {
     /// <summary>
     /// Helper component used to define physics volumes like water, air, oil, etc.

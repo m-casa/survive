@@ -1,4 +1,4 @@
-v2019.2.14.10
+v2019.2.15.1
 
 Note:
 This asset is dependent on Steamworks.NET
@@ -11,7 +11,7 @@ Every interface, componenet, object and enum is now documented with additional d
 Each API wrapped by the new interfaces manages all available callbacks as Unity Events and callResults as Actions
 
 Change
-    - Updated the BeginAuthSession calls of the Authenticaiiton API to return BeginAuthSessionState_t making it easier to detect duplicate session starts.
+- Updated the Inventory import to refresh the local inventory from memory then refresh memory and update again. This catches the case that Valve refuses to update the local cash due to recent update.
 
 ====================
 PLEASE NOTE

@@ -11,8 +11,7 @@
                     "id": "548e32fd-77d1-40e5-8197-32ca56b41bc0",
                     "expectedControlType": "Vector2",
                     "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true
+                    "interactions": ""
                 },
                 {
                     "name": "Jump",
@@ -20,8 +19,7 @@
                     "id": "db3fa715-1c30-4f05-8493-b21ddf3bea2e",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
+                    "interactions": ""
                 },
                 {
                     "name": "Crouch",
@@ -29,8 +27,7 @@
                     "id": "c14bfa58-ac89-47e5-a63b-fe9dcfec834d",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
+                    "interactions": ""
                 },
                 {
                     "name": "Sprint",
@@ -38,8 +35,7 @@
                     "id": "6b36dc10-4407-4d2e-ad68-6fb61460f468",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
+                    "interactions": ""
                 }
             ],
             "bindings": [
@@ -155,17 +151,6 @@
                 },
                 {
                     "name": "",
-                    "id": "c28edee6-6706-4247-a3ea-7bef5c57100a",
-                    "path": "<Gamepad>/buttonSouth",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Gamepad",
-                    "action": "Jump",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "cd230958-03e1-441d-a5bd-428ba7c3e539",
                     "path": "<Keyboard>/leftShift",
                     "interactions": "",
@@ -183,6 +168,17 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Sprint",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c28edee6-6706-4247-a3ea-7bef5c57100a",
+                    "path": "<Gamepad>/buttonSouth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Jump",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 171675568055481898}
   - component: {fileID: 2868369982700869648}
-  - component: {fileID: 2868369982700869649}
+  - component: {fileID: 4371324939894612380}
   - component: {fileID: 2868369982700869651}
   m_Layer: 0
   m_Name: Steam Network Manager
@@ -46,21 +46,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dontDestroyOnLoad: 1
-  PersistNetworkManagerToOfflineScene: 1
   runInBackground: 1
   autoStartServerBuild: 1
   serverTickRate: 30
   offlineScene: Assets/Scenes/OfflineScene.unity
   onlineScene: Assets/Scenes/OnlineScene.unity
-  transport: {fileID: 2868369982700869649}
+  transport: {fileID: 4371324939894612380}
   networkAddress: localhost
   maxConnections: 8
   authenticator: {fileID: 0}
-  playerPrefab: {fileID: 3627665623344143889, guid: 41b2a61ba4ac1b24482855545a3b9c89, type: 3}
+  playerPrefab: {fileID: 8711651868838693353, guid: 190938c3703ad8d4c89577c38f38156f, type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 0
   spawnPrefabs: []
---- !u!114 &2868369982700869649
+--- !u!114 &4371324939894612380
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

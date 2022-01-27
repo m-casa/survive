@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ECM2.Helpers
+namespace EasyCharacterMovement
 {
     /// <summary>
     ///
@@ -12,11 +12,11 @@ namespace ECM2.Helpers
     /// </summary>
 
     [RequireComponent(typeof(Animator))]
-    public sealed class RootMotionController : MonoBehaviour
+    public class RootMotionController : MonoBehaviour
     {
         #region FIELDS
 
-        private Animator _animator;
+        protected Animator _animator;
 
         #endregion
 
@@ -26,13 +26,13 @@ namespace ECM2.Helpers
         /// The animation root motion velocity vector.
         /// </summary>
 
-        public Vector3 animRootMotionVelocity { get; private set; }
+        public virtual Vector3 animRootMotionVelocity { get; protected set; }
 
         /// <summary>
         /// The animation root motion delta rotation.
         /// </summary>
 
-        public Quaternion animDeltaRotation => _animator.deltaRotation;
+        public virtual Quaternion animDeltaRotation => _animator.deltaRotation;
 
         #endregion
 
@@ -42,7 +42,7 @@ namespace ECM2.Helpers
         /// Calculate velocity from anim root motion.
         /// </summary>
 
-        private Vector3 CalcAnimRootMotionVelocity()
+        protected virtual Vector3 CalcAnimRootMotionVelocity()
         {
             float deltaTime = Time.deltaTime;
 
@@ -56,7 +56,7 @@ namespace ECM2.Helpers
 
         #region MONOBEHAVIOUR
 
-        public void Awake()
+        public virtual void Awake()
         {
             _animator = GetComponent<Animator>();
 
@@ -67,7 +67,7 @@ namespace ECM2.Helpers
             }
         }
 
-        public void OnAnimatorMove()
+        public virtual void OnAnimatorMove()
         {
             // Compute animation root motion velocity
 

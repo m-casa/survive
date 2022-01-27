@@ -77,6 +77,8 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <param name="value">The value to set on the API</param>
         public override void SetIntStat(int value) => SteamUserStats.SetStat(statName, value);
 
+        public void AddStat(int value) => Value += value;
+
         /// <summary>
         /// This stores all stats to the Valve backend servers it is not possible to store only 1 stat at a time
         /// Note that this will cause a callback from Steamworks which will cause the stats to update

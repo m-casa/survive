@@ -6,6 +6,7 @@ namespace HeathenEngineering.SteamworksIntegration
 {
     public class ClanChatDirector : MonoBehaviour
     {
+        [Header("Events")]
         public GameConnectedChatJoinEvent evtJoin;
         public GameConnectedClanChatMsgEvent evtRecieved;
         public GameConnectedChatLeaveEvent evtLeave;

@@ -1,10 +1,8 @@
-﻿using ECM2.Common;
-using ECM2.Components;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-namespace ECM2.Characters
+namespace EasyCharacterMovement
 {
     /// <summary>
     /// FirstPersonCharacter.
@@ -17,7 +15,7 @@ namespace ECM2.Characters
     {
         #region EDITOR EXPOSED FIELDS
 
-        [Header("First Person")]
+        [Space(15f)]
         [Tooltip("The first person rig root pivot. This handles the Yaw rotation.")]
         public Transform rootPivot;
 
@@ -160,10 +158,7 @@ namespace ECM2.Characters
         
         protected virtual Vector2 GetMouseLookInput()
         {
-            if (mouseLookInputAction != null)
-                return mouseLookInputAction.ReadValue<Vector2>();
-
-            return Vector2.zero;
+            return mouseLookInputAction?.ReadValue<Vector2>() ?? Vector2.zero;
         }
 
         /// <summary>
@@ -173,10 +168,7 @@ namespace ECM2.Characters
         
         protected virtual Vector2 GetControllerLookInput()
         {
-            if (controllerLookInputAction != null)
-                return controllerLookInputAction.ReadValue<Vector2>();
-
-            return Vector2.zero;
+            return controllerLookInputAction?.ReadValue<Vector2>() ?? Vector2.zero;
         }
 
         /// <summary>
@@ -217,25 +209,7 @@ namespace ECM2.Characters
         {
             return characterLook;
         }
-
-        /// <summary>
-        /// This current right vector.
-        /// </summary>
-
-        public override Vector3 GetRightVector()
-        {
-            return rootPivot.right;
-        }
-
-        /// <summary>
-        /// This current forward vector.
-        /// </summary>
-
-        public override Vector3 GetForwardVector()
-        {
-            return rootPivot.forward;
-        }
-
+        
         /// <summary>
         /// The Eye right vector.
         /// </summary>
@@ -262,28 +236,7 @@ namespace ECM2.Characters
         {
             return eyePivot.forward;
         }
-
-        /// <summary>
-        /// Sets the yaw value. This will reset the current pitch and roll values.
-        /// </summary>
         
-        public override void SetYaw(float value)
-        {
-            // Extends this to perform yaw on rootPivot transform
-
-            rootPivot.localRotation = Quaternion.Euler(0.0f, value, 0.0f);
-        }
-
-        /// <summary>
-        /// Extends AddYawRotation method. Adds Yaw rotation to root pivot.
-        /// </summary>
-
-        public override void AddYawInput(float value)
-        {
-            if (value != 0.0f)
-                rootPivot.localRotation *= Quaternion.Euler(0.0f, value, 0.0f);
-        }
-
         /// <summary>
         /// Look up / down. Adds Pitch rotation to eyePivot.
         /// </summary>
@@ -304,22 +257,22 @@ namespace ECM2.Characters
         /// eg: walking forward, walking backwards or strafing side to side.
         /// </summary>
 
-        protected virtual float GetSpeedMultiplier()
+        protected virtual float GetSpeedModifier()
         {
             // Compute planar move direction
 
-            Vector3 up = GetUpVector();
-            Vector3 planarMoveDirection = Vector3.ProjectOnPlane(GetMovementDirection(), up);
+            Vector3 characterUp = GetUpVector();
+            Vector3 planarMoveDirection = Vector3.ProjectOnPlane(GetMovementDirection(), characterUp);
 
             // Compute actual walk speed factoring movement direction
 
-            Vector3 characterForward = Vector3.ProjectOnPlane(GetForwardVector(), up);
+            Vector3 characterForward = Vector3.ProjectOnPlane(GetForwardVector(), characterUp).normalized;
 
-            float dot = Vector3.Dot(planarMoveDirection.normalized, characterForward.normalized);
+            float forwardMovement = Vector3.Dot(planarMoveDirection, characterForward);
 
-            float speedMultiplier = dot >= 0.0f
-                ? Mathf.Lerp(strafeSpeedMultiplier, forwardSpeedMultiplier, dot)
-                : Mathf.Lerp(strafeSpeedMultiplier, backwardSpeedMultiplier, -dot);
+            float speedMultiplier = forwardMovement >= 0.0f
+                ? Mathf.Lerp(strafeSpeedMultiplier, forwardSpeedMultiplier, forwardMovement)
+                : Mathf.Lerp(strafeSpeedMultiplier, backwardSpeedMultiplier, -forwardMovement);
 
             return speedMultiplier;
         }
@@ -330,36 +283,89 @@ namespace ECM2.Characters
 
         public override float GetMaxSpeed()
         {
-            return base.GetMaxSpeed() * GetSpeedMultiplier();
+            float actualMaxSpeed = base.GetMaxSpeed();
+
+            return actualMaxSpeed * GetSpeedModifier();
         }
         
         /// <summary>
-        /// Setup player InputActions (if any).
+        /// Initialize player InputActions (if any).
+        /// E.g. Subscribe to input action events and enable input actions here.
         /// </summary>
 
-        protected override void SetupPlayerInput()
+        protected override void InitPlayerInput()
         {
-            // Init base character controller input actions (if any)
+            // Call base method implementation
 
-            base.SetupPlayerInput();
+            base.InitPlayerInput();
 
             // Attempts to cache this InputActions (if any)
 
-            if (actions == null)
+            if (inputActions == null)
                 return;
 
             // Setup input action handlers
 
-            mouseLookInputAction = actions.FindAction("Mouse Look");
-            controllerLookInputAction = actions.FindAction("Controller Look");
+            mouseLookInputAction = inputActions.FindAction("Mouse Look");
+            mouseLookInputAction?.Enable();
 
-            cursorLockInputAction = actions.FindAction("Cursor Lock");
+            controllerLookInputAction = inputActions.FindAction("Controller Look");
+            controllerLookInputAction?.Enable();
+
+            cursorLockInputAction = inputActions.FindAction("Cursor Lock");
             if (cursorLockInputAction != null)
+            {
                 cursorLockInputAction.started += OnCursorLock;
+                cursorLockInputAction.Enable();
+            }
 
-            cursorUnlockInputAction = actions.FindAction("Cursor Unlock");
+            cursorUnlockInputAction = inputActions.FindAction("Cursor Unlock");
             if (cursorUnlockInputAction != null)
+            {
                 cursorUnlockInputAction.started += OnCursorUnlock;
+                cursorUnlockInputAction.Enable();
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from input action events and disable input actions.
+        /// </summary>
+
+        protected override void DeinitPlayerInput()
+        {
+            // Call base method implementation
+
+            base.DeinitPlayerInput();
+
+            if (mouseLookInputAction != null)
+            {
+                mouseLookInputAction.Disable();
+                mouseLookInputAction = null;
+            }
+
+            if (controllerLookInputAction != null)
+            {
+                controllerLookInputAction.Disable();
+                controllerLookInputAction = null;
+            }
+
+            if (cursorLockInputAction != null)
+            {
+                cursorLockInputAction.started -= OnCursorLock;
+                
+                cursorLockInputAction.Disable();
+                cursorLockInputAction = null;
+            }
+            
+            if (cursorUnlockInputAction != null)
+            {
+                cursorUnlockInputAction.started -= OnCursorUnlock;
+                
+                cursorUnlockInputAction.Disable();
+                cursorUnlockInputAction = null;
+
+            }
+
         }
 
         /// <summary>
@@ -374,7 +380,12 @@ namespace ECM2.Characters
             
             // Is Character is disabled, or externally controlled (eg: by a controller), halts camera look
 
-            if (actions == null || IsDisabled())
+            if (inputActions == null)
+                return;
+
+            // If disabled, or cursor is unlocked, halts camera input
+
+            if (IsDisabled() || !characterLook.IsCursorLocked())
                 return;
 
             // Mouse Look Input
@@ -477,44 +488,6 @@ namespace ECM2.Characters
             // Disable Character rotation
 
             SetRotationMode(RotationMode.None);
-        }
-
-        /// <summary>
-        /// Called when the object becomes enabled and active (OnEnabled).
-        /// If overriden, must call base method in order to fully initialize the class.
-        /// </summary>
-
-        protected override void OnOnEnable()
-        {
-            // Init Character
-
-            base.OnOnEnable();
-
-            // Enable input actions (if any)
-            
-            mouseLookInputAction?.Enable();
-            controllerLookInputAction?.Enable();
-            cursorLockInputAction?.Enable();
-            cursorUnlockInputAction?.Enable();
-        }
-
-        /// <summary>
-        /// Called when the behaviour becomes disabled (OnDisable).
-        /// If overriden, must call base method in order to fully de-initialize the class.
-        /// </summary>
-
-        protected override void OnOnDisable()
-        {
-            // De-Init Character
-
-            base.OnOnDisable();
-
-            // Disable input actions (if any)
-
-            mouseLookInputAction?.Disable();
-            controllerLookInputAction?.Disable();
-            cursorLockInputAction?.Disable();
-            cursorUnlockInputAction?.Disable();
         }
 
         /// <summary>

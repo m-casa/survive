@@ -73,75 +73,6 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 settings.client = new SteamSettings.GameClient();
                 EditorUtility.SetDirty(settings);
             }
-
-            List<StatObject> toMove = new List<StatObject>();
-
-            foreach(var stat in settings.stats)
-            {
-                if(AssetDatabase.GetAssetPath(stat) != AssetDatabase.GetAssetPath(settings))
-                {
-                    toMove.Add(stat);
-                    Debug.Log("Moving " + AssetDatabase.GetAssetPath(stat) + " to " + AssetDatabase.GetAssetPath(settings));
-                }
-            }
-
-            foreach(var stat in toMove)
-            {
-                settings.stats.Remove(stat);
-                if(stat.GetType() == typeof(IntStatObject))
-                {
-                    IntStatObject nStat = new IntStatObject();
-                    nStat.name = stat.statName;
-                    nStat.statName = stat.statName;
-                    AssetDatabase.AddObjectToAsset(nStat, settings);
-                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(settings));
-
-                    settings.stats.Add(nStat);
-
-                    stat.name = "[REPLACED] " + stat.name;
-                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(stat));
-                }
-                else
-                {
-                    FloatStatObject nStat = new FloatStatObject();
-                    nStat.name = stat.statName;
-                    nStat.statName = stat.statName;
-                    AssetDatabase.AddObjectToAsset(nStat, settings);
-                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(settings));
-
-                    settings.stats.Add(nStat);
-
-                    stat.name = "[REPLACED] " + stat.name;
-                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(stat));
-                }
-            }
-
-            List<AchievementObject> toMove2 = new List<AchievementObject>();
-
-            foreach(var achievement in settings.achievements)
-            {
-                if (AssetDatabase.GetAssetPath(achievement) != AssetDatabase.GetAssetPath(settings))
-                {
-                    toMove2.Add(achievement);
-                    Debug.Log("Moving " + AssetDatabase.GetAssetPath(achievement) + " to " + AssetDatabase.GetAssetPath(settings));
-                }
-            }
-
-            foreach (var achievement in toMove2)
-            {
-                settings.achievements.Remove(achievement);
-
-                AchievementObject nStat = ScriptableObject.CreateInstance<AchievementObject>();
-                nStat.name = achievement.Id;
-                nStat.Id = achievement.Id;
-                AssetDatabase.AddObjectToAsset(nStat, settings);
-                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(settings));
-
-                settings.achievements.Add(nStat);
-
-                achievement.name = "[REPLACED] " + achievement.name;
-                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(achievement));
-            }
         }
 
         private void DrawCommonSettings()
@@ -986,6 +917,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                     try
                     {
                         settings.client.inventory.UpdateItemDefinitions();
+                        API.Inventory.Client.LoadItemDefinitions();
                     }
                     catch
                     {
@@ -1232,8 +1164,8 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                         GUI.FocusControl(null);
 
                         var nItem = ScriptableObject.CreateInstance<InputAction>();
-                        nItem.actionName = "action";
-                        nItem.name = "[Input-Action] " + nItem.actionName;
+                        nItem.ActionName = "action";
+                        nItem.name = "[Input-Action] " + nItem.ActionName;
 
                         AssetDatabase.AddObjectToAsset(nItem, settings);
                         AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(settings));
@@ -1388,11 +1320,11 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 EditorGUIUtility.PingObject(item);
             }
 
-            if (item.type == InputActionType.Digital)
+            if (item.Type == InputActionType.Digital)
             {
                 if (GUILayout.Button(new GUIContent("DI", "Click to make this an analog action."), EditorStyles.toolbarButton, GUILayout.Width(20)))
                 {
-                    item.type = InputActionType.Analog;
+                    item.Type = InputActionType.Analog;
 
                     GUI.FocusControl(null);
                     EditorUtility.SetDirty(item);
@@ -1404,7 +1336,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             {
                 if (GUILayout.Button(new GUIContent("AI", "Click to make this a digital action."), EditorStyles.toolbarButton, GUILayout.Width(20)))
                 {
-                    item.type = InputActionType.Digital;
+                    item.Type = InputActionType.Digital;
 
                     GUI.FocusControl(null);
                     EditorUtility.SetDirty(item);
@@ -1413,12 +1345,12 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 }
             }
 
-            var result = EditorGUILayout.TextField(item.actionName);
+            var result = EditorGUILayout.TextField(item.ActionName);
 
-            if (result != item.actionName)
+            if (result != item.ActionName)
             {
-                item.actionName = result;
-                item.name = "[Input-Action] " + item.actionName;
+                item.ActionName = result;
+                item.name = "[Input-Action] " + item.ActionName;
 
                 EditorUtility.SetDirty(item);
                 AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(settings));

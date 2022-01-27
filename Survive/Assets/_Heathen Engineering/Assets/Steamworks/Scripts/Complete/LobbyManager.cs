@@ -40,9 +40,10 @@ namespace HeathenEngineering.SteamworksIntegration
         public SearchArguments searchArguments = new SearchArguments();
         public CreateArguments createArguments = new CreateArguments();
 
+        [Header("Events")]
         public LobbyDataListEvent evtFound;
         /// <summary>
-        /// Occurs when the local user enters a lobby either in responce to a Create or Join request
+        /// Occurs when the local user enters a lobby as a responce to a join
         /// </summary>
         public LobbyDataEvent evtEnterSuccess;
         public LobbyResponceEvent evtEnterFailed;
@@ -335,8 +336,11 @@ namespace HeathenEngineering.SteamworksIntegration
                     else
                         evtEnterFailed.Invoke((EChatRoomEnterResponse)r.m_EChatRoomEnterResponse);
                 }
+                else
+                    evtEnterFailed.Invoke(EChatRoomEnterResponse.k_EChatRoomEnterResponseError);
             });
         }
+
         public void Join(ulong lobby)
         {
             API.Matchmaking.Client.JoinLobby(lobby, (r, e) =>
@@ -354,6 +358,8 @@ namespace HeathenEngineering.SteamworksIntegration
                     else
                         evtEnterFailed.Invoke((EChatRoomEnterResponse)r.m_EChatRoomEnterResponse);
                 }
+                else
+                    evtEnterFailed.Invoke(EChatRoomEnterResponse.k_EChatRoomEnterResponseError);
             });
         }
         public void Join(string lobbyIdAsString)

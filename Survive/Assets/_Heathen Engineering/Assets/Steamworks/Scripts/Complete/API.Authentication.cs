@@ -45,7 +45,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
         /// <returns></returns>
         public static bool IsAuthTicketValid(AuthenticationTicket ticket)
         {
-            if (ticket.handle == default || ticket.handle == HAuthTicket.Invalid)
+            if (ticket.Handle == default || ticket.Handle == HAuthTicket.Invalid)
                 return false;
             else
                 return true;
@@ -64,7 +64,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             else
             {
                 StringBuilder sb = new StringBuilder();
-                foreach (byte b in ticket.data)
+                foreach (byte b in ticket.Data)
                     sb.AppendFormat("{0:X2}", b);
 
                 return sb.ToString();
@@ -81,15 +81,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             if (m_GetAuthSessionTicketResponce == null)
                 m_GetAuthSessionTicketResponce = Callback<GetAuthSessionTicketResponse_t>.Create(HandleGetAuthSessionTicketResponce);
 
-            uint m_pcbTicket;
-            var ticket = new AuthenticationTicket();
-            ticket.isClientTicket = true;
-            ticket.data = new byte[1024];
-            ticket.handle = SteamUser.GetAuthSessionTicket(ticket.data, 1024, out m_pcbTicket);
-            ticket.createdOn = SteamUtils.GetServerRealTime();
-            Array.Resize(ref ticket.data, (int)m_pcbTicket);
-            ticket.callback = callback;
-
+            var ticket = new AuthenticationTicket(callback, true);
             if (ActiveTickets == null)
                 ActiveTickets = new List<AuthenticationTicket>();
 
@@ -98,14 +90,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             if (m_GetAuthSessionTicketResponceServer == null)
                 m_GetAuthSessionTicketResponceServer = Callback<GetAuthSessionTicketResponse_t>.CreateGameServer(HandleGetAuthSessionTicketResponce);
 
-            uint m_pcbTicket;
-            var ticket = new AuthenticationTicket();
-            ticket.isClientTicket = false;
-            ticket.data = new byte[1024];
-            ticket.handle = SteamGameServer.GetAuthSessionTicket(ticket.data, 1024, out m_pcbTicket);
-            ticket.createdOn = SteamUtils.GetServerRealTime();
-            ticket.callback = callback;
-            Array.Resize(ref ticket.data, (int)m_pcbTicket);
+            var ticket = new AuthenticationTicket(callback, false);
 
             if (ActiveTickets == null)
                 ActiveTickets = new List<AuthenticationTicket>();
@@ -137,12 +122,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             if (m_ValidateAuthSessionTicketResponce == null)
                 m_ValidateAuthSessionTicketResponce = Callback<ValidateAuthTicketResponse_t>.Create(HandleValidateAuthTicketResponse);
 
-            var session = new AuthenticationSession()
-            {
-                isClientSession = true,
-                user = user,
-                onStartCallback = callback
-            };
+            var session = new AuthenticationSession(user, callback, true);
 
             if (ActiveSessions == null)
             {
@@ -155,12 +135,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             if (m_ValidateAuthSessionTicketResponceServer == null)
                 m_ValidateAuthSessionTicketResponceServer = Callback<ValidateAuthTicketResponse_t>.Create(HandleValidateAuthTicketResponse);
 
-            var session = new AuthenticationSession()
-            {
-                isClientSession = false,
-                user = user,
-                onStartCallback = callback
-            };
+            var session = new AuthenticationSession(user, callback, false);
 
             if (ActiveSessions == null)
             {
@@ -184,7 +159,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             SteamGameServer.EndAuthSession(user);
 #endif
 
-            ActiveSessions.RemoveAll(p => p.user == user);
+            ActiveSessions.RemoveAll(p => p.User == user);
         }
         /// <summary>
         /// Checks if the user owns a specific piece of Downloadable Content (DLC).
@@ -206,32 +181,19 @@ namespace HeathenEngineering.SteamworksIntegration.API
 
         private static void HandleGetAuthSessionTicketResponce(GetAuthSessionTicketResponse_t pCallback)
         {
-            if (ActiveTickets != null && ActiveTickets.Any(p => p.handle == pCallback.m_hAuthTicket))
+            if (ActiveTickets != null && ActiveTickets.Any(p => p.Handle == pCallback.m_hAuthTicket))
             {
-                var ticket = ActiveTickets.First(p => p.handle == pCallback.m_hAuthTicket);
-
-                if (ticket.handle != default(HAuthTicket) && ticket.handle != HAuthTicket.Invalid
-                    && pCallback.m_eResult == EResult.k_EResultOK)
-                {
-                    ticket.result = pCallback.m_eResult;
-                    ticket.verified = true;
-                    ticket.callback?.Invoke(ticket, false);
-                }
-                else
-                {
-                    ticket.result = pCallback.m_eResult;
-                    ticket.callback?.Invoke(ticket, true);
-                }
+                var ticket = ActiveTickets.First(p => p.Handle == pCallback.m_hAuthTicket);
+                ticket.Authenticate(pCallback);
             }
         }
 
         private static void HandleValidateAuthTicketResponse(ValidateAuthTicketResponse_t param)
         {
-            if (ActiveSessions != null && ActiveSessions.Any(p => p.user == param.m_SteamID))
+            if (ActiveSessions != null && ActiveSessions.Any(p => p.User == param.m_SteamID))
             {
-                var session = ActiveSessions.First(p => p.user == param.m_SteamID);
-                session.responce = param.m_eAuthSessionResponse;
-                session.gameOwner = param.m_OwnerSteamID;
+                var session = ActiveSessions.First(p => p.User == param.m_SteamID);
+                session.Authenticate(param);
 
                 if (SteamSettings.current != null && SteamSettings.current.isDebugging)
                     Debug.Log("Processing session request data for " + param.m_SteamID.m_SteamID.ToString() + " status = " + param.m_eAuthSessionResponse);
@@ -239,8 +201,8 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (param.m_eAuthSessionResponse != EAuthSessionResponse.k_EAuthSessionResponseOK)
                     ActiveSessions.Remove(session);
 
-                if (session.onStartCallback != null)
-                    session.onStartCallback.Invoke(session);
+                if (session.OnStartCallback != null)
+                    session.OnStartCallback.Invoke(session);
             }
             else
             {

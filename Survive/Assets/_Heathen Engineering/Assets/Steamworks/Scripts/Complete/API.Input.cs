@@ -31,12 +31,15 @@ namespace HeathenEngineering.SteamworksIntegration.API
 
                 glyphs = new Dictionary<EInputActionOrigin, Texture2D>();
 
-                initalized = false;
+                initialized = false;
             }
 
-            public static bool Initalized => initalized;
+            public static bool Initialized => initialized;
+            [Obsolete("Corrected spelling error please use Initialized")]
+            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+            public static bool Initalized => Initialized;
 
-            private static bool initalized = false;
+            private static bool initialized = false;
             private static Dictionary<string, InputActionSetHandle_t> m_inputActionSetHandles = new Dictionary<string, InputActionSetHandle_t>();
             private static Dictionary<string, InputAnalogActionHandle_t> m_inputAnalogActionHandles = new Dictionary<string, InputAnalogActionHandle_t>();
             private static Dictionary<string, InputDigitalActionHandle_t> m_inputDigitalActionHandles = new Dictionary<string, InputDigitalActionHandle_t>();
@@ -390,8 +393,8 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// </summary>
             public static bool Init(bool explictlyCallRunFrame)
             {
-                initalized = SteamInput.Init(explictlyCallRunFrame);
-                return initalized;
+                initialized = SteamInput.Init(explictlyCallRunFrame);
+                return initialized;
             }
             /// <summary>
             /// Synchronize API state with the latest Steam Controller inputs available. This is performed automatically by SteamAPI_RunCallbacks, but for the absolute lowest possible latency, you can call this directly before reading controller state.
@@ -413,7 +416,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// </summary>
             public static bool Shutdown()
             {
-                initalized = false;
+                initialized = false;
                 return SteamInput.Shutdown();
             }
             /// <summary>

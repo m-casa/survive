@@ -150,7 +150,7 @@ namespace HeathenEngineering.SteamworksIntegration
 #if !UNITY_SERVER
             Steamworks.SteamAPI.RunCallbacks();
 #if HE_STEAMCOMPLETE
-            if (API.Input.Client.Initalized)
+            if (API.Input.Client.Initialized)
             {
                 API.Input.Client.RunFrame();
             }
@@ -161,7 +161,7 @@ namespace HeathenEngineering.SteamworksIntegration
         }
 
         /// <summary>
-        /// Checks if the Steam API is initalized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
+        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
         /// </summary>
         /// <remarks>
         /// This should only be used in the rare cases you need to initalize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.

@@ -54,15 +54,18 @@ namespace HeathenEngineering.SteamworksIntegration
 #if UNITY_EDITOR
         private void Update()
         {
-            if (notificationPosition != API.Overlay.Client.NotificationPosition)
+            if (SteamSettings.Initialized)
             {
-                notificationPosition = NotificationPosition;
-                Debug.LogWarning("Notification Position cannot be updated from the inspector at runtime.");
-            }
-            if (notificationInset != API.Overlay.Client.NotificationInset)
-            {
-                notificationInset = NotificationInset;
-                Debug.LogWarning("Notification Insert cannot be updated from the inspector at runtime.");
+                if (notificationPosition != API.Overlay.Client.NotificationPosition)
+                {
+                    notificationPosition = NotificationPosition;
+                    Debug.LogWarning("Notification Position cannot be updated from the inspector at runtime.");
+                }
+                if (notificationInset != API.Overlay.Client.NotificationInset)
+                {
+                    notificationInset = NotificationInset;
+                    Debug.LogWarning("Notification Insert cannot be updated from the inspector at runtime.");
+                }
             }
         }
 #endif

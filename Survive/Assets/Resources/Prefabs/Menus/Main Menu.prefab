@@ -755,6 +755,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7fe4ecca7ad92846b1b07717e5d1bf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cSteamID:
+    m_SteamID: 109775240978209684
   canvas: {fileID: 5847968047461418226}
   title: {fileID: 5847968048957331703}
   lobbyButtons: {fileID: 5847968048865626849}

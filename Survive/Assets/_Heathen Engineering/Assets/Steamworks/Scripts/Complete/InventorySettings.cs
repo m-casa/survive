@@ -247,13 +247,13 @@ namespace HeathenEngineering.SteamworksIntegration
                         var bundleData = API.Inventory.Client.GetItemDefinitionProperty(target.Id, "bundle");
                         if (!string.IsNullOrEmpty(bundleData))
                         {
-                            var recipes = bundleData.Split(';');
-                            for (int ii = 0; ii < recipes.Length; ii++)
+                            var bundleString = bundleData.Split(';');
+                            for (int ii = 0; ii < bundleString.Length; ii++)
                             {
-                                var recipe = recipes[ii];
-                                if (recipe.Contains("x"))
+                                var bundleItem = bundleString[ii];
+                                if (bundleItem.Contains("x"))
                                 {
-                                    var kvp = recipe.Split('x');
+                                    var kvp = bundleItem.Split('x');
                                     var id = int.Parse(kvp[0]);
                                     var count = int.Parse(kvp[1]);
                                     target.item_bundle.entries.Add(new ItemDefinition.Bundle.Entry
@@ -264,10 +264,10 @@ namespace HeathenEngineering.SteamworksIntegration
                                 }
                                 else
                                 {
-                                    var id = int.Parse(recipe);
+                                    var id = int.Parse(bundleItem);
                                     target.item_bundle.entries.Add(new ItemDefinition.Bundle.Entry
                                     {
-                                        count = 0,
+                                        count = 1,
                                         item = items.FirstOrDefault(p => p.Id.m_SteamItemDef == id)
                                     });
                                 }
@@ -281,7 +281,7 @@ namespace HeathenEngineering.SteamworksIntegration
                         UnityEditor.EditorUtility.SetDirty(target);
 #endif
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
 #pragma warning disable UNT0008 // Null propagation on Unity objects
                         Debug.LogError("Failed to process bundle information for " + bundles[i]?.ToString() + "\nException: " + ex.Message);
@@ -291,7 +291,7 @@ namespace HeathenEngineering.SteamworksIntegration
 
                 foreach (var keyValuePair in craftable)
                 {
-                    
+
                     var target = keyValuePair.Key;
                     var schema = keyValuePair.Value;
                     try
@@ -321,6 +321,9 @@ namespace HeathenEngineering.SteamworksIntegration
                                     else
                                         tag = tagCat[1];
 
+                                    if (recipieObject.materials == null)
+                                        recipieObject.materials = new List<ItemDefinition.ExchangeRecipe.Material>();
+
                                     recipieObject.materials.Add(new ItemDefinition.ExchangeRecipe.Material
                                     {
                                         item = new ItemDefinition.ExchangeRecipe.Material.Item_Def_Descriptor { item = null, count = 0 },
@@ -343,6 +346,9 @@ namespace HeathenEngineering.SteamworksIntegration
                                         var count = uint.Parse(itemCount[1]);
                                         var itemTarget = items.FirstOrDefault(p => p.Id.m_SteamItemDef == itemID);
 
+                                        if (recipieObject.materials == null)
+                                            recipieObject.materials = new List<ItemDefinition.ExchangeRecipe.Material>();
+
                                         recipieObject.materials.Add(new ItemDefinition.ExchangeRecipe.Material
                                         {
                                             item = new ItemDefinition.ExchangeRecipe.Material.Item_Def_Descriptor
@@ -362,6 +368,9 @@ namespace HeathenEngineering.SteamworksIntegration
                                     {
                                         var itemID = int.Parse(material);
                                         var itemTarget = items.FirstOrDefault(p => p.Id.m_SteamItemDef == itemID);
+
+                                        if (recipieObject.materials == null)
+                                            recipieObject.materials = new List<ItemDefinition.ExchangeRecipe.Material>();
 
                                         recipieObject.materials.Add(new ItemDefinition.ExchangeRecipe.Material
                                         {
@@ -392,16 +401,16 @@ namespace HeathenEngineering.SteamworksIntegration
                     }
                 }
 
-                foreach(var keyValuePair in generators)
+                foreach (var keyValuePair in generators)
                 {
                     var target = keyValuePair.Key;
                     var schema = keyValuePair.Value;
 
-                    if(schema.Contains(";"))
+                    if (schema.Contains(";"))
                     {
                         target.item_tag_generators = new List<ItemDefinition>();
                         var gens = schema.Split(';');
-                        foreach(var idString in gens)
+                        foreach (var idString in gens)
                         {
                             var id = int.Parse(idString);
                             var targetTagGen = items.FirstOrDefault(p => p.Id.m_SteamItemDef == id);
@@ -417,7 +426,7 @@ namespace HeathenEngineering.SteamworksIntegration
                         var id = int.Parse(schema);
                         target.item_tag_generators = new List<ItemDefinition>();
                         var targetTagGen = items.FirstOrDefault(p => p.Id.m_SteamItemDef == id);
-                        if(targetTagGen != null)
+                        if (targetTagGen != null)
                         {
                             target.item_tag_generators.Add(targetTagGen);
                         }
@@ -444,7 +453,7 @@ namespace HeathenEngineering.SteamworksIntegration
             foreach (var detail in results.items)
             {
                 var def = items.FirstOrDefault(p => p.item_itemdefid == detail.Definition.m_SteamItemDef);
-                if(def != null)
+                if (def != null)
                 {
                     def.Details.RemoveAll(p => p.ItemId == detail.ItemId);
                     def.Details.Add(detail);
@@ -459,7 +468,7 @@ namespace HeathenEngineering.SteamworksIntegration
             //Compare
             List<ItemChangeRecord> changes = new List<ItemChangeRecord>();
 
-            foreach(var kvp in currentState)
+            foreach (var kvp in currentState)
             {
                 var item = kvp.Key;
                 var before = kvp.Value;
@@ -475,14 +484,14 @@ namespace HeathenEngineering.SteamworksIntegration
                 var bChange = before.Where(b => after.Any(a => a.ItemId == b.ItemId) && after.FirstOrDefault(a => a.ItemId == b.ItemId).Quantity != b.Quantity);
                 var aChange = after.Where(a => before.Any(b => b.ItemId == a.ItemId) && before.FirstOrDefault(b => b.ItemId == a.ItemId).Quantity != a.Quantity);
 
-                if(removed.Count() > 0
+                if (removed.Count() > 0
                     || added.Count() > 0
                     || bChange.Count() > 0)
                 {
                     //We have some change so record it
                     List<ItemInstanceChangeRecord> changeRecords = new List<ItemInstanceChangeRecord>();
 
-                    foreach(var r in removed)
+                    foreach (var r in removed)
                     {
                         changeRecords.Add(new ItemInstanceChangeRecord
                         {
@@ -535,14 +544,14 @@ namespace HeathenEngineering.SteamworksIntegration
                     {
                         iChanged.item.EventChanged.Invoke(iChanged);
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         Debug.LogException(ex);
                     }
                 }
             }
 
-            if(changes.Count > 0)
+            if (changes.Count > 0)
             {
                 EventChanged.Invoke(new InventoryChangeRecord
                 {

@@ -2,13 +2,9 @@
 using HeathenEngineering.Events;
 using Steamworks;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
@@ -153,7 +149,7 @@ namespace HeathenEngineering.SteamworksIntegration
                             + "Ensure that you own a license for the App ID on the currently active Steam account (if login via token). Your game must show up in your Steam library.\n"
                             + "The App ID is not completely set up, i.e. in Release State: Unavailable, or it's missing default packages.";
 
-                    current.evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                    current.evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                     Debug.LogError(InitalizationErrorMessage);
                     return;
                 }
@@ -194,7 +190,7 @@ namespace HeathenEngineering.SteamworksIntegration
 
                 if (current.isDebugging)
                 {
-                    Debug.Log("Steam API has been initalized with App ID: " + SteamGameServerUtils.GetAppID());
+                    Debug.Log("Steam API has been initialized with App ID: " + SteamGameServerUtils.GetAppID());
                 }
 
                 if (current.applicationId != SteamGameServerUtils.GetAppID())
@@ -278,7 +274,7 @@ namespace HeathenEngineering.SteamworksIntegration
                     InitalizationErrorMessage = "Steamworks.NET could not load, steam_api.dll/so/dylib. It's likely not in the correct location.";
                     // We catch this exception here, as it will be the first occurence of it.
                     Debug.LogError("[Steamworks.NET] Could not load [lib]steam_api.dll/so/dylib. It's likely not in the correct location. Refer to the README for more details.\n" + e, current);
-                    current.evtSteamInitalizationError.Invoke("[Steamworks.NET] Could not load [lib]steam_api.dll/so/dylib. It's likely not in the correct location. Refer to the README for more details.\n" + e);
+                    current.evtSteamInitializationError.Invoke("[Steamworks.NET] Could not load [lib]steam_api.dll/so/dylib. It's likely not in the correct location. Refer to the README for more details.\n" + e);
                     Application.Quit();
                     return;
                 }
@@ -297,7 +293,7 @@ namespace HeathenEngineering.SteamworksIntegration
                             + "Ensure that you own a license for the App ID on the currently active Steam account. Your game must show up in your Steam library.\n"
                             + "Your App ID is not completely set up, i.e. in Release State: Unavailable, or it's missing default packages.";
 
-                    current.evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                    current.evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                     Debug.LogError(InitalizationErrorMessage);
                     return;
                 }
@@ -306,7 +302,7 @@ namespace HeathenEngineering.SteamworksIntegration
 
                 if (current.isDebugging)
                 {
-                    Debug.Log("Steam API has been initalized with App ID: " + SteamUtils.GetAppID());
+                    Debug.Log("Steam API has been initialized with App ID: " + SteamUtils.GetAppID());
                 }
 
 #if HE_STEAMCOMPLETE
@@ -326,7 +322,7 @@ namespace HeathenEngineering.SteamworksIntegration
                     if (current.isDebugging)
                     {
                         if (result)
-                            Debug.Log("Steam Input API initalized.");
+                            Debug.Log("Steam Input API initialized.");
                         else
                             Debug.LogWarning("Steam Input API failed to initalize!");
                     }
@@ -400,7 +396,7 @@ namespace HeathenEngineering.SteamworksIntegration
         }
 
         /// <summary>
-        /// A reference to the initalized <see cref="SteamSettings"/> object.
+        /// A reference to the initialized <see cref="SteamSettings"/> object.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -421,7 +417,7 @@ namespace HeathenEngineering.SteamworksIntegration
         public static SteamSettings current;
         public static SteamworksBehaviour behaviour;
         /// <summary>
-        /// The AppId_t value configured and initalized for.
+        /// The AppId_t value configured and initialized for.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -461,7 +457,7 @@ namespace HeathenEngineering.SteamworksIntegration
         public static string InitalizationErrorMessage { get; private set; }
 
         /// <summary>
-        /// Indicates rather or not the Steamworks API is initalized
+        /// Indicates rather or not the Steamworks API is initialized
         /// </summary>
         /// <remarks>
         /// <para>This value gets set to true when <see cref="Init"/> is called by the <see cref="SteamworksClientApiSystem"/>.
@@ -494,7 +490,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <para>
         /// The <see cref="GameServer"/> object provides easy access to Steamworks Game Server configuraiton and server only features.
         /// Note that your server can be a Steamworks Game Server and not have to use the Steamworks Networking transports ... e.g. you can use any transport you like and host anywhere you like.
-        /// Being a Steamworks Game Server simply means that your server has initalized the Steamworks API and registered its self against Valve's backend ... in addition if this server has an  IP address of a trusted server as defined in your app configuration on the Steamworks Portal,
+        /// Being a Steamworks Game Server simply means that your server has initialized the Steamworks API and registered its self against Valve's backend ... in addition if this server has an  IP address of a trusted server as defined in your app configuration on the Steamworks Portal,
         /// then it may perform GS only actions such as setting stats and achievments that are marked as GS only.
         /// </para>
         /// </remarks>
@@ -535,14 +531,14 @@ namespace HeathenEngineering.SteamworksIntegration
         /// See <see cref="leaderboards"/> for more information. This field simply access the <see cref="leaderboards"/> member for the <see cref="current"/> <see cref="SteamworksClientApiSettings"/> object.
         /// </remarks>
         public static List<LeaderboardObject> Leaderboards => current.leaderboards;
-#endregion
+        #endregion
 #endif
-#endregion
+        #endregion
 
-#region Utility Functions
+        #region Utility Functions
 
         /// <summary>
-        /// Checks if the Steam API is initalized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
+        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
         /// </summary>
         /// <remarks>
         /// This should only be used in the rare cases you need to initalize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
@@ -563,7 +559,7 @@ namespace HeathenEngineering.SteamworksIntegration
         }
 
         /// <summary>
-        /// Checks if the Steam API is initalized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
+        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
         /// </summary>
         /// <remarks>
         /// This should only be used in the rare cases you need to initalize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
@@ -659,9 +655,9 @@ namespace HeathenEngineering.SteamworksIntegration
 #endregion
 
 #region Events
-        public UnityEvent evtSteamInitalized;
+        public UnityEvent evtSteamInitialized;
 
-        public UnityStringEvent evtSteamInitalizationError;
+        public UnityStringEvent evtSteamInitializationError;
 #endregion
 
 #region Internals
@@ -674,7 +670,7 @@ namespace HeathenEngineering.SteamworksIntegration
             {
                 HasInitalizationError = true;
                 InitalizationErrorMessage = "Tried to initalize the Steamworks API twice in one session!";
-                evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogWarning(InitalizationErrorMessage);
                 return;
             }
@@ -683,7 +679,7 @@ namespace HeathenEngineering.SteamworksIntegration
             {
                 HasInitalizationError = true;
                 InitalizationErrorMessage = "Packesize Test returned false, the wrong version of the Steamowrks.NET is being run in this platform.";
-                evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogError(InitalizationErrorMessage);
                 return;
             }
@@ -692,7 +688,7 @@ namespace HeathenEngineering.SteamworksIntegration
             {
                 HasInitalizationError = true;
                 InitalizationErrorMessage = "DLL Check Test returned false, one or more of the Steamworks binaries seems to be the wrong version.";
-                evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogError(InitalizationErrorMessage);
                 return;
             }
@@ -702,7 +698,7 @@ namespace HeathenEngineering.SteamworksIntegration
             {
                 HasInitalizationError = true;
                 InitalizationErrorMessage = "Steam Running check returned false, Steam client must be running for the API to intialize.";
-                evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogError("[Steamworks.NET] Steam client must be running for the API to intialize.", this);
                 return;
             }
@@ -718,12 +714,12 @@ namespace HeathenEngineering.SteamworksIntegration
             Application.quitting += Application_quitting;
 
             if (Initialized)
-                evtSteamInitalized.Invoke();
+                evtSteamInitialized.Invoke();
             else
             {
                 HasInitalizationError = true;
                 InitalizationErrorMessage = "Steam Initalization failed, check the log for more information.";
-                evtSteamInitalizationError.Invoke(InitalizationErrorMessage);
+                evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogError("[Steamworks.NET] Steam Initalization failed, check the log for more information", this);
             }
         }
@@ -738,7 +734,7 @@ namespace HeathenEngineering.SteamworksIntegration
 #if !UNITY_SERVER
 
 #if HE_STEAMCOMPLETE
-            if (API.Input.Client.Initalized)
+            if (API.Input.Client.Initialized)
                 API.Input.Client.Shutdown();
 #endif
 

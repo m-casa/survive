@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ECM2.Common
+namespace EasyCharacterMovement
 {
     public static class MathLib
     {

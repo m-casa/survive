@@ -10,44 +10,78 @@ namespace HeathenEngineering.SteamworksIntegration
     [Serializable]
     public class AuthenticationSession
     {
+        #region Depricated
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use IsClientSession")]
+        public bool isClientSession => IsClientSession;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use User")]
+        public UserData user => User;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use GameOwner")]
+        public UserData gameOwner => GameOwner;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use Data")]
+        public byte[] data => Data;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use Response")]
+        public EAuthSessionResponse responce => Response;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [Obsolete("Use OnStartCallback")]
+        public Action<AuthenticationSession> onStartCallback => OnStartCallback;
+        #endregion
+
         /// <summary>
         /// Indicates that this session is being managed by a client or server
         /// </summary>
-        public bool isClientSession = true;
+        public bool IsClientSession { get; private set; } = true;
         /// <summary>
         /// The user this session is in relation to
         /// </summary>
-        public CSteamID user;
+        public UserData User { get; private set; }
         /// <summary>
         /// The ID of the user that owns the game the user of this session is playing ... e.g. if this differes from the user then this is a barrowed game.
         /// </summary>
-        public CSteamID gameOwner;
+        public UserData GameOwner { get; private set; }
         /// <summary>
         /// The session data aka the 'ticket' data.
         /// </summary>
-        public byte[] data;
+        public byte[] Data { get; private set; }
         /// <summary>
         /// The responce recieved when validating a provided ticket.
         /// </summary>
-        public EAuthSessionResponse responce;
+        public EAuthSessionResponse Response { get; private set; }
         /// <summary>
         /// If true then the game this user is playing is barrowed from another user e.g. this user does not have a license for this game but is barrowing it from another user.
         /// </summary>
-        public bool IsBarrowed { get { return user != gameOwner; } }
+        public bool IsBarrowed { get { return User != GameOwner; } }
         /// <summary>
         /// The callback deligate to be called when the authenticate session responce returns from the steam backend.
         /// </summary>
-        public Action<AuthenticationSession> onStartCallback;
+        public Action<AuthenticationSession> OnStartCallback { get; private set; }
+
+        public AuthenticationSession(CSteamID userId, Action<AuthenticationSession> callback, bool isClient = true)
+        {
+            IsClientSession = isClient;
+            User = userId;
+            OnStartCallback = callback;
+        }
+
+        internal void Authenticate(ValidateAuthTicketResponse_t responce)
+        {
+            Response = responce.m_eAuthSessionResponse;
+            GameOwner = responce.m_OwnerSteamID;
+        }
 
         /// <summary>
         /// Ends the authentication session.
         /// </summary>
         public void End()
         {
-            if (isClientSession)
-                SteamUser.EndAuthSession(user);
+            if (IsClientSession)
+                SteamUser.EndAuthSession(User);
             else
-                SteamGameServer.EndAuthSession(user);
+                SteamGameServer.EndAuthSession(User);
         }
     }
 

@@ -1,12 +1,42 @@
 ﻿#if !DISABLESTEAMWORKS && HE_STEAMCOMPLETE
 using Steamworks;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace HeathenEngineering.SteamworksIntegration.API
 {
     public static class Leaderboards
     {
+        private struct AttachUGCRequest
+        {
+            public SteamLeaderboard_t leaderboard;
+            public UGCHandle_t ugc;
+            public Action<LeaderboardUGCSet_t, bool> callback;
+        }
+
+        private struct DownloadScoreRequest
+        {
+            public bool userRequest;
+            public CSteamID[] users;
+            public SteamLeaderboard_t leaderboard;
+            public ELeaderboardDataRequest request;
+            public int start;
+            public int end;
+            public int maxDetailsPerEntry;
+            public Action<LeaderboardEntry[], bool> callback;
+        }
+
+        private struct UploadScoreRequest
+        {
+            public SteamLeaderboard_t leaderboard;
+            public ELeaderboardUploadScoreMethod method;
+            public int score;
+            public int[] details;
+            public Action<LeaderboardScoreUploaded_t, bool> callback;
+        }
+
         public static class Client
         {
             [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -16,12 +46,190 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 m_LeaderboardScoresDownloaded_t = null;
                 m_LeaderboardFindResult_t = null;
                 m_LeaderboardScoreUploaded_t = null;
+                ugcQueue = null;
+                downloadQueue = null;
+                uploadQueue = null;
+                RequestTimeout = 30f;
             }
-
+            
             private static CallResult<LeaderboardUGCSet_t> m_LeaderboardUGCSet_t;
             private static CallResult<LeaderboardScoresDownloaded_t> m_LeaderboardScoresDownloaded_t;
             private static CallResult<LeaderboardFindResult_t> m_LeaderboardFindResult_t;
             private static CallResult<LeaderboardScoreUploaded_t> m_LeaderboardScoreUploaded_t;
+
+            private static Queue<AttachUGCRequest> ugcQueue;
+            private static Queue<DownloadScoreRequest> downloadQueue;
+            private static Queue<UploadScoreRequest> uploadQueue;
+
+            private static IEnumerator ExecuteUgcRequest()
+            {
+                yield return null;
+
+                bool waiting = false;
+                float timeout = 0;
+
+                while (ugcQueue.Count > 0)
+                {
+                    //Check on the next request
+                    var request = ugcQueue.Peek();
+
+                    //If the request is still valid
+                    if (request.callback != null)
+                    {
+                        //Initiate the request with Valve
+                        var handle = SteamUserStats.AttachLeaderboardUGC(request.leaderboard, request.ugc);
+
+                        //Set our waiting and time out
+                        waiting = true;
+                        timeout = Time.realtimeSinceStartup + RequestTimeout;
+
+                        //Set our call result handler
+                        m_LeaderboardUGCSet_t.Set(handle, (r, e) =>
+                        {
+                            request.callback.Invoke(r, e);
+                            waiting = false;
+                        });
+
+                        //Wait untill we get a result or untill we timeout
+                        yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
+
+                        if (waiting)
+                        {
+                            request.callback?.Invoke(default, true);
+                            Debug.LogWarning("Leaderboard set UGC request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
+                        }
+                    }
+
+                    ugcQueue.Dequeue();
+                }
+            }
+
+            private static IEnumerator ExecuteDownloadRequest()
+            {
+                yield return null;
+
+                bool waiting = false;
+                float timeout = 0;
+
+                while (downloadQueue.Count > 0)
+                {
+                    //Check on the next request
+                    var request = downloadQueue.Peek();
+
+                    //If the request is still valid
+                    if (request.callback != null)
+                    {
+                        //Initiate the request with Valve
+                        if (request.userRequest)
+                        {
+                            var handle = SteamUserStats.DownloadLeaderboardEntriesForUsers(request.leaderboard, request.users, request.users.Length);
+
+                            //Set our waiting and time out
+                            waiting = true;
+                            timeout = Time.realtimeSinceStartup + RequestTimeout;
+
+                            m_LeaderboardScoresDownloaded_t.Set(handle, (results, error) =>
+                            {
+                                request.callback.Invoke(ProcessScoresDownloaded(results, error, request.maxDetailsPerEntry), error);
+                                waiting = false;
+                            });
+
+                            //Wait untill we get a result or untill we timeout
+                            yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
+
+                            if (waiting)
+                            {
+                                request.callback?.Invoke(default, true);
+                                Debug.LogWarning("Leaderboard download request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
+                            }
+                        }
+                        else
+                        {
+                            var handle = SteamUserStats.DownloadLeaderboardEntries(request.leaderboard, request.request, request.start, request.end);
+                            
+                            //Set our waiting and time out
+                            waiting = true;
+                            timeout = Time.realtimeSinceStartup + RequestTimeout;
+
+                            //Set our call result handler
+                            m_LeaderboardScoresDownloaded_t.Set(handle, (results, error) =>
+                            {
+                                request.callback.Invoke(ProcessScoresDownloaded(results, error, request.maxDetailsPerEntry), error);
+                                waiting = false;
+                            });
+
+                            //Wait untill we get a result or untill we timeout
+                            yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
+
+                            if (waiting)
+                            {
+                                request.callback?.Invoke(default, true);
+                                Debug.LogWarning("Leaderboard download request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
+                            }
+                        }
+                    }
+
+                    downloadQueue.Dequeue();
+                }
+            }
+
+            private static IEnumerator ExecuteUploadRequest()
+            {
+                yield return null;
+
+                bool waiting = false;
+                float timeout = 0;
+
+                while (uploadQueue.Count > 0)
+                {
+                    //Check on the next request
+                    var request = uploadQueue.Peek();
+
+                    //If the request is still valid
+                    if (request.callback != null)
+                    {
+                        //Initiate the request with Valve
+                        var handle = SteamUserStats.UploadLeaderboardScore(request.leaderboard, request.method, request.score, request.details, request.details == null ? 0 : request.details.Length);
+
+                        waiting = true;
+                        timeout = Time.realtimeSinceStartup + RequestTimeout;
+
+                        m_LeaderboardScoreUploaded_t.Set(handle, (r,e) =>
+                        {
+                            request.callback?.Invoke(r, e);
+                            waiting = false;
+                        });
+
+                        //Wait untill we get a result or untill we timeout
+                        yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
+
+                        if (waiting)
+                        {
+                            request.callback?.Invoke(default, true);
+                            Debug.LogWarning("Leaderboard upload request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
+                        }
+                    }
+
+                    uploadQueue.Dequeue();
+                }
+            }
+
+            /// <summary>
+            /// The amount of time to wait for Valve to respond to Leaderboard requests.
+            /// </summary>
+            public static float RequestTimeout { get; set; } = 30f;
+            /// <summary>
+            /// The number of pending requests to attach a UGC item to the user's leaderboard entry
+            /// </summary>
+            public static int PendingSetUgcRequests => ugcQueue == null ? 0 : ugcQueue.Count;
+            /// <summary>
+            /// The number of pending requests to download scores from a leaderboard
+            /// </summary>
+            public static int PendingDownloadScoreRequests => downloadQueue == null ? 0 : downloadQueue.Count;
+            /// <summary>
+            /// The number of pending requests to upload scores to a leaderboard for the local user
+            /// </summary>
+            public static int PendingUploadScoreRequests => uploadQueue == null ? 0 : uploadQueue.Count;
 
             /// <summary>
             /// Attaches a piece of user generated content the current user's entry on a leaderboard.
@@ -40,8 +248,21 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_LeaderboardUGCSet_t == null)
                     m_LeaderboardUGCSet_t = CallResult<LeaderboardUGCSet_t>.Create();
 
-                var handle = SteamUserStats.AttachLeaderboardUGC(leaderboard, ugc);
-                m_LeaderboardUGCSet_t.Set(handle, callback.Invoke);
+                if (ugcQueue == null)
+                    ugcQueue = new Queue<AttachUGCRequest>();
+
+                var request = new AttachUGCRequest
+                {
+                    leaderboard = leaderboard,
+                    ugc = ugc,
+                    callback = callback
+                };
+
+                ugcQueue.Enqueue(request);
+
+                //If we only have 1 enqueued then we need to start the execute, if we have more then its already running
+                if (ugcQueue.Count == 1)
+                    SteamSettings.behaviour.StartCoroutine(ExecuteUgcRequest());
             }
             /// <summary>
             /// Attaches a piece of user generated content the current user's entry on a leaderboard.
@@ -175,11 +396,26 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_LeaderboardScoresDownloaded_t == null)
                     m_LeaderboardScoresDownloaded_t = CallResult<LeaderboardScoresDownloaded_t>.Create();
 
-                var handle = SteamUserStats.DownloadLeaderboardEntries(leaderboard, request, start, end);
-                m_LeaderboardScoresDownloaded_t.Set(handle, (results, error) =>
+
+                if (downloadQueue == null)
+                    downloadQueue = new Queue<DownloadScoreRequest>();
+
+                var nRequest = new DownloadScoreRequest
                 {
-                    callback.Invoke(ProcessScoresDownloaded(results, error, maxDetailsPerEntry), error);
-                });
+                    userRequest = false,
+                    leaderboard = leaderboard,
+                    request = request,
+                    start = start,
+                    end = end,
+                    maxDetailsPerEntry = maxDetailsPerEntry,
+                    callback = callback
+                };
+
+                downloadQueue.Enqueue(nRequest);
+
+                //If we only have 1 enqueued then we need to start the execute, if we have more then its already running
+                if (downloadQueue.Count == 1)
+                    SteamSettings.behaviour.StartCoroutine(ExecuteDownloadRequest());
             }
             /// <summary>
             /// Fetches leaderboard entries for an arbitrary set of users on a specified leaderboard.
@@ -198,11 +434,23 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_LeaderboardScoresDownloaded_t == null)
                     m_LeaderboardScoresDownloaded_t = CallResult<LeaderboardScoresDownloaded_t>.Create();
 
-                var handle = SteamUserStats.DownloadLeaderboardEntriesForUsers(leaderboard, users, users.Length);
-                m_LeaderboardScoresDownloaded_t.Set(handle, (results, error) =>
+                if (downloadQueue == null)
+                    downloadQueue = new Queue<DownloadScoreRequest>();
+
+                var nRequest = new DownloadScoreRequest
                 {
-                    callback.Invoke(ProcessScoresDownloaded(results, error, maxDetailsPerEntry), error);
-                });
+                    userRequest = true,
+                    leaderboard = leaderboard,
+                    users = users,
+                    maxDetailsPerEntry = maxDetailsPerEntry,
+                    callback = callback
+                };
+
+                downloadQueue.Enqueue(nRequest);
+
+                //If we only have 1 enqueued then we need to start the execute, if we have more then its already running
+                if (downloadQueue.Count == 1)
+                    SteamSettings.behaviour.StartCoroutine(ExecuteDownloadRequest());
             }
             public static void DownloadEntries(SteamLeaderboard_t leaderboard, UserData[] users, int maxDetailsPerEntry, Action<LeaderboardEntry[], bool> callback) => DownloadEntries(leaderboard, Array.ConvertAll(users, (i) => i.cSteamId), maxDetailsPerEntry, callback);
             /// <summary>
@@ -296,9 +544,23 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_LeaderboardScoreUploaded_t == null)
                     m_LeaderboardScoreUploaded_t = CallResult<LeaderboardScoreUploaded_t>.Create();
 
-                var handle = SteamUserStats.UploadLeaderboardScore(leaderboard, method, score, details, details == null ? 0 : details.Length);
-                if (callback != null)
-                    m_LeaderboardScoreUploaded_t.Set(handle, callback.Invoke);
+                if (uploadQueue == null)
+                    uploadQueue = new Queue<UploadScoreRequest>();
+
+                var nRequest = new UploadScoreRequest
+                {
+                    leaderboard = leaderboard,
+                    method = method,
+                    score = score,
+                    details = details,
+                    callback = callback,
+                };
+
+                uploadQueue.Enqueue(nRequest);
+
+                //If we only have 1 enqueued then we need to start the execute, if we have more then its already running
+                if (uploadQueue.Count == 1)
+                    SteamSettings.behaviour.StartCoroutine(ExecuteUploadRequest());
             }
 
             private static LeaderboardEntry[] ProcessScoresDownloaded(LeaderboardScoresDownloaded_t param, bool bIOFailure, int maxDetailEntries)

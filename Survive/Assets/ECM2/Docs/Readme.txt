@@ -1,6 +1,49 @@
 Easy Character Movement 2
 -------------------------
 
+VERSION 1.1.1
+
+	Character:
+	----------
+
+	- Fixed a bug causing some flags not being applied on release build.
+
+
+	Character Movement:
+	-------------------
+
+	- Updated HitLocation ids to be on par with Collisionflags.
+
+	- Removed deltaTime propety, now its handled as optional parameter, if no used it defaults to Time.deltatime.
+
+	- Move methods now returns CollisionFlags to be on par with Unity's Character Controller.
+
+	- Added CharacterMovement component performance test.
+
+	- Fixed some minor bugs.
+
+
+
+VERSION 1.1.0
+
+	* W A R N I N G !
+
+	Starting with this version, ECM2 is now a fully kinematic character controller and as a such it present significative changes, so:
+
+	PLEASE BACKUP BEFORE UPDATE!
+
+
+  How to update ?
+  ===============
+
+  	- Its recomended to completeley remove the ECM2 folder from your unity project before import new package from store.
+
+  	- Once removed, import the package from asset store as regular.
+
+  	- Please refer to changes document for a detailed list of removed / deprecated files and data structures and its new counterparts.
+  	
+
+
 VERSION 1.0
 
 	- Initial release.

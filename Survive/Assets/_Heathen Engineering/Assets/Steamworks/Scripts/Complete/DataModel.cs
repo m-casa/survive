@@ -27,6 +27,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </remarks>
         public string extension;
 
+        [Header("Events")]
         public UnityEvent evtDataUpdated = new UnityEvent();
 
         [NonSerialized]

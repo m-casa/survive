@@ -77,8 +77,8 @@ namespace HeathenEngineering.SteamworksIntegration
                             //No data so do nothing
                             break;
                         case EVoiceResult.k_EVoiceResultNotInitialized:
-                            //Not initalized ... report the error
-                            Debug.LogError("The Steamworks Voice systemis not initalized and will be stoped.");
+                            //Not initialized ... report the error
+                            Debug.LogError("The Steamworks Voice systemis not initialized and will be stoped.");
                             SteamUser.StopVoiceRecording();
                             break;
                         case EVoiceResult.k_EVoiceResultNotRecording:

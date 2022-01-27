@@ -25,17 +25,17 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                     }
                     else
                     {
-                        EditorGUILayout.HelpBox("Steamworks Lobby Tools is initalized!\n No lobbies currently connected.", MessageType.Info);
+                        EditorGUILayout.HelpBox("Steamworks Lobby Tools is initialized!\n No lobbies currently connected.", MessageType.Info);
                     }
                 }
                 else
                 {
-                    EditorGUILayout.HelpBox("Steamworks Lobby Tools is initalized however the lobbies collection is null, this indicates an issue with the initalizaiton process, please contact Heathen Support on Discord.", MessageType.Warning);
+                    EditorGUILayout.HelpBox("Steamworks Lobby Tools is initialized however the lobbies collection is null, this indicates an issue with the initalizaiton process, please contact Heathen Support on Discord.", MessageType.Warning);
                 }
             }
             else
             {
-                EditorGUILayout.HelpBox("The lobby inspector only works in play mode and when the Steamworks Lobby Tools system has been initalized.", MessageType.Info);
+                EditorGUILayout.HelpBox("The lobby inspector only works in play mode and when the Steamworks Lobby Tools system has been initialized.", MessageType.Info);
             }
         }
 

@@ -1,9 +1,8 @@
-﻿using ECM2.Common;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-namespace ECM2.Characters
+namespace EasyCharacterMovement
 {
     /// <summary>
     /// ThirdPersonCharacter.
@@ -178,62 +177,88 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Initialize this InputActions.
+        /// Initialize player InputActions (if any).
+        /// E.g. Subscribe to input action events and enable input actions here.
         /// </summary>
 
-        protected override void SetupPlayerInput()
+        protected override void InitPlayerInput()
         {
-            // Init base character controller input actions (if any)
+            // Call base method implementation
 
-            base.SetupPlayerInput();
+            base.InitPlayerInput();
             
             // Attempts to cache and init this InputActions (if any)
 
-            if (actions == null)
+            if (inputActions == null)
                 return;
 
-            mouseLookInputAction = actions.FindAction("Mouse Look");
-            mouseScrollInputAction = actions.FindAction("Mouse Scroll");
-
-            controllerLookInputAction = actions.FindAction("Controller Look");            
-            
-            cursorLockInputAction = actions.FindAction("Cursor Lock");
-            if (cursorLockInputAction != null)
-                cursorLockInputAction.started += OnCursorLock;
-
-            cursorUnlockInputAction = actions.FindAction("Cursor Unlock");
-            if (cursorUnlockInputAction != null)
-                cursorUnlockInputAction.started += OnCursorUnlock;
-        }
-
-        /// <summary>
-        /// Enable this input actions.
-        /// </summary>
-
-        protected override void OnOnEnable()
-        {
-            base.OnOnEnable();
-            
+            mouseLookInputAction = inputActions.FindAction("Mouse Look");
             mouseLookInputAction?.Enable();
+
+            mouseScrollInputAction = inputActions.FindAction("Mouse Scroll");
             mouseScrollInputAction?.Enable();
+
+            controllerLookInputAction = inputActions.FindAction("Controller Look");
             controllerLookInputAction?.Enable();
-            cursorLockInputAction?.Enable();
-            cursorUnlockInputAction?.Enable();
+            
+            cursorLockInputAction = inputActions.FindAction("Cursor Lock");
+            if (cursorLockInputAction != null)
+            {
+                cursorLockInputAction.started += OnCursorLock;
+                cursorLockInputAction.Enable();
+            }
+            
+            cursorUnlockInputAction = inputActions.FindAction("Cursor Unlock");
+            if (cursorUnlockInputAction != null)
+            {
+                cursorUnlockInputAction.started += OnCursorUnlock;
+                cursorUnlockInputAction.Enable();
+            }
         }
 
         /// <summary>
-        /// Disable this input actions.
+        /// Unsubscribe from input action events and disable input actions.
         /// </summary>
 
-        protected override void OnOnDisable()
+        protected override void DeinitPlayerInput()
         {
-            base.OnOnDisable();
+            // Call base method implementation
 
-            mouseLookInputAction?.Disable();
-            mouseScrollInputAction?.Disable();
-            controllerLookInputAction?.Disable();
-            cursorLockInputAction?.Disable();
-            cursorUnlockInputAction?.Disable();
+            base.DeinitPlayerInput();
+            
+            if (mouseLookInputAction != null)
+            {
+                mouseLookInputAction.Disable();
+                mouseLookInputAction = null;
+            }
+
+            if (mouseScrollInputAction != null)
+            {
+                mouseScrollInputAction.Disable();
+                mouseScrollInputAction = null;
+            }
+
+            if (controllerLookInputAction != null)
+            {
+                controllerLookInputAction.Disable();
+                controllerLookInputAction = null;
+            }
+            
+            if (cursorLockInputAction != null)
+            {
+                cursorLockInputAction.started -= OnCursorLock;
+
+                cursorLockInputAction.Disable();
+                cursorLockInputAction = null;
+            }
+            
+            if (cursorUnlockInputAction != null)
+            {
+                cursorUnlockInputAction.started -= OnCursorUnlock;
+
+                cursorUnlockInputAction.Disable();
+                cursorUnlockInputAction = null;
+            }
         }
 
         #endregion

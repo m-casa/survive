@@ -1,11 +1,11 @@
-﻿using ECM2.Common;
-using ECM2.Components;
-using ECM2.Helpers;
-using Mirror;
+﻿using Mirror;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace ECM2.Characters
+namespace EasyCharacterMovement
 {
     #region ENUMS
 
@@ -36,6 +36,7 @@ namespace ECM2.Characters
     ///     - OrientToMovement:            Rotates the Character towards the given input move direction vector, using rotationRate as the rate of rotation change.
     ///     - OrientToCameraViewDirection: Rotates the Character towards the camera's current view direction, using rotationRate as the rate of rotation change.
     ///     - OrientWithRootMotion:        Append root motion rotation to Character's rotation.
+    ///     - Custom:                      User-defined custom rotation mode.
     /// </summary>
 
     public enum RotationMode
@@ -43,42 +44,37 @@ namespace ECM2.Characters
         None,
         OrientToMovement,
         OrientToCameraViewDirection,
-        OrientWithRootMotion
+        OrientWithRootMotion,
+        Custom
     }
 
     #endregion
 
-    #region CLASSES
-
-    /// <summary>
-    /// The Character class is the base class of all characters that can be controlled by players or AI,
-    /// and has been designed for a vertically-oriented player representation that can walk, run, jump, fly, and swim through the world.
-    ///
-    /// This Character class serves as a robust platform to build your game mechanics on top of it, as this has been developed with extensibility in mind, because in the end,
-    /// no one knows your game better than you!
-    /// 
-    /// </summary>
-
-    public class Character : NetworkBehaviour, ICharacterMovementCallbacks
+    [RequireComponent(typeof(CharacterMovement))]
+    public class Character : NetworkBehaviour
     {
         #region EDITOR EXPOSED FIELDS
 
         [Header("Input")]
-        [Tooltip("Input actions associated with this Character\n." +
-                 "If not assigned, Character can be externally controlled.")]
+        [Tooltip("Input actions associated with this Character." +
+                 " If not assigned, this Character wont process any input so you can externally take control of this Character (e.g. a Controller).")]
         [SerializeField]
-        private InputActionAsset _actions;
-
+        private InputActionAsset _inputActions;
+        
         [Header("Rotation")]
+        [Tooltip("Character's current rotation mode.")]
+        [SerializeField]
+        private RotationMode _rotationMode;
+
         [Tooltip("Change in rotation per second (Deg / s).")]
         [SerializeField]
         private float _rotationRate;
 
-        [Tooltip("Character's current rotation mode.")]
-        [SerializeField]
-        private RotationMode _rotationMode;        
-
         [Header("Walking")]
+        [Tooltip("The Character's default movement mode. Used at player startup.")]
+        [SerializeField]
+        private MovementMode _defaultMovementMode;
+
         [Tooltip("The maximum ground speed when walking.\n" +
                  "Also determines maximum lateral speed when falling.")]
         [SerializeField]
@@ -103,28 +99,6 @@ namespace ECM2.Characters
         [SerializeField]
         private float _groundFriction;
 
-        [Header("Sprinting")]
-        [Tooltip("The walk speed multiplier while sprinting.")]
-        [SerializeField]
-        private float _sprintSpeedMultiplier;
-
-        [Tooltip("The walk acceleration multiplier while sprinting.")]
-        [SerializeField]
-        private float _sprintAccelerationMultiplier;
-        
-        [Header("Crouching")]
-        [Tooltip("The maximum ground speed when walking and crouched.")]
-        //[SerializeField]
-        private float _maxWalkSpeedCrouched;
-
-        [Tooltip("The Character's capsule height while crouched.")]
-        //[SerializeField]
-        private float _crouchedHeight;
-
-        [Tooltip("If true, allows to jump while crouched (uncrouch character).")]
-        //[SerializeField]
-        private bool _crouchedJump;
-        
         [Header("Falling")]
         [Tooltip("The maximum vertical velocity a Character can reach when falling. Eg: Terminal velocity.")]
         [SerializeField]
@@ -144,8 +118,83 @@ namespace ECM2.Characters
                  "0 = no control, 1 = full control at max acceleration.")]
         [SerializeField]
         private float _airControl;
-        
+
+        [Header("Flying")]
+        [Tooltip("The maximum flying speed.")]
+        //[SerializeField]
+        private float _maxFlySpeed;
+
+        [Tooltip("Deceleration when flying and not applying acceleration.")]
+        //[SerializeField]
+        private float _brakingDecelerationFlying;
+
+        [Tooltip("Friction to apply to movement when flying.")]
+        //[SerializeField]
+        private float _flyingFriction;
+
+        [Header("Swimming")]
+        [Tooltip("If True, this Character is capable to Swim or move through fluid volumes.")]
+        //[SerializeField]
+        private bool _canEverSwim;
+
+        [Tooltip("The maximum swimming speed.")]
+        //[SerializeField]
+        private float _maxSwimSpeed;
+
+        [Tooltip("Deceleration when swimming and not applying acceleration.")]
+        //[SerializeField]
+        private float _brakingDecelerationSwimming;
+
+        [Tooltip("Friction to apply to movement when swimming.")]
+        //[SerializeField]
+        private float _swimmingFriction;
+
+        [Tooltip("Water buoyancy ratio. 1 = Neutral Buoyancy, 0 = No Buoyancy.")]
+        //[SerializeField]
+        private float _buoyancy;
+
+        [Header("Braking Friction")]
+        [SerializeField]
+        private bool _useSeparateBrakingFriction;
+
+        [SerializeField]
+        private float _brakingFriction;
+
+        [Header("Sprinting")]
+        [SerializeField]
+        private bool _canEverSprint;
+
+        [Tooltip("The walk speed multiplier while sprinting.")]
+        [SerializeField]
+        private float _sprintSpeedModifier;
+
+        [Tooltip("The walk acceleration multiplier while sprinting.")]
+        [SerializeField]
+        private float _sprintAccelerationModifier;
+
+        [Header("Crouching")]
+        //[SerializeField]
+        private bool _canEverCrouch;
+
+        //[SerializeField]
+        private float _unCrouchedHeight;
+
+        //[SerializeField]
+        private float _crouchedHeight;
+
+        //[SerializeField]
+        [Range(0.0f, 1.0f)]
+        private float _crouchingSpeedModifier;
+
         [Header("Jumping")]
+        [Tooltip("Is the character able to jump ?")]
+        //[SerializeField]
+        private bool _canEverJump;
+
+        [Tooltip("Can jump while crouching ?")]
+        //[SerializeField]
+        private bool _jumpWhileCrouching;
+
         [Tooltip("The max number of jumps the Character can perform.")]
         //[SerializeField]
         private int _jumpMaxCount;
@@ -166,57 +215,12 @@ namespace ECM2.Characters
         //[SerializeField]
         private float _jumpPostGroundedTime;
 
-        [Space(15f)]
-        [Tooltip("The gravity applied to this Character.")]
+        [Header("Physics")]
         [SerializeField]
         private Vector3 _gravity;
-        
-        [Header("Swimming")]
-        [Tooltip("If True, this Character is capable to Swim or move through fluid volumes.")]
-        //[SerializeField]
-        private bool _canSwim;
 
-        [Tooltip("The maximum swimming speed.")]
-        //[SerializeField]
-        private float _maxSwimSpeed;
-
-        [Tooltip("Deceleration when swimming and not applying acceleration.")]
-        //[SerializeField]
-        private float _brakingDecelerationSwimming;
-
-        [Tooltip("Friction to apply to movement when swimming.")]
-        //[SerializeField]
-        private float _swimmingFriction;
-
-        [Tooltip("Water buoyancy ratio. 1 = Neutral Buoyancy, 0 = No Buoyancy.")]
-        //[SerializeField]
-        private float _buoyancy;
-        
-        [Header("Flying")]
-        [Tooltip("The maximum flying speed.")]
-        //[SerializeField]
-        private float _maxFlySpeed;
-        
-        [Tooltip("Deceleration when flying and not applying acceleration.")]
-        //[SerializeField]
-        private float _brakingDecelerationFlying;
-        
-        [Tooltip("Friction to apply to movement when flying.")]
-        //[SerializeField]
-        private float _flyingFriction;
-        
-        [Header("Physics")]
-        [Tooltip("This Character's mass.")]
         [SerializeField]
-        private float _mass;
-
-        [Tooltip("If true, impart the external velocity caused by external forces during internal physics update.")]
-        [SerializeField]
-        private bool _impartExternalVelocity;
-
-        [Tooltip("If true, impart the platform's velocity when jumping or falling off it.")]
-        [SerializeField]
-        private bool _impartPlatformVelocity;
+        private float _gravityScale;
 
         [Tooltip("Whether the Character moves with the moving platform it is standing on.")]
         [SerializeField]
@@ -226,17 +230,26 @@ namespace ECM2.Characters
         [SerializeField]
         private bool _impartPlatformRotation;
 
-        [Tooltip("Should apply a push force to rigidbodies when walking into them ?")]
+        [Tooltip("If true, impart the platform's velocity when jumping or falling off it.")]
         [SerializeField]
-        private bool _applyPushForce;
+        private bool _impartPlatformVelocity;
+
+        [Tooltip("If enabled, the player will interact with dynamic rigidbodies when walking into them.")]
+        [SerializeField]
+        private bool _enablePhysicsInteraction;
 
         [Tooltip("Should apply push force to characters when walking into them ?")]
         [SerializeField]
-        private bool _pushForceAffectCharacters;
+        private bool _applyPushForceToCharacters;
 
         [Tooltip("Should apply a downward force to rigidbodies we stand on ?")]
         [SerializeField]
         private bool _applyStandingDownwardForce;
+
+        [Tooltip("This Character's mass (in Kg)." +
+                 "Determines how the character interact against other characters or dynamic rigidbodies if enablePhysicsInteraction == true.")]
+        [SerializeField]
+        private float _mass;
 
         [Tooltip("Force applied to rigidbodies when walking into them (due to mass and relative velocity) is scaled by this amount.")]
         [SerializeField]
@@ -250,7 +263,7 @@ namespace ECM2.Characters
         [Tooltip("Should animation determines the Character's movement ?")]
         //[SerializeField]
         private bool _useRootMotion;
-        
+
         [Header("Camera")]
         [Tooltip("Reference to the Player's Camera.\n" +
                  "If assigned, the Character's movement will be relative to this camera, otherwise movement will be relative to world axis.")]
@@ -261,35 +274,20 @@ namespace ECM2.Characters
 
         #region FIELDS
 
-        private CharacterMovement _characterMovement;
+        private bool _enableLateFixedUpdateCoroutine;
+        private Coroutine _lateFixedUpdateCoroutine;
 
+        protected List<PhysicsVolume> _volumes = new List<PhysicsVolume>();
+        
+        private Transform _transform;
+        private CharacterMovement _characterMovement;
         private Animator _animator;
         private RootMotionController _rootMotionController;
-
         private Transform _cameraTransform;
 
-        protected float _lastCapsuleHeight;
-
-        private float _brakingFriction;
-
-        protected Vector3 _pendingForces;
-        protected Vector3 _pendingLaunchVelocity;
-
-        protected float _fallingTime;
-
-        protected bool _jumpButtonPressed;
-        protected float _jumpButtonHeldDownTime;
-        protected float _jumpHoldTime;
-        protected int _jumpCount;
-        protected bool _isJumping;
-
-        protected bool _crouchButtonPressed;
-        protected bool _isCrouched;
-
-        protected bool _sprintButtonPressed;
-        protected bool _isSprinting;
-
-        private Vector3 _movementDirection;
+        /// <summary>
+        /// The Character's current movement mode.
+        /// </summary>
 
         protected MovementMode _movementMode = MovementMode.None;
 
@@ -300,9 +298,86 @@ namespace ECM2.Characters
 
         protected int _customMovementMode;
 
+        protected bool _applyGravity = true;
+
+        protected float _fallingTime;
+
+        protected bool _sprintButtonPressed;
+
+        protected bool _isCrouching;
+        protected bool _crouchButtonPressed;
+
+        protected bool _jumpButtonPressed;
+        protected float _jumpButtonHeldDownTime;
+        protected float _jumpHoldTime;
+        protected int _jumpCount;
+        protected bool _isJumping;
+
+        private Vector3 _rotationInput = Vector3.zero;
+        private Vector3 _movementDirection = Vector3.zero;
+
+        private float _deltaTime;
+
         #endregion
 
         #region PROPERTIES
+
+        /// <summary>
+        /// The used deltaTime. Defaults to Time.deltaTime.
+        /// </summary>
+
+        public float deltaTime
+        {
+            get => _deltaTime == 0.0f ? Time.deltaTime : _deltaTime;
+            set => _deltaTime = value;
+        }
+
+        /// <summary>
+        /// This Character's camera transform.
+        /// If assigned, the Character's movement will be relative to this, otherwise movement will be relative to world.
+        /// </summary>
+
+        public new Camera camera
+        {
+            get => _camera;
+            set => _camera = value;
+        }
+
+        /// <summary>
+        /// Cached camera transform (if any).
+        /// </summary>
+
+        public Transform cameraTransform
+        {
+            get
+            {
+                if (_camera != null)
+                    _cameraTransform = _camera.transform;
+
+                return _cameraTransform;
+            }
+        }
+
+        /// <summary>
+        /// Cached Character transform.
+        /// </summary>
+
+        public new Transform transform
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (_transform == null)
+                    _transform = GetComponent<Transform>();
+#endif
+
+                return _transform;
+            }
+        }
+
+        /// <summary>
+        /// Cached CharacterMovement component.
+        /// </summary>
 
         protected CharacterMovement characterMovement
         {
@@ -354,11 +429,21 @@ namespace ECM2.Characters
         /// <summary>
         /// Change in rotation per second (Deg / s).
         /// </summary>
-        
+
         public float rotationRate
         {
             get => _rotationRate;
             set => _rotationRate = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Default movement mode. Used at player startup. 
+        /// </summary>
+
+        public MovementMode defaultMovementMode
+        {
+            get => _defaultMovementMode;
+            set => _defaultMovementMode = value;
         }
 
         /// <summary>
@@ -415,73 +500,6 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Should use a separate braking friction ?
-        /// </summary>
-
-        public bool useSeparateBrakingFriction { get; set; }
-
-        /// <summary>
-        /// Friction (drag) coefficient applied when braking (whenever Acceleration = 0, or if Character is exceeding max speed).
-        /// This is the value, used in all movement modes IF useSeparateBrakingFriction is True.
-        /// </summary>
-
-        public float brakingFriction
-        {
-            get => _brakingFriction;
-            set => _brakingFriction = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// The walk speed multiplier while sprinting.
-        /// </summary>
-
-        public float sprintSpeedMultiplier
-        {
-            get => _sprintSpeedMultiplier;
-            set => _sprintSpeedMultiplier = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// The walk acceleration multiplier while sprinting.
-        /// </summary>
-
-        public float sprintAccelerationMultiplier
-        {
-            get => _sprintAccelerationMultiplier;
-            set => _sprintAccelerationMultiplier = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// The maximum ground speed when walking and crouched.
-        /// </summary>
-
-        public float maxWalkSpeedCrouched
-        {
-            get => _maxWalkSpeedCrouched;
-            set => _maxWalkSpeedCrouched = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// The Character's capsule height while crouched.
-        /// </summary>
-
-        public float crouchedHeight
-        {
-            get => _crouchedHeight;
-            set => _crouchedHeight = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// If true, allows to jump while crouched (cancels crouch).
-        /// </summary>
-
-        public bool crouchedJump
-        {
-            get => _crouchedJump;
-            set => _crouchedJump = value;
-        }
-
-        /// <summary>
         /// The maximum vertical velocity (in m/s) a Character can reach when falling.
         /// Eg: Terminal velocity.
         /// </summary>
@@ -527,6 +545,197 @@ namespace ECM2.Characters
         {
             get => _airControl;
             set => _airControl = Mathf.Clamp01(value);
+        }
+
+        /// <summary>
+        /// The maximum flying speed.
+        /// </summary>
+
+        public float maxFlySpeed
+        {
+            get => _maxFlySpeed;
+            set => _maxFlySpeed = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Deceleration when flying and not applying acceleration.
+        /// </summary>
+
+        public float brakingDecelerationFlying
+        {
+            get => _brakingDecelerationFlying;
+            set => _brakingDecelerationFlying = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Friction to apply to movement when flying.
+        /// </summary>
+
+        public float flyingFriction
+        {
+            get => _flyingFriction;
+            set => _flyingFriction = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// If True, this Character is capable to Swim or move through fluid volumes.
+        /// </summary>
+
+        public bool canEverSwim
+        {
+            get => _canEverSwim;
+            set => _canEverSwim = value;
+        }
+
+        /// <summary>
+        /// The maximum swimming speed.
+        /// </summary>
+
+        public float maxSwimSpeed
+        {
+            get => _maxSwimSpeed;
+            set => _maxSwimSpeed = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Deceleration when swimming and not applying acceleration.
+        /// </summary>
+
+        public float brakingDecelerationSwimming
+        {
+            get => _brakingDecelerationSwimming;
+            set => _brakingDecelerationSwimming = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Friction to apply to movement when swimming.
+        /// </summary>
+
+        public float swimmingFriction
+        {
+            get => _swimmingFriction;
+            set => _swimmingFriction = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Water buoyancy ratio. 1 = Neutral Buoyancy, 0 = No Buoyancy.
+        /// </summary>
+
+        public float buoyancy
+        {
+            get => _buoyancy;
+            set => _buoyancy = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Should use a separate braking friction ?
+        /// </summary>
+
+        public bool useSeparateBrakingFriction
+        {
+            get => _useSeparateBrakingFriction;
+            set => _useSeparateBrakingFriction = value;
+        }
+
+        /// <summary>
+        /// Friction (drag) coefficient applied when braking (whenever Acceleration = 0, or if Character is exceeding max speed).
+        /// This is the value, used in all movement modes IF useSeparateBrakingFriction is True.
+        /// </summary>
+
+        public float brakingFriction
+        {
+            get => _brakingFriction;
+            set => _brakingFriction = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Is the character able to sprint ?
+        /// </summary>
+
+        public bool canEverSprint
+        {
+            get => _canEverSprint;
+            set => _canEverSprint = value;
+        }
+
+        /// <summary>
+        /// The walk speed modifier while sprinting.
+        /// </summary>
+
+        public float sprintSpeedModifier
+        {
+            get => _sprintSpeedModifier;
+            set => _sprintSpeedModifier = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// The walk acceleration modifier while sprinting.
+        /// </summary>
+
+        public float sprintAccelerationModifier
+        {
+            get => _sprintAccelerationModifier;
+            set => _sprintAccelerationModifier = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// Is the character able to crouch ? Enable / Disable Crouch mechanic.
+        /// </summary>
+
+        public bool canEverCrouch
+        {
+            get => _canEverCrouch;
+            set => _canEverCrouch = value;
+        }
+
+        /// <summary>
+        /// If canEverCrouch == true, determines the character un-crouched height.
+        /// </summary>
+
+        public float unCrouchedHeight
+        {
+            get => _unCrouchedHeight;
+            set => _unCrouchedHeight = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// If canEverCrouch == true, determines the character crouched height.
+        /// </summary>
+
+        public float crouchedHeight
+        {
+            get => _crouchedHeight;
+            set => _crouchedHeight = Mathf.Max(0.0f, value);
+        }
+
+        /// <summary>
+        /// The walk speed modifier while crouching.
+        /// </summary>
+
+        public float crouchingSpeedModifier
+        {
+            get => _crouchingSpeedModifier;
+            set => _crouchingSpeedModifier = Mathf.Clamp01(value);
+        }
+
+        /// <summary>
+        /// Is the character able to jump ?
+        /// </summary>
+
+        public bool canEverJump
+        {
+            get => _canEverJump;
+            set => _canEverJump = value;
+        }
+
+        /// <summary>
+        /// Can jump while crouching ?
+        /// </summary>
+
+        public bool jumpWhileCrouching
+        {
+            get => _jumpWhileCrouching;
+            set => _jumpWhileCrouching = value;
         }
 
         /// <summary>
@@ -580,16 +789,6 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// The gravity applied to this Character.
-        /// </summary>
-
-        public Vector3 gravity
-        {
-            get => _gravity;
-            set => _gravity = value;
-        }
-
-        /// <summary>
         /// True is _jumpButtonPressed is true, false otherwise.
         /// </summary>
 
@@ -622,117 +821,62 @@ namespace ECM2.Characters
         public bool notifyJumpApex { get; set; }
 
         /// <summary>
-        /// If True, this Character is capable to Swim or move through fluid volumes.
+        /// The Character's gravity (modified by gravityScale). Defaults to Physics.gravity.
         /// </summary>
 
-        public bool canSwim
+        public Vector3 gravity
         {
-            get => _canSwim;
-            set => _canSwim = value;
+            get => _gravity * _gravityScale;
+            set => _gravity = value;
         }
 
         /// <summary>
-        /// The maximum swimming speed.
+        /// The degree to which this object is affected by gravity.
+        /// Can be negative allowing to change gravity direction.
         /// </summary>
 
-        public float maxSwimSpeed
+        public float gravityScale
         {
-            get => _maxSwimSpeed;
-            set => _maxSwimSpeed = Mathf.Max(0.0f, value);
+            get => _gravityScale;
+            set => _gravityScale = value;
         }
 
         /// <summary>
-        /// Deceleration when swimming and not applying acceleration.
+        /// Should animation determines the Character' movement ?
         /// </summary>
 
-        public float brakingDecelerationSwimming
+        public bool useRootMotion
         {
-            get => _brakingDecelerationSwimming;
-            set => _brakingDecelerationSwimming = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// Friction to apply to movement when swimming.
-        /// </summary>
-
-        public float swimmingFriction
-        {
-            get => _swimmingFriction;
-            set => _swimmingFriction = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// Water buoyancy ratio. 1 = Neutral Buoyancy, 0 = No Buoyancy.
-        /// </summary>
-
-        public float buoyancy
-        {
-            get => _buoyancy;
-            set => _buoyancy = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// The maximum flying speed.
-        /// </summary>
-
-        public float maxFlySpeed
-        {
-            get => _maxFlySpeed;
-            set => _maxFlySpeed = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// Deceleration when flying and not applying acceleration.
-        /// </summary>
-        
-        public float brakingDecelerationFlying
-        {
-            get => _brakingDecelerationFlying;
-            set => _brakingDecelerationFlying = Mathf.Max(0.0f, value);
-        }
-
-        /// <summary>
-        /// Friction to apply to movement when flying.
-        /// </summary>
-        
-        public float flyingFriction
-        {
-            get => _flyingFriction;
-            set => _flyingFriction = Mathf.Max(0.0f, value);
+            get => _useRootMotion;
+            set => _useRootMotion = value;
         }
         
         /// <summary>
-        /// This Character's mass (in Kg).
+        /// If enabled, the player will interact with dynamic rigidbodies when walking into them.
         /// </summary>
 
-        public float mass
+        public bool enablePhysicsInteraction
         {
-            get => _mass;
+            get => _enablePhysicsInteraction;
             set
             {
-                _mass = Mathf.Max(1e-07f, value);
-                characterMovement.rigidbody.mass = _mass;
+                _enablePhysicsInteraction = value;
+                characterMovement.enablePhysicsInteraction = _enablePhysicsInteraction;
             }
         }
 
         /// <summary>
-        /// Should apply a push force to rigidbodies when walking into them ?
+        /// Should apply push force to other characters when walking into them ?
         /// </summary>
 
-        public bool applyPushForce
+        public bool applyPushForceToCharacters
         {
-            get => _applyPushForce;
-            set => _applyPushForce = value;
-        }
-
-        /// <summary>
-        /// Should apply push force to characters when walking into them ?
-        /// </summary>
-
-        public bool pushForceAffectCharacters
-        {
-            get => _pushForceAffectCharacters;
-            set => _pushForceAffectCharacters = value;
+            get => _applyPushForceToCharacters;
+            set
+            {
+                _applyPushForceToCharacters = value;
+                characterMovement.physicsInteractionAffectsCharacters = _applyPushForceToCharacters;
+            }
         }
 
         /// <summary>
@@ -746,13 +890,33 @@ namespace ECM2.Characters
         }
 
         /// <summary>
+        /// This Character's mass (in Kg).
+        /// </summary>
+
+        public float mass
+        {
+            get => _mass;
+            set
+            {
+                _mass = Mathf.Max(1e-07f, value);
+
+                if (TryGetComponent(out Rigidbody rb))
+                    rb.mass = _mass;
+            }
+        }
+
+        /// <summary>
         /// Force applied to rigidbodies when walking into them (due to mass and relative velocity) is scaled by this amount.
         /// </summary>
 
         public float pushForceScale
         {
             get => _pushForceScale;
-            set => _pushForceScale = Mathf.Max(0.0f, value);
+            set
+            {
+                _pushForceScale = Mathf.Max(0.0f, value);
+                characterMovement.pushForceScale = _pushForceScale;
+            }
         }
 
         /// <summary>
@@ -766,23 +930,17 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// If true, impart the external velocity caused by external forces during internal physics update.
-        /// </summary>
-
-        public bool impartExternalVelocity
-        {
-            get => _impartExternalVelocity;
-            set => _impartExternalVelocity = value;
-        }
-
-        /// <summary>
         /// If true, impart the platform's velocity when jumping or falling off it.
         /// </summary>
 
         public bool impartPlatformVelocity
         {
             get => _impartPlatformVelocity;
-            set => _impartPlatformVelocity = value;
+            set
+            {
+                _impartPlatformVelocity = value;
+                characterMovement.impartPlatformVelocity = _impartPlatformVelocity;
+            }
         }
 
         /// <summary>
@@ -793,7 +951,11 @@ namespace ECM2.Characters
         public bool impartPlatformMovement
         {
             get => _impartPlatformMovement;
-            set => _impartPlatformMovement = value;
+            set
+            {
+                _impartPlatformMovement = value;
+                characterMovement.impartPlatformMovement = _impartPlatformMovement;
+            }
         }
 
         /// <summary>
@@ -804,42 +966,31 @@ namespace ECM2.Characters
         public bool impartPlatformRotation
         {
             get => _impartPlatformRotation;
-            set => _impartPlatformRotation = value;
-        }
-
-        /// <summary>
-        /// Should animation determines the Character' movement ?
-        /// </summary>
-
-        public bool useRootMotion
-        {
-            get => _useRootMotion;
-            set => _useRootMotion = value;
-        }
-
-        /// <summary>
-        /// This Character's camera transform.
-        /// If assigned, the Character's movement will be relative to this, otherwise movement will be relative to world.
-        /// </summary>
-
-        public new Camera camera
-        {
-            get => _camera;
-            set => _camera = value;
-        }
-
-        /// <summary>
-        /// Cached camera transform (if any).
-        /// </summary>
-
-        public Transform cameraTransform
-        {
-            get
+            set
             {
-                if (_camera != null)
-                    _cameraTransform = _camera.transform;
+                _impartPlatformRotation = value;
+                characterMovement.impartPlatformRotation = _impartPlatformRotation;
+            }
+        }
+        
+        /// <summary>
+        /// PhysicsVolume overlapping this component. NULL if none.
+        /// </summary>
 
-                return _cameraTransform;
+        public PhysicsVolume physicsVolume { get; set; }
+
+        /// <summary>
+        /// Enable / Disable the LateFixedUpdate Coroutine.
+        /// Enabled by default.
+        /// </summary>
+
+        public bool enableLateFixedUpdate
+        {
+            get => _enableLateFixedUpdateCoroutine;
+            set
+            {
+                _enableLateFixedUpdateCoroutine = value;
+                EnableLateFixedUpdate(_enableLateFixedUpdateCoroutine);
             }
         }
 
@@ -851,10 +1002,10 @@ namespace ECM2.Characters
         /// InputActions assets.
         /// </summary>
 
-        public InputActionAsset actions
+        public InputActionAsset inputActions
         {
-            get => _actions;
-            set => _actions = value;
+            get => _inputActions;
+            set => _inputActions = value;
         }
 
         /// <summary>
@@ -864,10 +1015,10 @@ namespace ECM2.Characters
         protected InputAction movementInputAction { get; set; }
 
         /// <summary>
-        /// Jump InputAction.
+        /// Sprint InputAction.
         /// </summary>
 
-        protected InputAction jumpInputAction { get; set; }
+        protected InputAction sprintInputAction { get; set; }
 
         /// <summary>
         /// Crouch InputAction.
@@ -876,10 +1027,10 @@ namespace ECM2.Characters
         protected InputAction crouchInputAction { get; set; }
 
         /// <summary>
-        /// Sprint InputAction.
+        /// Jump InputAction.
         /// </summary>
 
-        protected InputAction sprintInputAction { get; set; }
+        protected InputAction jumpInputAction { get; set; }
 
         #endregion
 
@@ -892,22 +1043,19 @@ namespace ECM2.Characters
 
         protected virtual Vector2 GetMovementInput()
         {
-            if (movementInputAction != null)
-                return movementInputAction.ReadValue<Vector2>();
-
-            return Vector2.zero;
+            return movementInputAction?.ReadValue<Vector2>() ?? Vector2.zero;
         }
-        
+
         /// <summary>
-        /// Jump input action handler.
+        /// Sprint input action handler.
         /// </summary>
 
-        protected virtual void OnJump(InputAction.CallbackContext context)
+        protected virtual void OnSprint(InputAction.CallbackContext context)
         {
             if (context.started || context.performed)
-                Jump();
+                SprintPressed();
             else if (context.canceled)
-                StopJumping();
+                SprintReleased();
         }
 
         /// <summary>
@@ -923,67 +1071,75 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Sprint input action handler.
+        /// Jump input action handler.
         /// </summary>
 
-        protected virtual void OnSprint(InputAction.CallbackContext context)
+        protected virtual void OnJump(InputAction.CallbackContext context)
         {
             if (context.started || context.performed)
-                SprintPressed();
+                Jump();
             else if (context.canceled)
-                SprintReleased();
+                StopJumping();
         }
 
         #endregion
 
         #region EVENTS
 
-        // Event Handlers
+        public delegate void PhysicsVolumeChangedEventHandler(PhysicsVolume newPhysicsVolume);
 
-        public delegate void GroundHitEventHandler(ref GroundHit prevGroundHitResult, ref GroundHit groundHitResult);
-        public delegate void MovementHitEventHandler(ref MovementHit movementHitResult);
+        public delegate void MovementModeChangedEventHandler(MovementMode prevMovementMode, int prevCustomMode);
 
-        public delegate void LandedEventHandler();
-        public delegate void WillLandEventHandler();
+        public delegate void SprintedEventHandler();
+        public delegate void StoppedSprintingEventHandler();
+
+        public delegate void CrouchedEventHandler();
+        public delegate void UnCrouchedEventHandler();
 
         public delegate void JumpedEventHandler();
         public delegate void ReachedJumpApexEventHandler();
 
-        public delegate void LaunchedEventHandler(Vector3 launchVelocity, bool overrideVerticalVelocity, bool overrideLateralVelocity);
-
-        public delegate void CrouchedEventHandler();
-        public delegate void UncrouchedEventHandler();
-
-        public delegate void PhysicsVolumeChangedEventHandler(PhysicsVolume newVolume);
-
-        public delegate void MovementModeChangedEventHandler(MovementMode prevMovementMode, int prevCustomMode);
+        public delegate void WillLandEventHandler();
+        public delegate void LandedEventHandler();
 
         /// <summary>
-        /// Triggered when the Character hits a 'ground' collider.
+        /// Event triggered when a character enter or leaves a PhysicsVolume.
         /// </summary>
 
-        public event GroundHitEventHandler GroundHit;
+        public event PhysicsVolumeChangedEventHandler PhysicsVolumeChanged;
 
         /// <summary>
-        /// Triggered when the Character hits a collider when walking into them.
+        /// Event triggered after a MovementMode change.
         /// </summary>
 
-        public event MovementHitEventHandler MovementHit;
+        public event MovementModeChangedEventHandler MovementModeChanged;
 
         /// <summary>
-        /// Triggered when the Character was not on walkable ground (last frame) and hits walkable ground.
+        /// Event triggered when Character start sprinting.
         /// </summary>
-        
-        public event LandedEventHandler Landed;
+
+        public event SprintedEventHandler Sprinted;
 
         /// <summary>
-        /// Triggered when the Character will hit walkable ground.
+        /// Event triggered when Character stops sprinting.
         /// </summary>
-        
-        public event WillLandEventHandler WillLand;
+
+        public event StoppedSprintingEventHandler StoppedSprinting;
 
         /// <summary>
-        /// Triggered when a jump has been successfully triggered and Character is about to leave ground.
+        /// Event triggered when Character enters crouching state.
+        /// </summary>
+
+        public event CrouchedEventHandler Crouched;
+
+        /// <summary>
+        /// Event triggered when character exits crouching state.
+        /// </summary>
+
+        public event UnCrouchedEventHandler UnCrouched;
+
+        /// <summary>
+        /// Event triggered when character jumps.
         /// </summary>
 
         public event JumpedEventHandler Jumped;
@@ -996,92 +1152,98 @@ namespace ECM2.Characters
         public event ReachedJumpApexEventHandler ReachedJumpApex;
 
         /// <summary>
-        /// Triggered when Character has been launched.
+        /// Triggered when the Character will hit walkable ground.
         /// </summary>
 
-        public event LaunchedEventHandler Launched;
+        public event WillLandEventHandler WillLand;
 
         /// <summary>
-        /// Triggered when Character crouches.
+        /// Event triggered when character enter isGrounded state (isOnWalkableGround AND isConstrainedToGround)
         /// </summary>
 
-        public event CrouchedEventHandler Crouched;
+        public event LandedEventHandler Landed;
 
         /// <summary>
-        /// Triggered when Character stops crouching.
+        /// Event triggered when characters collides with other during a Move.
+        /// Can be called multiple times.
         /// </summary>
 
-        public event UncrouchedEventHandler Uncrouched;
-
-        /// <summary>
-        /// Triggered when Character enters a new physics volume.
-        /// </summary>
-
-        public event PhysicsVolumeChangedEventHandler PhysicsVolumeChanged;
-
-        /// <summary>
-        /// Triggered after MovementMode has changed.
-        /// </summary>
-
-        public event MovementModeChangedEventHandler MovementModeChanged;
-
-        /// <summary>
-        /// Called when the Character hits a 'ground' collider while performing a Move.
-        /// Receives the previous and current GroundHitResult.
-        /// </summary>
-
-        protected virtual void OnGroundHit(ref GroundHit prevGroundHit, ref GroundHit groundHit)
+        protected virtual void OnCollided(ref CollisionResult collisionResult)
         {
-            // Trigger ground hit event
+            // If found walkable ground during movement, trigger will land event
 
-            GroundHit?.Invoke(ref prevGroundHit, ref groundHit);
-
-            // Has Landed eg: Character was not on walkable ground last frame, but is on walkable ground,
-            // Trigger Landed event
-
-            bool hasLanded = !prevGroundHit.hitWalkableGround && groundHit.hitWalkableGround;
-            if (hasLanded)
-                OnLanded();
-        }
-
-        /// <summary>
-        /// Called when the Character hits a collider while performing a Move (Can be called multiple times during frame).
-        /// Receives the MovementHitResult.
-        /// </summary>
-
-        protected virtual void OnMovementHit(ref MovementHit movementHit)
-        {
-            // Trigger MovementHit event
-
-            MovementHit?.Invoke(ref movementHit);
-
-            // Will land, eg: Character not on walkable ground, but movement hit walkable ground
-
-            bool willLand = !characterMovement.isOnWalkableGround && movementHit.hitWalkableGround;
-            if (willLand)
+            if (!characterMovement.wasGrounded && collisionResult.isWalkable)
                 OnWillLand();
         }
 
         /// <summary>
-        /// Called when the Character was not on walkable ground (last frame) and hits walkable ground.
+        /// Event triggered when character find ground (walkable or non-walkable) as a result of a downcast sweep (eg: FindGround method).
         /// </summary>
-        
-        protected virtual void OnLanded()
-        {
-            // Trigger landed event
 
-            Landed?.Invoke();
+        protected virtual void OnFoundGround(ref FindGroundResult foundGround)
+        {
+            // If found ground is walkable, trigger Landed event
+
+            if (foundGround.isWalkable)
+                OnLanded();
         }
 
         /// <summary>
-        /// Called when the Character will hit walkable ground.
+        /// Event triggered when character found walkable ground during its movement phase.
         /// </summary>
 
         protected virtual void OnWillLand()
         {
-            // Trigger WillBeLanding event
-
             WillLand?.Invoke();
+        }
+
+        /// <summary>
+        /// Event triggered when character enter isGrounded state (isOnWalkableGround AND isConstrainedToGround)
+        /// </summary>
+
+        protected virtual void OnLanded()
+        {
+            Landed?.Invoke();
+        }
+
+        /// <summary>
+        /// Event triggered when Character start sprinting.
+        /// </summary>
+
+        protected virtual void OnSprinted()
+        {
+            Sprinted?.Invoke();
+        }
+
+        /// <summary>
+        /// Event triggered when Character stops sprinting.
+        /// </summary>
+
+        protected virtual void OnStoppedSprinting()
+        {
+            StoppedSprinting?.Invoke();
+        }
+
+        /// <summary>
+        /// Called when Character crouches.
+        /// </summary>
+
+        protected virtual void OnCrouched()
+        {
+            // Trigger crouched event
+
+            Crouched?.Invoke();
+        }
+
+        /// <summary>
+        /// Called when Character stops crouching.
+        /// </summary>
+
+        protected virtual void OnUnCrouched()
+        {
+            // Trigger un crouched event
+
+            UnCrouched?.Invoke();
         }
 
         /// <summary>
@@ -1108,43 +1270,7 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Called when Character has been launched.
-        /// Receives the given launch velocity and if velocity was overriden in any of its components.
-        /// </summary>
-
-        protected virtual void OnLaunched(Vector3 launchVelocity, bool overrideVerticalVelocity, bool overrideLateralVelocity)
-        {
-            // Trigger Launched event
-
-            Launched?.Invoke(launchVelocity, overrideVerticalVelocity, overrideLateralVelocity);
-        }
-
-        /// <summary>
-        /// Called when Character crouches.
-        /// </summary>
-
-        protected virtual void OnCrouched()
-        {
-            // Trigger crouched event
-
-            Crouched?.Invoke();
-        }
-
-        /// <summary>
-        /// Called when Character stops crouching.
-        /// </summary>
-
-        protected virtual void OnUncrouched()
-        {
-            // Trigger uncrouched event
-
-            Uncrouched?.Invoke();
-        }
-
-        /// <summary>
-        /// Delegate called when the physics volume has changed. newVolume can be null (eg: left water volume).
-        /// Will change to Swimming mode if newVolume == waterVolume.
-        /// Trigger PhysicsVolumeChanged event.
+        /// Called when PhysicsVolume has been changed.
         /// </summary>
 
         protected virtual void OnPhysicsVolumeChanged(PhysicsVolume newPhysicsVolume)
@@ -1167,179 +1293,265 @@ namespace ECM2.Characters
             PhysicsVolumeChanged?.Invoke(newPhysicsVolume);
         }
 
+        #endregion
+
+        #region METHODS
+
         /// <summary>
-        /// Called after MovementMode has changed.
-        /// Does special handling for starting certain modes, eg: enable / disable ground constraint, etc.
-        /// If overriden, must call base.OnMovementModeChanged.
+        /// Start / Stops LateFixedUpdate coroutine.
         /// </summary>
 
-        protected virtual void OnMovementModeChanged(MovementMode prevMovementMode, int prevCustomMode)
+        private void EnableLateFixedUpdate(bool enable)
         {
-            // If movement was disabled, re-enable it
-
-            if (prevMovementMode == MovementMode.None)
-                characterMovement.Pause(false);
-
-            // Perform additional tasks on mode change
-
-            switch (_movementMode)
+            if (enable)
             {
-                case MovementMode.None:
-                {
-                    // Entering None mode...
+                if (_lateFixedUpdateCoroutine != null)
+                    StopCoroutine(_lateFixedUpdateCoroutine);
 
-                    // Disable Character's movement
+                _lateFixedUpdateCoroutine = StartCoroutine(LateFixedUpdate());
+            }
+            else
+            {
+                if (_lateFixedUpdateCoroutine != null)
+                    StopCoroutine(_lateFixedUpdateCoroutine);
+            }
+        }
 
-                    ClearAccumulatedForces();
+        /// <summary>
+        /// Sets the give new volume as our current Physics Volume.
+        /// Will call PhysicsVolumeChanged delegate.
+        /// </summary>
 
-                    characterMovement.Pause(true);
+        protected virtual void SetPhysicsVolume(PhysicsVolume newPhysicsVolume)
+        {
+            if (newPhysicsVolume == physicsVolume)
+                return;
 
-                    break;
-                }
+            // Trigger PhysicsVolumeChanged event
 
-                case MovementMode.Walking:
-                {
-                    // Entering Walking mode...
+            OnPhysicsVolumeChanged(newPhysicsVolume);
 
-                    // Reset jump count and clear apex notification flag
+            // Updates current physics volume
 
-                    _jumpCount = 0;
-                    notifyJumpApex = false;
+            physicsVolume = newPhysicsVolume;
+        }
 
-                    // If was flying or swimming, enable ground constraint
+        /// <summary>
+        /// Sets / removes the physics volume.
+        /// Called OnTriggerStay.
+        /// </summary>
 
-                    if (prevMovementMode == MovementMode.Flying || prevMovementMode == MovementMode.Swimming)
-                        characterMovement.ConstrainToGround(true);
+        protected virtual void UpdatePhysicsVolume(Collider other)
+        {
+            // Check if Character is inside or outside a PhysicsVolume,
+            // It uses the Character's center as reference point
 
-                    break;
-                }
+            Vector3 characterCenter = characterMovement.worldCenter;
 
-                case MovementMode.Falling:
-                {
-                    // Entering Falling mode...
+            if (other.ClosestPoint(characterCenter) == characterCenter)
+            {
+                // Entering physics volume
 
-                    // If was flying or swimming, enable ground constraint as it could lands on walkable ground
+                if (other.TryGetComponent(out PhysicsVolume newPhysicsVolume))
+                    SetPhysicsVolume(newPhysicsVolume);
+            }
+            else
+            {
+                // Leaving physics volume
 
-                    if (prevMovementMode == MovementMode.Flying || prevMovementMode == MovementMode.Swimming)
-                        characterMovement.ConstrainToGround(true);
+                if (other.TryGetComponent(out PhysicsVolume newPhysicsVolume) && newPhysicsVolume == physicsVolume)
+                    SetPhysicsVolume(null);
+            }
+        }
 
-                    break;
-                }
+        /// <summary>
+        /// Attempts to add a new physics volume to our volumes list.
+        /// </summary>
 
-                case MovementMode.Swimming:
-                {
-                    // Entering Swimming mode...
+        protected virtual void AddPhysicsVolume(Collider other)
+        {
+            if (other.TryGetComponent(out PhysicsVolume volume) && !_volumes.Contains(volume))
+                _volumes.Insert(0, volume);
+        }
 
-                    // Stop the Character from holding jump.
+        /// <summary>
+        /// Attempts to remove a physics volume from our volumes list.
+        /// </summary>
 
-                    StopJumping();
+        protected virtual void RemovePhysicsVolume(Collider other)
+        {
+            if (other.TryGetComponent(out PhysicsVolume volume) && _volumes.Contains(volume))
+                _volumes.Remove(volume);
+        }
 
-                    // Disable ground constraint
+        /// <summary>
+        /// Sets as current physics volume the one with higher priority.
+        /// </summary>
 
-                    characterMovement.ConstrainToGround(false);
+        protected virtual void UpdatePhysicsVolumes()
+        {
+            // Is Character movement is disabled, return
 
-                    break;
-                }
+            if (IsDisabled())
+                return;
 
-                case MovementMode.Flying:
-                {
-                    // Entering Flying mode...
+            // Find volume with higher priority
 
-                    // Stop the Character from holding jump.
+            PhysicsVolume volume = null;
+            int maxPriority = int.MinValue;
 
-                    StopJumping();
+            for (int i = 0, c = _volumes.Count; i < c; i++)
+            {
+                PhysicsVolume vol = _volumes[i];
+                if (vol.priority <= maxPriority)
+                    continue;
 
-                    // Disable ground constraint
-
-                    characterMovement.ConstrainToGround(false);
-
-                    break;
-                }
+                maxPriority = vol.priority;
+                volume = vol;
             }
 
-            // Left Falling mode, reset falling timer
+            // Assign current volume (one with higher priority)
 
-            if (!IsFalling())
-                _fallingTime = 0.0f;
-
-            // Attempts to uncrouch if not walking
-
-            if (!IsWalking() && IsCrouching())
-                StopCrouching();
-
-            // Trigger movement mode changed event
-
-            MovementModeChanged?.Invoke(prevMovementMode, prevCustomMode);
+            if (volume != null)
+                UpdatePhysicsVolume(volume.boxCollider);
         }
-        
-        #endregion
 
-        #region CALLBACKS
+        /// <summary>
+        /// Adds a force to the Character.
+        /// This forces will be accumulated and applied during Move method call.
+        /// </summary>
 
-        void ICharacterMovementCallbacks.OnGroundHit(ref GroundHit prevGroundHit, ref GroundHit groundHit)
+        public void AddForce(Vector3 force, ForceMode forceMode = ForceMode.Force)
         {
-            OnGroundHit(ref prevGroundHit, ref groundHit);
+            characterMovement.AddForce(force, forceMode);
         }
 
-        void ICharacterMovementCallbacks.OnMovementHit(ref MovementHit movementHitResult)
+        /// <summary>
+        /// Applies a force to a rigidbody that simulates explosion effects.
+        /// The explosion is modeled as a sphere with a certain centre position and radius in world space;
+        /// normally, anything outside the sphere is not affected by the explosion and the force decreases in proportion to distance from the centre.
+        /// However, if a value of zero is passed for the radius then the full force will be applied regardless of how far the centre is from the rigidbody.
+        /// </summary>
+
+        public void AddExplosionForce(float forceMagnitude, Vector3 origin, float explosionRadius,
+            ForceMode forceMode = ForceMode.Force)
         {
-            OnMovementHit(ref movementHitResult);
+            characterMovement.AddExplosionForce(forceMagnitude, origin, explosionRadius, forceMode);
         }
-        
-        void ICharacterMovementCallbacks.OnMove()
+
+        /// <summary>
+        /// Set a pending launch velocity on the Character. This velocity will be processed next Move call.
+        /// </summary>
+        /// <param name="launchVelocity">The desired launch velocity.</param>
+        /// <param name="overrideVerticalVelocity">If true replace the vertical component of the Character's velocity instead of adding to it.</param>
+        /// <param name="overrideLateralVelocity">If true replace the XY part of the Character's velocity instead of adding to it.</param>
+
+        public void LaunchCharacter(Vector3 launchVelocity, bool overrideVerticalVelocity = false,
+            bool overrideLateralVelocity = false)
         {
-            OnMove();
+            characterMovement.LaunchCharacter(launchVelocity, overrideVerticalVelocity, overrideLateralVelocity);
         }
 
-        Vector3 ICharacterMovementCallbacks.ComputeCollisionResponseDisplacement(Vector3 displacement,
-            ref MovementHit movementHit)
+        /// <summary>
+        /// Should collision detection be enabled ?
+        /// </summary>
+
+        public virtual void DetectCollisions(bool detectCollisions)
         {
-            return ComputeCollisionResponseDisplacement(displacement, ref movementHit);
+            characterMovement.detectCollisions = detectCollisions;
         }
 
-        bool ICharacterMovementCallbacks.CanStepUp(ref RaycastHit hitResult)
+        /// <summary>
+        /// Makes the character to ignore all collisions vs otherCollider.
+        /// </summary>
+
+        public virtual void IgnoreCollision(Collider otherCollider, bool ignore = true)
         {
-            return CanStepUp(ref hitResult);
+            characterMovement.IgnoreCollision(otherCollider, ignore);
         }
 
-        void ICharacterMovementCallbacks.OnApplyStandingDownwardForce(Rigidbody otherRigidbody)
+        /// <summary>
+        /// Makes the character to ignore collisions vs all colliders attached to the otherRigidbody.
+        /// </summary>
+
+        public virtual void IgnoreCollision(Rigidbody otherRigidbody, bool ignore = true)
         {
-            OnApplyStandingDownwardForce(otherRigidbody);
+            characterMovement.IgnoreCollision(otherRigidbody, ignore);
         }
 
-        void ICharacterMovementCallbacks.OnApplyPushForce(ref RigidbodyHit rigidbodyHit)
+        /// <summary>
+        /// Makes the character's collider (eg: CapsuleCollider) to ignore all collisions vs otherCollider.
+        /// NOTE: The character can still collide with other during a Move call if otherCollider is in CollisionLayers mask.
+        /// </summary>
+
+        public virtual void CapsuleIgnoreCollision(Collider otherCollider, bool ignore = true)
         {
-            OnApplyPushForce(ref rigidbodyHit);
+            characterMovement.CapsuleIgnoreCollision(otherCollider, ignore);
         }
 
-        bool ICharacterMovementCallbacks.ShouldMoveCharacterWhenStandingOn(Rigidbody otherRigidbody)
+        /// <summary>
+        /// Temporarily disable ground constraint allowing the Character to freely leave the ground.
+        /// Eg: LaunchCharacter, Jump, etc.
+        /// </summary>
+
+        public virtual void PauseGroundConstraint(float seconds = 0.1f)
         {
-            return ShouldMoveCharacterWhenStandingOn(otherRigidbody);
+            characterMovement.PauseGroundConstraint(seconds);
         }
 
-        bool ICharacterMovementCallbacks.ShouldRotateCharacterWhenStandingOn(Rigidbody otherRigidbody)
+        /// <summary>
+        /// Was the character on ground last Move call ?
+        /// </summary>
+
+        public virtual bool WasOnGround()
         {
-            return ShouldRotateCharacterWhenStandingOn(otherRigidbody);
+            return characterMovement.wasOnGround;
         }
 
-        void ICharacterMovementCallbacks.ImpartPlatformVelocity(Vector3 platformVelocity)
+        /// <summary>
+        /// Is the character on ground ?
+        /// </summary>
+
+        public virtual bool IsOnGround()
         {
-            ImpartPlatformVelocity(platformVelocity);
+            return characterMovement.isOnGround;
         }
 
-        void ICharacterMovementCallbacks.ImpartExternalVelocity(Vector3 externalVelocity)
+        /// <summary>
+        /// Was the character on walkable ground last Move call ?
+        /// </summary>
+
+        public virtual bool WasOnWalkableGround()
         {
-            ImpartExternalVelocity(externalVelocity);
+            return characterMovement.wasOnWalkableGround;
         }
 
-        void ICharacterMovementCallbacks.OnPhysicsVolumeChanged(PhysicsVolume newPhysicsVolume)
+        /// <summary>
+        /// Is the character on walkable ground ?
+        /// </summary>
+
+        public virtual bool IsOnWalkableGround()
         {
-            OnPhysicsVolumeChanged(newPhysicsVolume);
+            return characterMovement.isOnWalkableGround;
         }
 
-        #endregion
+        /// <summary>
+        /// Was the character on walkable ground AND constrained to ground last Move call ?
+        /// </summary>
 
-        #region METHODS        
+        public virtual bool WasGrounded()
+        {
+            return characterMovement.wasGrounded;
+        }
+
+        /// <summary>
+        /// Is the character on walkable ground AND constrained to ground.
+        /// </summary>
+
+        public virtual bool IsGrounded()
+        {
+            return characterMovement.isGrounded;
+        }
 
         /// <summary>
         /// Return the CharacterMovement component. This is guaranteed to be not null.
@@ -1374,7 +1586,28 @@ namespace ECM2.Characters
 
         public virtual PhysicsVolume GetPhysicsVolume()
         {
-            return characterMovement.physicsVolume;
+            return physicsVolume;
+        }
+
+        /// <summary>
+        /// The character's current height (accounting crouching if crouching).
+        /// </summary>
+        /// <returns></returns>
+
+        public virtual float GetHeight()
+        {
+            float actualHeight = IsCrouching() ? crouchedHeight : unCrouchedHeight;
+
+            return actualHeight;
+        }
+
+        /// <summary>
+        /// The character's radius
+        /// </summary>
+
+        public virtual float GetRadius()
+        {
+            return characterMovement.radius;
         }
 
         /// <summary>
@@ -1391,104 +1624,113 @@ namespace ECM2.Characters
         /// This complies with the interpolation resulting in a smooth transition between the two positions in any intermediate frames rendered.
         /// </summary>
 
-        public virtual void SetPosition(Vector3 position)
+        public virtual void SetPosition(Vector3 position, bool updateGround = false)
         {
-            characterMovement.position = position;
-        }
-
-        /// <summary>
-        /// Sets the Character's position.
-        /// Unlike SetPosition, this cause an instant change in position without any interpolation.
-        /// </summary>        
-        
-        public virtual void TeleportPosition(Vector3 position)
-        {
-            transform.position = position;
+            characterMovement.SetPosition(position, updateGround);
         }
 
         /// <summary>
         /// The Character's current rotation.
         /// </summary>
 
-        public virtual Quaternion GetRotation()
+        public Quaternion GetRotation()
         {
             return characterMovement.rotation;
         }
 
         /// <summary>
         /// Sets the Character's current rotation.
-        /// This complies with the interpolation resulting in a smooth transition between the two rotations in any intermediate frames rendered.
         /// </summary>
 
-        public virtual void SetRotation(Quaternion rotation)
+        public void SetRotation(Quaternion newRotation)
         {
-            characterMovement.rotation = rotation;
+            characterMovement.rotation = newRotation;
         }
 
         /// <summary>
-        /// Sets the Character's rotation.
-        /// Unlike SetRotation, this cause an instant change in rotation without any interpolation.
+        /// Orient the character's towards the given direction using rotationRate as the rate of rotation change.
         /// </summary>
-        
-        public virtual void TeleportRotation(Quaternion rotation)
+        /// <param name="worldDirection">The target direction in world space.</param>
+        /// <param name="isPlanar">If True, the rotation will be performed on the Character's plane (defined by its up-axis).</param>
+
+        public virtual void RotateTowards(Vector3 worldDirection, bool isPlanar = true)
         {
-            transform.rotation = rotation;
+            characterMovement.RotateTowards(worldDirection, rotationRate * deltaTime, isPlanar);
         }
 
         /// <summary>
-        /// Sets the Character's current rotation mode:
-        ///     - None:                        Disables character's rotation.
-        ///     - OrientToMovement:            Orient the Character towards the given input move direction vector, using rotationRate as the rate of rotation change.
-        ///     - OrientToCameraViewDirection: Rotates the character towards the camera's current view direction (eg: forward vector), using rotationRate as the rate of rotation change.
-        ///     OrientWithRootMotion:          Append root motion rotation to Character's rotation.
+        /// Orient the character's towards the given direction using rotationRate as the rate of rotation change.
         /// </summary>
+        /// <param name="worldDirection">The target direction in world space.</param>
+        /// <param name="isPlanar">If True, the rotation will be performed on the Character's plane (defined by its up-axis).</param>
 
-        public virtual void SetRotationMode(RotationMode rotationMode)
+        public virtual void RotateTowardsWithSlerp(Vector3 worldDirection, bool isPlanar = true)
         {
-            _rotationMode = rotationMode;
+            Vector3 characterUp = GetUpVector();
+
+            if (isPlanar)
+                worldDirection = worldDirection.projectedOnPlane(characterUp);
+
+            if (worldDirection.isZero())
+                return;
+
+            Quaternion targetRotation = Quaternion.LookRotation(worldDirection, characterUp);
+
+            characterMovement.rotation =
+                Quaternion.Slerp(characterMovement.rotation, targetRotation, rotationRate * Mathf.Deg2Rad * deltaTime);
         }
 
         /// <summary>
-        /// Returns the Character's current rotation mode.
+        /// Append root motion rotation to Character's rotation.
         /// </summary>
 
-        public virtual RotationMode GetRotationMode()
+        protected virtual void RotateWithRootMotion()
         {
-            return _rotationMode;
+            if (_rotationMode == RotationMode.OrientWithRootMotion && rootMotionController != null)
+                characterMovement.rotation *= rootMotionController.animDeltaRotation;
+        }
+
+        /// <summary>
+        /// Sets the yaw value.
+        /// This will reset the current pitch and roll values.
+        /// </summary>
+
+        public virtual void SetYaw(float value)
+        {
+            characterMovement.rotation = Quaternion.Euler(0.0f, value, 0.0f);
         }
 
         /// <summary>
         /// The Character's current up vector.
-        /// NOTE: This can be different from this.transform.up.
         /// </summary>
 
         public virtual Vector3 GetUpVector()
         {
-            return characterMovement.rotation * Vector3.up;
+            return transform.up;
         }
 
         /// <summary>
         /// The Character's current right vector.
-        /// NOTE: This can be different from this.transform.right.
         /// </summary>
 
         public virtual Vector3 GetRightVector()
         {
-            return characterMovement.rotation * Vector3.right;
+            return transform.right;
         }
 
         /// <summary>
         /// The Character's current forward vector.
-        /// NOTE: This can be different from this.transform.forward.
         /// </summary>
 
         public virtual Vector3 GetForwardVector()
         {
-            return characterMovement.rotation * Vector3.forward;
+            return transform.forward;
         }
 
         /// <summary>
-        /// The Character's current velocity.
+        /// The current relative velocity of the Character.
+        /// The velocity is relative because it won't track movements to the transform that happen outside of this,
+        /// e.g. character parented under another moving Transform, such as a moving vehicle.
         /// </summary>
 
         public virtual Vector3 GetVelocity()
@@ -1497,12 +1739,21 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Update the Character's velocity.
+        /// Sets the character's velocity.
         /// </summary>
 
-        public virtual void SetVelocity(Vector3 velocity)
+        public virtual void SetVelocity(Vector3 newVelocity)
         {
-            characterMovement.velocity = velocity;
+            characterMovement.velocity = newVelocity;
+        }
+
+        /// <summary>
+        /// The Character's current speed.
+        /// </summary>
+
+        public virtual float GetSpeed()
+        {
+            return characterMovement.velocity.magnitude;
         }
 
         /// <summary>
@@ -1518,12 +1769,25 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// The Character's current speed.
+        /// Returns the Character's current rotation mode.
         /// </summary>
 
-        public virtual float GetSpeed()
+        public virtual RotationMode GetRotationMode()
         {
-            return characterMovement.velocity.magnitude;
+            return _rotationMode;
+        }
+
+        /// <summary>
+        /// Sets the Character's current rotation mode:
+        ///     - None:                        Disables character's rotation.
+        ///     - OrientToMovement:            Orient the Character towards the given input move direction vector, using rotationRate as the rate of rotation change.
+        ///     - OrientToCameraViewDirection: Rotates the character towards the camera's current view direction (eg: forward vector), using rotationRate as the rate of rotation change.
+        ///     OrientWithRootMotion:          Append root motion rotation to Character's rotation.
+        /// </summary>
+
+        public virtual void SetRotationMode(RotationMode rotationMode)
+        {
+            _rotationMode = rotationMode;
         }
 
         /// <summary>
@@ -1566,39 +1830,102 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Was the Character on ground the last frame ?
+        /// Called after MovementMode has changed.
+        /// Does special handling for starting certain modes, eg: enable / disable ground constraint, etc.
+        /// If overriden, must call base.OnMovementModeChanged.
         /// </summary>
 
-        public virtual bool WasOnGround()
+        protected virtual void OnMovementModeChanged(MovementMode prevMovementMode, int prevCustomMode)
         {
-            return characterMovement.wasOnGround;
-        }
+            // Perform additional tasks on mode change
 
-        /// <summary>
-        /// Was the Character on walkable ground the last frame ?
-        /// </summary>
+            switch (_movementMode)
+            {
+                case MovementMode.None:
+                {
+                    // Entering None mode...
 
-        public virtual bool WasOnWalkableGround()
-        {
-            return characterMovement.wasOnWalkableGround;
-        }
+                    // Disable Character's movement and clear any pending forces
 
-        /// <summary>
-        /// Is the Character on ground ?
-        /// </summary>
+                    characterMovement.velocity = Vector3.zero;
+                    characterMovement.ClearAccumulatedForces();
 
-        public virtual bool IsOnGround()
-        {
-            return characterMovement.isOnGround;
-        }
+                    break;
+                }
 
-        /// <summary>
-        /// Is the Character on walkable ground ?
-        /// </summary>
+                case MovementMode.Walking:
+                {
+                    // Entering Walking mode...
 
-        public virtual bool IsOnWalkableGround()
-        {
-            return characterMovement.isOnWalkableGround;
+                    // Reset jump count and clear apex notification flag
+
+                    _jumpCount = 0;
+                    notifyJumpApex = false;
+
+                    // If was flying or swimming, enable ground constraint
+
+                    if (prevMovementMode == MovementMode.Flying || prevMovementMode == MovementMode.Swimming)
+                        characterMovement.constrainToGround = true;
+
+                    break;
+                }
+
+                case MovementMode.Falling:
+                {
+                    // Entering Falling mode...
+
+                    // If was flying or swimming, enable ground constraint as it could lands on walkable ground
+
+                    if (prevMovementMode == MovementMode.Flying || prevMovementMode == MovementMode.Swimming)
+                        characterMovement.constrainToGround = true;
+
+                    break;
+                }
+
+                case MovementMode.Swimming:
+                {
+                    // Entering Swimming mode...
+
+                    // Stop the Character from holding jump.
+
+                    StopJumping();
+
+                    // Disable ground constraint
+
+                    characterMovement.constrainToGround = false;
+
+                    break;
+                }
+
+                case MovementMode.Flying:
+                {
+                    // Entering Flying mode...
+
+                    // Stop the Character from holding jump.
+
+                    StopJumping();
+
+                    // Disable ground constraint
+
+                    characterMovement.constrainToGround = false;
+
+                    break;
+                }
+            }
+
+            // Left Falling mode, reset falling timer
+
+            if (!IsFalling())
+                _fallingTime = 0.0f;
+
+            // Attempts to UnCrouch if not walking
+
+            if (IsCrouching() && !IsWalking())
+                StopCrouching();
+
+            // Trigger movement mode changed event
+
+            MovementModeChanged?.Invoke(prevMovementMode, prevCustomMode);
         }
 
         /// <summary>
@@ -1629,15 +1956,6 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Returns true if currently swimming (moving through a water volume).
-        /// </summary>
-
-        public virtual bool IsSwimming()
-        {
-            return _movementMode == MovementMode.Swimming;
-        }
-
-        /// <summary>
         /// Returns true if currently flying (moving through a non-water volume without resting on the ground).
         /// </summary>
 
@@ -1647,36 +1965,18 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Returns true if character is actually crouching.
+        /// Returns true if currently swimming (moving through a water volume).
         /// </summary>
 
-        public virtual bool IsCrouching()
+        public virtual bool IsSwimming()
         {
-            return _isCrouched;
-        }
-
-        /// <summary>
-        /// Is the Character jumping ?
-        /// </summary>
-
-        public virtual bool IsJumping()
-        {
-            return _isJumping;
-        }
-
-        /// <summary>
-        /// Returns the current jump count.
-        /// </summary>
-
-        public virtual int GetJumpCount()
-        {
-            return _jumpCount;
+            return _movementMode == MovementMode.Swimming;
         }
 
         /// <summary>
         /// The maximum speed for current movement mode (accounting crouching / sprinting state).
         /// </summary>
-        
+
         public virtual float GetMaxSpeed()
         {
             switch (_movementMode)
@@ -1684,9 +1984,9 @@ namespace ECM2.Characters
                 case MovementMode.Walking:
                 {
                     if (IsCrouching())
-                        return maxWalkSpeedCrouched;
+                        return maxWalkSpeed * crouchingSpeedModifier;
 
-                    return IsSprinting() ? maxWalkSpeed * sprintSpeedMultiplier : maxWalkSpeed;
+                    return IsSprinting() ? maxWalkSpeed * sprintSpeedModifier : maxWalkSpeed;
                 }
 
                 case MovementMode.Falling:
@@ -1723,20 +2023,20 @@ namespace ECM2.Characters
         /// <summary>
         /// The acceleration for current movement mode.
         /// </summary>
-        
+
         public virtual float GetMaxAcceleration()
         {
             if (IsFalling())
                 return maxAcceleration * airControl;
 
-            return IsSprinting() ? maxAcceleration * sprintAccelerationMultiplier : maxAcceleration;
+            return IsSprinting() ? maxAcceleration * sprintAccelerationModifier : maxAcceleration;
         }
 
         /// <summary>
         /// The braking deceleration for current movement mode.
         /// </summary>
-        
-        public virtual float GetBrakingDeceleration()
+
+        public virtual float GetMaxBrakingDeceleration()
         {
             switch (_movementMode)
             {
@@ -1762,15 +2062,6 @@ namespace ECM2.Characters
             }
         }
 
-        /// <summary>
-        /// The current gravity vector (in world space).
-        /// </summary>
-        
-        public virtual Vector3 GetGravityVector()
-        {
-            return gravity;
-        }
-        
         /// <summary>
         /// Computes the analog input modifier (0.0f to 1.0f) based on current input vector and desired velocity.
         /// </summary>
@@ -1799,7 +2090,7 @@ namespace ECM2.Characters
 
             if (isZeroFriction && isZeroBraking)
                 return velocity;
-            
+
             // Decelerate to brake to a stop
 
             Vector3 oldVel = velocity;
@@ -1807,7 +2098,7 @@ namespace ECM2.Characters
 
             // Apply friction and braking
 
-            velocity += (-friction * velocity + revAcceleration) * Time.deltaTime;
+            velocity += (-friction * velocity + revAcceleration) * deltaTime;
 
             // Don't reverse direction
 
@@ -1817,7 +2108,7 @@ namespace ECM2.Characters
             // Clamp to zero if nearly zero, or if below min threshold and braking
 
             float sqrSpeed = velocity.sqrMagnitude;
-            if (sqrSpeed <= 0.00001f || !isZeroBraking && sqrSpeed <= MathLib.Square(0.1f))
+            if (sqrSpeed <= 0.00001f || !isZeroBraking && sqrSpeed <= 0.01f)
                 return Vector3.zero;
 
             return velocity;
@@ -1860,25 +2151,24 @@ namespace ECM2.Characters
                 // Apply friction and braking
 
                 float actualBrakingFriction = useSeparateBrakingFriction ? brakingFriction : friction;
-                velocity = ApplyVelocityBraking(velocity, actualBrakingFriction, GetBrakingDeceleration());
+                velocity = ApplyVelocityBraking(velocity, actualBrakingFriction, GetMaxBrakingDeceleration());
 
                 // Don't allow braking to lower us below max speed if we started above it
 
-                if (isVelocityOverMax && velocity.sqrMagnitude < MathLib.Square(actualMaxSpeed) &&
-                    Vector3.Dot(requestedAcceleration, oldVelocity) > 0.0f)
+                if (isVelocityOverMax && velocity.sqrMagnitude < actualMaxSpeed.square() && Vector3.Dot(requestedAcceleration, oldVelocity) > 0.0f)
                     velocity = oldVelocity.normalized * actualMaxSpeed;
             }
             else
             {
                 // Friction, this affects our ability to change direction
 
-                velocity -= (velocity - desiredMoveDirection * velocity.magnitude) * Mathf.Min(friction * Time.deltaTime, 1.0f);
+                velocity -= (velocity - desiredMoveDirection * velocity.magnitude) * Mathf.Min(friction * deltaTime, 1.0f);
             }
 
             // Apply fluid friction
 
             if (isFluid)
-                velocity *= 1.0f - Mathf.Min(friction * Time.deltaTime, 1.0f);
+                velocity *= 1.0f - Mathf.Min(friction * deltaTime, 1.0f);
 
             // Apply acceleration
 
@@ -1886,7 +2176,7 @@ namespace ECM2.Characters
             {
                 float newMaxSpeed = velocity.isExceeding(actualMaxSpeed) ? velocity.magnitude : actualMaxSpeed;
 
-                velocity += requestedAcceleration * Time.deltaTime;
+                velocity += requestedAcceleration * deltaTime;
                 velocity = velocity.clampedTo(newMaxSpeed);
             }
 
@@ -1896,160 +2186,203 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Determines the Character's movement when moving on walkable ground.
-        /// Ignores desiredVelocity vertical component.
+        /// Apply a downward force when standing on top of non-kinematic physics objects (if applyStandingDownwardForce == true).
+        /// The force applied is: mass * gravity * standingDownwardForceScale
+        /// </summary>
+
+        protected virtual void ApplyDownwardsForce()
+        {
+            Rigidbody groundRigidbody = characterMovement.groundRigidbody;
+            if (!groundRigidbody || groundRigidbody.isKinematic)
+                return;
+
+            Vector3 downwardForce = mass * GetGravityVector();
+
+            groundRigidbody.AddForceAtPosition(downwardForce * standingDownwardForceScale, GetPosition());
+        }
+
+        /// <summary>
+        /// Determines the Character's movement (e.g: its velocity) when moving on walkable ground.
         /// </summary>
 
         protected virtual void Walking(Vector3 desiredVelocity)
         {
-            // Discards desiredVelocity vertical component
+            // If using root motion output animation velocity
 
-            Vector3 characterUp = GetUpVector();
-            Vector3 desiredLateralVelocity = desiredVelocity.projectedOnPlane(characterUp);
-
-            // Reorient desired velocity along walkable surface
-
-            Vector3 groundNormal = characterMovement.groundHit.normal;
-            desiredLateralVelocity = desiredLateralVelocity.tangentTo(groundNormal, characterUp);
-
-            if (useRootMotion)
-                characterMovement.velocity = desiredLateralVelocity;
+            if (useRootMotion && rootMotionController)
+                characterMovement.velocity = desiredVelocity;
             else
             {
-                // Current movement velocity
-
-                Vector3 velocity = characterMovement.velocity;
-
-                // Reorient velocity along walkable surface
-
-                velocity = velocity.tangentTo(groundNormal, characterUp);
-
                 // Calculate new velocity
-            
-                characterMovement.velocity = CalcVelocity(velocity, desiredLateralVelocity, groundFriction);
+
+                float actualFriction = useSeparateBrakingFriction ? brakingFriction : groundFriction;
+                characterMovement.velocity = CalcVelocity(characterMovement.velocity, desiredVelocity, actualFriction);
             }
+
+            // Apply downwards force
+
+            if (applyStandingDownwardForce)
+                ApplyDownwardsForce();
         }
 
         /// <summary>
-        /// Clamps the current falling speed to maxFallSpeed or if within a PhysicsVolume, PhysicsVolume.maxFallSpeed
+        /// Returns the Character's gravity vector modified by gravityScale.
         /// </summary>
 
-        protected virtual void LimitFallingSpeed()
+        public virtual Vector3 GetGravityVector()
         {
-            // Defaults to our maxFallSpeed value
-
-            float actualTerminalVelocity = maxFallSpeed;
-
-            // If within a physics volume, use its maxFallSpeed
-
-            if (characterMovement.physicsVolume)
-                actualTerminalVelocity = characterMovement.physicsVolume.maxFallSpeed;
-
-            // Should limit falling speed ?
-
-            if (characterMovement.velocity.sqrMagnitude <= MathLib.Square(actualTerminalVelocity))
-                return;
-
-            // Apply speed limit (velocity component along gravity direction)
-
-            Vector3 gravityDirection = GetGravityVector().normalized;
-                
-            if (Vector3.Dot(characterMovement.velocity, gravityDirection) > actualTerminalVelocity)
-            {
-                characterMovement.velocity = characterMovement.velocity.projectedOnPlane(gravityDirection) +
-                                             gravityDirection * actualTerminalVelocity;
-            }
+            return gravity;
         }
 
         /// <summary>
-        /// Determines the Character's movement when falling on air or sliding off non-walkable ground.
-        /// Do not override Character's velocity vertical component (ignores desiredVelocity vertical component) as we want to keep the effect of gravity.
-        /// Apply gravity acceleration.
+        /// Returns the gravity direction (normalized).
+        /// </summary>
+
+        public virtual Vector3 GetGravityDirection()
+        {
+            return gravity.normalized;
+        }
+
+        /// <summary>
+        /// Sets the Character's gravity vector
+        /// </summary>
+
+        public virtual void SetGravityVector(Vector3 newGravityVector)
+        {
+            _gravity = newGravityVector;
+        }
+        
+        /// <summary>
+        /// Toggle gravity acceleration while falling.
+        /// </summary>
+
+        public virtual void EnableGravity(bool enable)
+        {
+            _applyGravity = enable;
+        }
+
+        /// <summary>
+        /// Apply gravity and clamps the current falling velocity (vertical component) to maxFallSpeed,
+        /// or if within a PhysicsVolume, PhysicsVolume.maxFallSpeed
+        /// </summary>
+
+        protected virtual Vector3 LimitFallingVelocity(Vector3 currentVelocity)
+        {
+            // Output velocity
+
+            Vector3 terminalVelocity = currentVelocity;
+
+            // Don't exceed terminal velocity.
+
+            float terminalLimit = maxFallSpeed;
+            if (physicsVolume)
+                terminalLimit = physicsVolume.maxFallSpeed;
+
+            if (terminalVelocity.sqrMagnitude > terminalLimit.square())
+            {
+                Vector3 gravityDir = GetGravityVector().normalized;
+
+                if (Vector3.Dot(terminalVelocity, gravityDir) > terminalLimit)
+                    terminalVelocity = terminalVelocity.projectedOnPlane(gravityDir) + gravityDir * terminalLimit;
+            }
+
+            return terminalVelocity;
+        }
+
+        /// <summary>
+        /// Determines the Character's movement (e.g: its velocity) when falling on air or sliding off non-walkable ground.
         /// </summary>
 
         protected virtual void Falling(Vector3 desiredVelocity)
         {
-            // Do not override vertical component as we want to keep the effect of gravity
+            // Current 'world' up vector defined by gravity direction
 
-            Vector3 characterUp = GetUpVector();
-            Vector3 desiredLateralVelocity = desiredVelocity.projectedOnPlane(characterUp);
+            Vector3 worldUp = -1.0f * GetGravityDirection();
 
-            // On Non-walkable ground...
+            // Update falling time
 
-            if (characterMovement.isOnGround)
+            _fallingTime += deltaTime;
+            
+            // On not walkable ground
+
+            if (IsOnGround())
             {
-                // Cancel any movement against it in order to prevent climb it
+                // If moving into the 'wall', limit contribution
 
-                Vector3 groundNormal =
-                    characterUp.perpendicularTo(characterMovement.groundHit.normal).perpendicularTo(characterUp);
-                
-                if (Vector3.Dot(desiredLateralVelocity, groundNormal) < 0.0f)
-                    desiredLateralVelocity = desiredLateralVelocity.projectedOnPlane(groundNormal);
+                Vector3 groundNormal = characterMovement.groundNormal;
 
-                // If using root motion, preserve lateral velocity to slide off non-walkable surface
+                if (desiredVelocity.dot(groundNormal) < 0.0f)
+                {
+                    // Allow movement parallel to the wall, but not into it because that may push us up.
 
-                if (useRootMotion)
-                    desiredLateralVelocity += characterMovement.velocity.projectedOn(groundNormal);
+                    groundNormal = groundNormal.projectedOnPlane(worldUp).normalized;
+                    desiredVelocity = desiredVelocity.projectedOnPlane(groundNormal);
+                }
             }
 
-            // Using root motion...
+            // Calc new velocity
+            
+            // Separate velocity into its components
 
-            if (useRootMotion)
-            {
-                // Preserve current vertical velocity as we want to keep the effect of gravity
+            Vector3 verticalVelocity = Vector3.Project(characterMovement.velocity, worldUp);
+            Vector3 lateralVelocity = characterMovement.velocity - verticalVelocity;
 
-                Vector3 verticalVelocity = characterMovement.velocity.projectedOn(characterUp);
+            // Compute new lateral velocity
 
-                // Update Character's velocity
+            float actualFriction = useSeparateBrakingFriction ? brakingFriction : fallingLateralFriction;
+            lateralVelocity = CalcVelocity(lateralVelocity, desiredVelocity, actualFriction);
 
-                characterMovement.velocity = desiredLateralVelocity + verticalVelocity;
-            }
+            // Update new velocity
+
+            characterMovement.velocity = lateralVelocity + verticalVelocity;
+
+            // Apply gravity (if enabled)
+
+            if (_applyGravity)
+                characterMovement.velocity += GetGravityVector() * deltaTime;
+
+            // Clamp to terminal velocity
+
+            characterMovement.velocity = LimitFallingVelocity(characterMovement.velocity);
+        }
+
+        /// <summary>
+        /// Determines the Character's movement when 'flying'.
+        /// Ground-Unconstrained movement with full desiredVelocity (lateral AND vertical) and gravity-less.
+        /// </summary>
+
+        protected virtual void Flying(Vector3 desiredVelocity)
+        {
+            if (useRootMotion && rootMotionController)
+                characterMovement.velocity = desiredVelocity;
             else
             {
-                // Preserve current vertical velocity as we want to keep the effect of gravity
+                float actualFriction = IsInWater() ? 0.5f * physicsVolume.friction : 0.5f * flyingFriction;
 
-                Vector3 velocity = characterMovement.velocity;
-
-                Vector3 verticalVelocity = velocity.projectedOn(characterUp);
-                Vector3 lateralVelocity = velocity - verticalVelocity;
-
-                lateralVelocity = CalcVelocity(lateralVelocity, desiredLateralVelocity, fallingLateralFriction);
-
-                // Update Character's velocity
-
-                characterMovement.velocity = lateralVelocity + verticalVelocity;
+                characterMovement.velocity =
+                    CalcVelocity(characterMovement.velocity, desiredVelocity, actualFriction, true);
             }
-
-            // Apply gravity
-
-            Vector3 actualGravity = GetGravityVector();
-
-            characterMovement.velocity += actualGravity * Time.deltaTime;
-
-            // Limit maximum falling velocity
-
-            LimitFallingSpeed();
         }
 
         /// <summary>
         /// Is the character in a water physics volume ?
         /// </summary>
-        
+
         public virtual bool IsInWater()
         {
-            return characterMovement.physicsVolume && characterMovement.physicsVolume.waterVolume;
+            return physicsVolume && physicsVolume.waterVolume;
         }
 
         /// <summary>
         /// Attempts to enter Swimming mode.
         /// Called when Character enters a water physics volume.
         /// </summary>
-        
+
         public virtual void Swim()
         {
             // Is the Character able to swim ?
 
-            if (!canSwim)
+            if (!canEverSwim)
                 return;
 
             // Already swimming ?
@@ -2066,7 +2399,7 @@ namespace ECM2.Characters
         /// Exits swimming mode.
         /// Called when Character leaves a water physics volume.
         /// </summary>
-        
+
         public virtual void StopSwimming()
         {
             // If Swimming, change to Falling mode
@@ -2079,7 +2412,7 @@ namespace ECM2.Characters
         /// How deep in water the character is immersed.
         /// Returns a float in range 0.0 = not in water, 1.0 = fully immersed.
         /// </summary>
-        
+
         public virtual float ImmersionDepth()
         {
             if (!IsInWater())
@@ -2087,12 +2420,12 @@ namespace ECM2.Characters
 
             Vector3 characterUp = GetUpVector();
 
-            Vector3 rayOrigin = GetPosition() + characterMovement.capsuleHeight * characterUp;
+            Vector3 rayOrigin = GetPosition() + characterUp * characterMovement.height;
             Vector3 rayDirection = -characterUp;
 
-            float rayLength = characterMovement.capsuleHeight;
+            float rayLength = characterMovement.height;
 
-            BoxCollider waterVolumeCollider = characterMovement.physicsVolume.boxCollider;
+            BoxCollider waterVolumeCollider = physicsVolume.boxCollider;
             if (waterVolumeCollider.Raycast(new Ray(rayOrigin, rayDirection), out RaycastHit hitInfo, rayLength))
                 return 1.0f - Mathf.InverseLerp(0.0f, rayLength, hitInfo.distance);
 
@@ -2103,7 +2436,7 @@ namespace ECM2.Characters
         /// Determines the Character's movement when Swimming through a fluid volume, under the effects of gravity and buoyancy.
         /// Ground-Unconstrained movement with full desiredVelocity (lateral AND vertical) applies gravity but scaled by (1.0f - buoyancy).
         /// </summary>
-        
+
         protected virtual void Swimming(Vector3 desiredVelocity)
         {
             // Compute actual buoyancy factoring current immersion depth
@@ -2113,10 +2446,10 @@ namespace ECM2.Characters
 
             // Calculate new velocity
 
-            Vector3 velocity = characterMovement.velocity;
+            Vector3 newVelocity = characterMovement.velocity;
 
-            Vector3 characterUp = GetUpVector();
-            float verticalSpeed = Vector3.Dot(velocity, characterUp);
+            Vector3 worldUp = -1.0f * GetGravityDirection();
+            float verticalSpeed = Vector3.Dot(newVelocity, worldUp);
 
             if (verticalSpeed > maxSwimSpeed * 0.33f && actualBuoyancy > 0.0f)
             {
@@ -2124,36 +2457,35 @@ namespace ECM2.Characters
 
                 verticalSpeed = Mathf.Max(maxSwimSpeed * 0.33f, verticalSpeed * depth * depth);
 
-                velocity = velocity.projectedOnPlane(characterUp) + characterUp * verticalSpeed;
+                newVelocity = newVelocity.projectedOnPlane(worldUp) + worldUp * verticalSpeed;
             }
             else if (depth < 0.65f)
             {
                 // Cancel vertical movement (to out of water)
 
-                desiredVelocity = desiredVelocity.projectedOnPlane(characterUp);
+                desiredVelocity = desiredVelocity.projectedOnPlane(worldUp);
             }
 
             // Using root motion...
 
-            if (useRootMotion)
+            if (useRootMotion && rootMotionController)
             {
                 // Preserve current vertical velocity as we want to keep the effect of gravity
 
-                Vector3 verticalVelocity = velocity.projectedOn(characterUp);
+                Vector3 verticalVelocity = newVelocity.projectedOn(worldUp);
 
-                // Update Character's velocity
+                // Updates new velocity
 
-                velocity = desiredVelocity.projectedOnPlane(characterUp) + verticalVelocity;
+                newVelocity = desiredVelocity.projectedOnPlane(worldUp) + verticalVelocity;
             }
             else
             {
                 // Actual friction
 
-                float actualFriction = characterMovement.physicsVolume && characterMovement.physicsVolume.waterVolume
-                    ? 0.5f * characterMovement.physicsVolume.friction * depth
-                    : 0.5f * swimmingFriction * depth;
+                float actualFriction =
+                    IsInWater() ? 0.5f * physicsVolume.friction * depth : 0.5f * swimmingFriction * depth;
 
-                velocity = CalcVelocity(velocity, desiredVelocity, actualFriction, true);
+                newVelocity = CalcVelocity(newVelocity, desiredVelocity, actualFriction, true);
             }
 
             // If swimming freely, apply gravity acceleration scaled by (1.0f - actualBuoyancy)
@@ -2161,30 +2493,20 @@ namespace ECM2.Characters
             Vector3 gravityVector = GetGravityVector();
             Vector3 actualGravity = gravityVector * (1.0f - actualBuoyancy);
 
-            velocity += actualGravity * Time.deltaTime;
+            newVelocity += actualGravity * deltaTime;
 
-            // Update Character's velocity
+            // Update velocity
 
-            characterMovement.velocity = velocity;
+            characterMovement.velocity = newVelocity;
         }
 
         /// <summary>
-        /// Determines the Character's movement when 'flying'.
-        /// Ground-Unconstrained movement with full desiredVelocity (lateral AND vertical) and gravity-less.
+        /// Allows to implement a custom movement.
         /// </summary>
 
-        protected virtual void Flying(Vector3 desiredVelocity)
+        protected virtual void CustomMovementMode(Vector3 desiredVelocity)
         {
-            if (useRootMotion)
-                characterMovement.velocity = desiredVelocity;
-            else
-            {
-                float actualFriction = characterMovement.physicsVolume && characterMovement.physicsVolume.waterVolume
-                    ? 0.5f * characterMovement.physicsVolume.friction
-                    : 0.5f * flyingFriction;
-
-                characterMovement.velocity = CalcVelocity(characterMovement.velocity, desiredVelocity, 0.5f * actualFriction, true);
-            }
+            // EMPTY BY DEFAULT
         }
 
         /// <summary>
@@ -2193,7 +2515,7 @@ namespace ECM2.Characters
 
         public virtual bool IsSprinting()
         {
-            return _isSprinting;
+            return canEverSprint && _sprintButtonPressed;
         }
 
         /// <summary>
@@ -2203,6 +2525,7 @@ namespace ECM2.Characters
         public virtual void SprintPressed()
         {
             _sprintButtonPressed = true;
+
             Sprint();
         }
 
@@ -2213,27 +2536,134 @@ namespace ECM2.Characters
         public virtual void SprintReleased()
         {
             _sprintButtonPressed = false;
+
             StopSprinting();
         }
 
         /// <summary>
         /// Request the character to sprint.
-        /// Call this from an input event (such as a button 'down' event).
         /// </summary>
 
         public virtual void Sprint()
         {
-            _isSprinting = true;
+            bool wasSprinting = IsSprinting();
+
+            if (!wasSprinting && IsSprinting())
+                OnSprinted();
         }
 
         /// <summary>
         /// Request the character to stop sprinting.
-        /// Call this from an input event (such as a button 'up' event).
         /// </summary>
 
         public virtual void StopSprinting()
         {
-            _isSprinting = false;
+            bool wasSprinting = IsSprinting();
+
+            if (wasSprinting && !IsSprinting())
+                OnStoppedSprinting();
+        }
+
+        /// <summary>
+        /// Returns true if character is actually crouching.
+        /// </summary>
+
+        public virtual bool IsCrouching()
+        {
+            return _isCrouching;
+        }
+
+        /// <summary>
+        /// Request the Character to start crouching.
+        /// The request is processed on the next FixedUpdate.
+        /// </summary>
+
+        public virtual void Crouch()
+        {
+            _crouchButtonPressed = true;
+        }
+
+        /// <summary>
+        /// Request the Character to stop crouching.
+        /// The request is processed on the next FixedUpdate.
+        /// </summary>
+
+        public virtual void StopCrouching()
+        {
+            _crouchButtonPressed = false;
+        }
+
+        /// <summary>
+        /// Determines if the Character is able to crouch in its current movement mode.
+        /// Defaults to Walking mode only.
+        /// </summary>
+
+        protected virtual bool CanCrouch()
+        {
+            return canEverCrouch && IsWalking();
+        }
+
+        /// <summary>
+        /// Determines if the Character is able to un crouch.
+        /// Eg. Check if there's room to expand capsule, etc.
+        /// </summary>
+
+        public virtual bool CanUnCrouch()
+        {
+            bool overlapped = characterMovement.CheckHeight(unCrouchedHeight);
+
+            return !overlapped;
+        }
+
+        /// <summary>
+        /// Handle crouching state, e.g. crouch / un crouch logic.
+        /// </summary>
+
+        protected virtual void Crouching()
+        {
+            // Wants to crouch and not already crouching ?
+
+            if (_crouchButtonPressed && !IsCrouching())
+            {
+                // Its allowed to crouch ?
+
+                if (!CanCrouch())
+                    return;
+
+                // Do crouch
+
+                characterMovement.SetHeight(crouchedHeight);
+                _isCrouching = true;
+
+                // Trigger Crouched event
+
+                OnCrouched();
+            }
+            else if (IsCrouching() && _crouchButtonPressed == false)
+            {
+                // Can UnCrouch ?
+
+                if (!CanUnCrouch())
+                    return;
+
+                // UnCrouch
+
+                characterMovement.SetHeight(unCrouchedHeight);
+                _isCrouching = false;
+
+                // Trigger UnCrouched event
+
+                OnUnCrouched();
+            }
+        }
+
+        /// <summary>
+        /// Is the Character jumping ?
+        /// </summary>
+
+        public virtual bool IsJumping()
+        {
+            return _isJumping;
         }
 
         /// <summary>
@@ -2265,14 +2695,28 @@ namespace ECM2.Characters
         }
 
         /// <summary>
+        /// Returns the current jump count.
+        /// </summary>
+
+        public virtual int GetJumpCount()
+        {
+            return _jumpCount;
+        }
+
+        /// <summary>
         /// Determines if the Character is able to perform the requested jump.
         /// </summary>
-        
+
         public virtual bool CanJump()
         {
+            // Is character even able to jump ?
+
+            if (!canEverJump)
+                return false;
+
             // Can jump while crouching ?
 
-            if (IsCrouching() && !crouchedJump)
+            if (IsCrouching() && !jumpWhileCrouching)
                 return false;
 
             // Cant jump if no jumps available
@@ -2311,31 +2755,29 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Determines the Character's velocity to perform the requested jump.
+        /// Determines the jump impulse vector.
         /// </summary>
 
-        protected virtual Vector3 CalcJumpVelocity()
+        protected virtual Vector3 CalcJumpImpulse()
         {
-            Vector3 velocity = GetVelocity();
-
             Vector3 characterUp = GetUpVector();
-            float verticalSpeed = Vector3.Dot(velocity, characterUp);
 
-            return velocity.projectedOnPlane(characterUp) + characterUp * Mathf.Max(verticalSpeed, jumpImpulse);
+            float verticalSpeed = Vector3.Dot(GetVelocity(), characterUp);
+            float actualJumpImpulse = Mathf.Max(verticalSpeed, jumpImpulse);
+
+            return characterUp * actualJumpImpulse;
         }
 
         /// <summary>
-        /// Perform a jump.
-        /// Called when a jump has been detected because _jumpButtonPressed == true, checks CanJump().
-        /// Note that you should trigger a jump through Jump() method.
+        /// Attempts to perform a requested jump.
         /// </summary>
 
-        protected virtual void PerformJump()
+        protected virtual void DoJump()
         {
             // Update held down timer
 
             if (_jumpButtonPressed)
-                _jumpButtonHeldDownTime += Time.deltaTime;
+                _jumpButtonHeldDownTime += deltaTime;
 
             // Wants to jump and not already jumping..
 
@@ -2352,33 +2794,48 @@ namespace ECM2.Characters
                 }
 
                 // Can perform the requested jump ?
-                
-                if (!CanJump())
-                    return;
 
-                // Jump!
+                if (CanJump())
+                {
+                    // Jump!
 
-                SetMovementMode(MovementMode.Falling);
+                    SetMovementMode(MovementMode.Falling);
 
-                PauseGroundConstraint();
-                characterMovement.velocity = CalcJumpVelocity();
+                    characterMovement.PauseGroundConstraint();
+                    characterMovement.LaunchCharacter(CalcJumpImpulse(), true);
 
-                _jumpCount++;
-                _isJumping = true;
+                    _jumpCount++;
+                    _isJumping = true;
 
-                OnJumped();
+                    // Trigger Jumped event
+
+                    OnJumped();
+                }
             }
         }
 
         /// <summary>
-        /// Update jumping state, eg: check input, perform jump hold (jumpMaxHoldTime > 0), etc. 
+        /// Handle jumping state.
+        /// Eg: check input, perform jump hold (jumpMaxHoldTime > 0), etc. 
         /// </summary>
 
         protected virtual void Jumping()
         {
+            // Is character allowed to jump ?
+
+            if (!canEverJump)
+            {
+                // If not allowed but was jumping, stop jump
+
+                if (IsJumping())
+                    StopJumping();
+
+                return;
+            }
+
             // Check jump input state and attempts to do the requested jump
 
-            PerformJump();
+            DoJump();
 
             // Perform jump hold, applies an opposite gravity force proportional to _jumpHoldTime.
 
@@ -2395,9 +2852,9 @@ namespace ECM2.Characters
                 float proportionalForce = Mathf.LerpUnclamped(actualGravityMagnitude, 0.0f, jumpProgress);
 
                 Vector3 proportionalJumpForce = -actualGravityDirection * proportionalForce;
-                characterMovement.velocity += proportionalJumpForce * Time.deltaTime;
+                characterMovement.AddForce(proportionalJumpForce);
 
-                _jumpHoldTime += Time.deltaTime;
+                _jumpHoldTime += deltaTime;
             }
 
             // Should notify jump apex ?
@@ -2407,109 +2864,13 @@ namespace ECM2.Characters
 
             // Notify jump apex (eg: a change in vertical speed from positive to negative)
 
-            float verticalSpeed = Vector3.Dot(characterMovement.velocity, GetUpVector());
+            Vector3 upAxis = -GetGravityVector();
+            float verticalSpeed = Vector3.Dot(GetVelocity(), upAxis.normalized);
+
             if (verticalSpeed < 0.0f)
             {
-                notifyJumpApex = false;
                 OnReachedJumpApex();
-            }
-        }
-
-        /// <summary>
-        /// Request the Character to start crouching.
-        /// The request is processed on the next FixedUpdate.
-        /// </summary>
-
-        public virtual void Crouch()
-        {
-            _crouchButtonPressed = true;
-        }
-
-        /// <summary>
-        /// Request the Character to stop crouching.
-        /// The request is processed on the next FixedUpdate.
-        /// </summary>
-
-        public virtual void StopCrouching()
-        {
-            _crouchButtonPressed = false;
-        }
-
-        /// <summary>
-        /// Determines if the Character is able to crouch in its current movement mode.
-        /// Defaults to Walking mode only.
-        /// </summary>
-        
-        public virtual bool CanCrouch()
-        {
-            return IsWalking();
-        }
-
-        /// <summary>
-        /// Determines if the Character is able to uncrouch.
-        /// </summary>
-
-        public virtual bool CanUncrouch()
-        {
-            // Check if there's room to expand capsule
-
-            bool overlapped = characterMovement.CheckCapsule(characterMovement.capsuleRadius, _lastCapsuleHeight);
-
-            return !overlapped;
-        }
-
-        /// <summary>
-        /// Crouch / UnCrouch logic.
-        /// Called on OnFixedUpdate after Character's movement.
-        /// </summary>
-
-        protected virtual void Crouching()
-        {
-            // If Movement is disabled, return
-
-            if (IsDisabled())
-                return;
-
-            // Wants to crouch and not already crouching ?
-
-            if (_crouchButtonPressed && !IsCrouching())
-            {
-                // Its allowed to crouch ?
-
-                if (!CanCrouch())
-                    return;
-
-                // Do crouch
-
-                _isCrouched = true;
-
-                _lastCapsuleHeight = characterMovement.capsuleHeight;
-
-                float clampedCrouchedHeight =
-                    Mathf.Clamp(crouchedHeight, characterMovement.capsuleRadius * 2.0f, characterMovement.capsuleHeight);
-
-                characterMovement.SetCapsuleHeight(clampedCrouchedHeight);
-
-                // Trigger Crouched event
-
-                OnCrouched();
-            }
-            else if (IsCrouching() && _crouchButtonPressed == false)
-            {
-                // Can UnCrouch ?
-
-                if (!CanUncrouch())
-                    return;
-
-                // Uncrouch
-
-                _isCrouched = false;
-
-                characterMovement.SetCapsuleHeight(_lastCapsuleHeight);
-
-                // Trigger Uncrouched event
-
-                OnUncrouched();
+                notifyJumpApex = false;
             }
         }
 
@@ -2525,462 +2886,166 @@ namespace ECM2.Characters
 
             // The desired velocity from animation (if using root motion) or from input movement vector
 
-            Vector3 desiredVelocity = !useRootMotion || !rootMotionController
-                ? movementDirection * GetMaxSpeed()
-                : rootMotionController.animRootMotionVelocity;
-            
+            Vector3 desiredVelocity = useRootMotion && rootMotionController
+                ? rootMotionController.animRootMotionVelocity
+                : movementDirection * GetMaxSpeed();
+
             // Return desired velocity (constrained to constraint plane if any)
 
-            return characterMovement.ConstrainDirectionToPlane(desiredVelocity);
+            return characterMovement.ConstrainVectorToPlane(desiredVelocity);
         }
 
         /// <summary>
-        /// Allows to perform custom movement code here.
-        /// This is not mandatory as you can simply extend the OnMove method,
-        /// however using this method is simpler and cleaner when implementing custom movement modes.
+        /// Perform character's movement based on its current MovementMode.
         /// </summary>
 
-        protected virtual void OnCustomMovementMode(Vector3 desiredVelocity)
+        protected virtual void Move()
         {
-            // EMPTY
-        }
+            // If Character movement is disabled, return
 
-        /// <summary>
-        /// Determines the Character's movement for its current movement mode.
-        /// Called during character's movement, CharacterMovement Move method (delegate).
-        /// </summary>
+            if (IsDisabled())
+                return;
 
-        protected virtual void OnMove()
-        {
             // Toggle walking / falling mode based on ground status
 
-            if (IsWalking())
-            {
-                // Lost walkable ground or wants to leave the ground, change to Falling mode
+            if (IsWalking() && !characterMovement.isGrounded)
+                SetMovementMode(MovementMode.Falling);
 
-                if (!characterMovement.IsConstrainedToGround() || !characterMovement.isOnWalkableGround)
-                    SetMovementMode(MovementMode.Falling);
-            }
-
-            if (IsFalling())
-            {
-                // Found walkable ground and is constrained to it, change to Walking mode
-
-                if (characterMovement.IsConstrainedToGround() && characterMovement.isOnWalkableGround)
-                    SetMovementMode(MovementMode.Walking);
-            }
-
-            // Apply current movement mode
+            if (IsFalling() && characterMovement.isGrounded)
+                SetMovementMode(MovementMode.Walking);
+            
+            // Compute new velocity based on Character's movement mode
 
             Vector3 desiredVelocity = CalcDesiredVelocity();
 
             switch (_movementMode)
             {
+                case MovementMode.None:
+                    characterMovement.velocity = Vector3.zero;
+                    break;
+
                 case MovementMode.Walking:
-                {
                     Walking(desiredVelocity);
                     break;
-                }
 
                 case MovementMode.Falling:
-                {
                     Falling(desiredVelocity);
-
-                    _fallingTime = fallingTime + Time.deltaTime;
-
                     break;
-                }
-
-                case MovementMode.Swimming:
-                {
-                    Swimming(desiredVelocity);
-                    break;
-                }
 
                 case MovementMode.Flying:
-                {
                     Flying(desiredVelocity);
                     break;
-                }
+
+                case MovementMode.Swimming:
+                    Swimming(desiredVelocity);
+                    break;
 
                 case MovementMode.Custom:
-                {
-                    OnCustomMovementMode(desiredVelocity);
+                    CustomMovementMode(desiredVelocity);
                     break;
-                }
-            }
 
-            // Jumping state
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            
+            // Move the character (perform collision constrained movement) with velocity updated by movement mode
+
+            characterMovement.Move(deltaTime);
+
+            // Handle crouching state
+
+            Crouching();
+
+            // Handle jumping state
 
             Jumping();
         }
 
         /// <summary>
-        /// Set a pending launch velocity on the Character. This velocity will be processed next FixedUpdate.
-        /// Triggers the OnLaunched event.
+        /// Allows to implement a custom rotation mode.
         /// </summary>
-        /// <param name="launchVelocity">The velocity to impart to the Character.</param>
-        /// <param name="overrideVerticalVelocity">If true replace the vertical component of the Character's velocity instead of adding to it.</param>
-        /// <param name="overrideLateralVelocity">If true replace the XY part of the Character's velocity instead of adding to it.</param>
 
-        public virtual void LaunchCharacter(Vector3 launchVelocity, bool overrideVerticalVelocity = false, bool overrideLateralVelocity = false)
+        protected virtual void CustomRotationMode()
         {
-            // Compute final velocity
-
-            Vector3 finalVelocity = launchVelocity;
-
-            // If not override, add lateral velocity to given launch velocity
-
-            Vector3 characterUp = GetUpVector();
-
-            if (!overrideLateralVelocity)
-                finalVelocity += characterMovement.velocity.projectedOnPlane(characterUp);
-
-            // If not override, add vertical velocity to given launch velocity
-
-            if (!overrideVerticalVelocity)
-                finalVelocity += characterMovement.velocity.projectedOn(characterUp);
-
-            _pendingLaunchVelocity = finalVelocity;
-
-            // Trigger OnLaunched event
-
-            OnLaunched(launchVelocity, overrideLateralVelocity, overrideLateralVelocity);
+            // EMPTY BY DEFAULT
         }
 
         /// <summary>
-        /// Applies a pending launch velocity, will clear pendingLaunchVelocity.
-        /// Returns true if the launch was triggered.
+        /// Updates the Character's rotation based on its current RotationMode.
         /// </summary>
 
-        protected virtual bool ApplyPendingLaunch()
+        protected virtual void UpdateRotation()
         {
-            if (_pendingLaunchVelocity.isZero())
-                return false;
-
-            characterMovement.velocity = _pendingLaunchVelocity;
-            _pendingLaunchVelocity = Vector3.zero;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Adds a force to the Character.
-        /// This forces will be accumulated and applied at the end of the Character's movement.
-        /// </summary>
-
-        public virtual void AddForce(Vector3 force, ForceMode forceMode = ForceMode.Force)
-        {
-            switch (forceMode)
-            {
-                case ForceMode.Force:
-                {
-                    _pendingForces += force / mass * Time.deltaTime;
-                    break;
-                }
-
-                case ForceMode.Acceleration:
-                {
-                    _pendingForces += force * Time.deltaTime;
-                    break;
-                }
-
-                case ForceMode.Impulse:
-                {
-                    _pendingForces += force / mass;
-                    break;
-                }
-
-                case ForceMode.VelocityChange:
-                {
-                    _pendingForces += force;
-                    break;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Applies the accumulated forces through AddForce, then clears those forces (reset _pendingForces).
-        /// </summary>
-
-        protected virtual void ApplyAccumulatedForces()
-        {
-            if (_pendingForces.isZero())
-                return;
-
-            characterMovement.velocity += _pendingForces;
-            _pendingForces = Vector3.zero;
-        }
-
-        /// <summary>
-        /// Clears any accumulated forces, including any pending launch velocity.
-        /// </summary>
-
-        protected virtual void ClearAccumulatedForces()
-        {
-            _pendingForces = Vector3.zero;
-            _pendingLaunchVelocity = Vector3.zero;
-        }
-
-        /// <summary>
-        /// Calculates the resultant displacement after a movement hit (eg: slide along collision).
-        /// Called during CharacterMovement CollideAndSlide.
-        /// </summary>
-
-        protected virtual Vector3 ComputeCollisionResponseDisplacement(Vector3 displacement, ref MovementHit movementHit)
-        {
-            if (IsWalking())
-            {
-                // On walkable 'ground'
-
-                if (movementHit.hitWalkableGround)
-                {
-                    // Hit walkable, reorient displacement along ground surface
-
-                    displacement = displacement.tangentTo(movementHit.normal, GetUpVector());
-                }
-                else
-                {
-                    // Hit non-walkable, cancel displacement against hit and reorient remaining along ground surface
-
-                    displacement = displacement.projectedOnPlane(movementHit.normal);
-                    displacement = displacement.tangentTo(characterMovement.groundHit.normal, GetUpVector());
-                }
-            }
-            else
-            {
-                // On 'Air' or Non-walkable 'ground'
-                
-                if (IsFalling() && movementHit.hitWalkableGround)
-                {
-                    // Hit walkable, cancel vertical velocity and reorient remaining along ground surface
-
-                    Vector3 characterUp = GetUpVector();
-
-                    displacement = displacement.projectedOnPlane(characterUp);
-                    displacement = displacement.tangentTo(movementHit.normal, characterUp);
-                }
-                else
-                {
-                    // Hit non-walkable, project displacement on hit surface plane
-
-                    displacement = displacement.projectedOnPlane(movementHit.normal);
-                }
-            }
-
-            // Return slide displacement (constrained to constraint plane)
-
-            return characterMovement.ConstrainDirectionToPlane(displacement);
-        }
-
-        /// <summary>
-        /// Performs Character's movement.
-        /// Handle forces, impulses, crouching state etc.
-        /// </summary>
-
-        protected virtual void PerformMovement()
-        {
-            // If Movement is disabled, return
+            // If Character movement is disabled, return
 
             if (IsDisabled())
                 return;
 
-            // Apply accumulated forces (last frame)
+            // Should update Character's rotation ?
 
-            ApplyAccumulatedForces();
+            RotationMode rotationMode = GetRotationMode();
 
-            // Handles any pending launch during last frame,
-            // this has higher priority over accumulated forces, as this could be a velocity override
-
-            ApplyPendingLaunch();
-
-            // Perform Character's movement (collision constrained aka: collide and slide),
-            // handle platforms, push others, etc.
-
-            characterMovement.Move();
-
-            // Handle crouching
-
-            Crouching();
-        }
-
-        /// <summary>
-        /// Determines if the Character is able to step up on given collider.
-        /// Returns true if we can step up on the collider in the given hitResult.
-        /// </summary>
-
-        protected virtual bool CanStepUp(ref RaycastHit hitResult)
-        {
-            // Do not allow to step on dynamic rigidbodies
-
-            return !hitResult.rigidbody || hitResult.rigidbody.isKinematic;
-        }
-
-        /// <summary>
-        /// Apply a push force to other rigidbody or character (only if applyPushForce == true).
-        /// </summary>
-
-        protected virtual void OnApplyPushForce(ref RigidbodyHit rigidbodyHit)
-        {
-            // Not enabled, return
-
-            if (!applyPushForce)
-                return;
-
-            // If Character is not on ground, cant push other
-
-            if (!IsOnWalkableGround() || !characterMovement.IsConstrainedToGround())
-                return;
-
-            // Do not allow to push walkable
-
-            if (rigidbodyHit.isWalkable)
-                return;
-
-            // Did we hit other character ?
-
-            Character otherCharacter = rigidbodyHit.rigidbody.GetComponent<Character>();
-            if (otherCharacter && !pushForceAffectCharacters)
-                return;
-
-            // Solve collision here applying push forces
-            // Source: https://www.gamasutra.com/view/feature/131424/pool_hall_lessons_fast_accurate_.php?page=3
-
-            Vector3 v1 = rigidbodyHit.velocity;
-            Vector3 v2 = otherCharacter ? otherCharacter.GetVelocity() : rigidbodyHit.otherVelocity;
-
-            Vector3 n = rigidbodyHit.normal;
-
-            float a1 = Vector3.Dot(v1, n);
-            float a2 = Vector3.Dot(v2, n);
-            
-            float m1 = mass;
-            float m2 = otherCharacter ? otherCharacter.mass : rigidbodyHit.rigidbody.mass;
-
-            float optimizedP = 1.0f * (a1 - a2) / (m1 + m2);
-
-            characterMovement.velocity += (a1 - optimizedP * m2) * n;
-
-            if (otherCharacter)
-                otherCharacter.AddForce(optimizedP * m1 * pushForceScale * n, ForceMode.VelocityChange);
-            else
-                rigidbodyHit.rigidbody.AddForceAtPosition(optimizedP * m1 * pushForceScale * n, rigidbodyHit.point, ForceMode.VelocityChange);
-        }
-
-        /// <summary>
-        /// Apply a downward force when standing on top of non-kinematic physics objects (if applyStandingDownwardForce == true).
-        /// The force applied is: mass * gravity * standingDownwardForceScale
-        /// </summary>
-
-        protected virtual void OnApplyStandingDownwardForce(Rigidbody otherRigidbody)
-        {
-            // If not enabled, return
-
-            if (!applyStandingDownwardForce)
-                return;
-
-            // If other is a Character, return
-
-            Character character =
-                otherRigidbody.gameObject.GetComponent<Character>();
-
-            if (character != null)
-                return;
-
-            // Apply downward force
-
-            Vector3 downwardForce = mass * GetGravityVector();
-
-            otherRigidbody.AddForceAtPosition(downwardForce * standingDownwardForceScale, characterMovement.groundHit.point);
-        }
-
-        /// <summary>
-        /// Determines if the Character should be moved with otherRigidbody when standing on top of it (eg: moving platform).
-        /// </summary>
-
-        protected virtual bool ShouldMoveCharacterWhenStandingOn(Rigidbody otherRigidbody)
-        {
-            // Should be moved along with the moving platform ?
-
-            if (!impartPlatformMovement)
-                return false;
-
-            // Do not move if not Walking or Falling
-
-            return IsWalking() || IsFalling();
-        }
-
-        /// <summary>
-        /// Determines if the Character should be rotated with otherRigidbody when standing on top of it (eg: rotating platform).
-        /// </summary>
-
-        protected virtual bool ShouldRotateCharacterWhenStandingOn(Rigidbody otherRigidbody)
-        {
-            // Should be rotated along with the moving platform ?
-
-            if (!impartPlatformRotation)
-                return false;
-
-            // Do not rotate if not Walking or Falling
-
-            if (!IsWalking() && !IsFalling())
-                return false;
-
-            // Defaults to kinematic rigidbodies only
-
-            return otherRigidbody && otherRigidbody.isKinematic;
-        }
-
-        /// <summary>
-        /// Determines how to impart the platform's velocity Character leaves the platform.
-        /// </summary>
-
-        protected virtual void ImpartPlatformVelocity(Vector3 platformVelocity)
-        {
-            // Do not impart platform velocity if not Walking or Falling
-
-            if (!IsWalking() && !IsFalling())
-                return;
-
-            // If Character is constrained to ground, ALWAYS impart platform's velocity,
-            // this is to prevent a pullback when walking off a moving platform
-
-            if (characterMovement.IsConstrainedToGround())
-                characterMovement.velocity += platformVelocity;
-            else
+            switch (rotationMode)
             {
-                // If enabled, impart platform's velocity to Character
+                case RotationMode.None:
+                    return;
 
-                if (impartPlatformVelocity)
-                    characterMovement.velocity += platformVelocity;
+                case RotationMode.OrientToMovement:
+                {
+                    // Orient towards current movement direction vector
+
+                    RotateTowards(_movementDirection);
+
+                    break;
+                }
+
+                case RotationMode.OrientToCameraViewDirection:
+                {
+                    // Orient towards camera view direction
+
+                    if (camera)
+                        RotateTowards(cameraTransform.forward);
+
+                    break;
+                }
+
+                case RotationMode.Custom:
+                {
+                    // Custom rotation mode
+
+                    CustomRotationMode();
+                    break;
+                }
             }
         }
 
         /// <summary>
-        /// Should external forces modify the Character's velocity ?
-        /// Determines how to impart the external velocity caused by external forces during internal physics simulation.
+        /// Update character's state. Eg: Update its rotation, call move, etc.
+        /// This MUST be called after physics simulation so the character can read world current state (eg: OnLateFixedUpdate)
+        /// This allows you to simulate a character manually (eg: autoSimulation = false).
         /// </summary>
 
-        protected virtual void ImpartExternalVelocity(Vector3 externalVelocity)
+        public virtual void Simulate(float deltaTime)
         {
-            // Should impart external velocity
+            // Assign the used deltaTime
 
-            if (!impartExternalVelocity)
-                return;
+            this.deltaTime = deltaTime;
 
-            // Impart external velocity (velocity caused during internal physics update)
+            // Update character's rotation
 
-            characterMovement.velocity += externalVelocity;
-        }
+            UpdateRotation();
 
-        /// <summary>
-        /// Assigns the Character's movement direction (in world space), eg: our desired movement direction vector.
-        /// </summary>
-        /// <param name="movementDirection">The movement direction in world space.</param>
+            // Append input rotation (eg: AddYawInput, etc)
 
-        public void SetMovementDirection(Vector3 movementDirection)
-        {
-            _movementDirection = movementDirection;
+            ConsumeRotationInput();
+
+            // Moves the character
+
+            Move();
+
+            // Update active physics volume
+
+            UpdatePhysicsVolumes();
         }
 
         /// <summary>
@@ -2993,22 +3058,22 @@ namespace ECM2.Characters
         }
 
         /// <summary>
-        /// Sets the yaw value. This will reset the current pitch and roll values.
+        /// Assigns the Character's movement direction (in world space), eg: our desired movement direction vector.
         /// </summary>
-        
-        public virtual void SetYaw(float value)
-        {
-            transform.rotation = Quaternion.Euler(0.0f, value, 0.0f);
-        }
+        /// <param name="movementDirection">The movement direction in world space. Typical from input</param>
 
+        public void SetMovementDirection(Vector3 movementDirection)
+        {
+            _movementDirection = movementDirection;
+        }
+        
         /// <summary>
         /// Amount to add to Yaw (up axis).
         /// </summary>
 
         public virtual void AddYawInput(float value)
         {
-            if (value != 0.0f)
-                characterMovement.rotation *= Quaternion.Euler(0.0f, value, 0.0f);
+            _rotationInput.y += value;
         }
 
         /// <summary>
@@ -3017,8 +3082,7 @@ namespace ECM2.Characters
 
         public virtual void AddPitchInput(float value)
         {
-            if (value != 0.0f)
-                characterMovement.rotation *= Quaternion.Euler(value, 0.0f, 0.0f);
+            _rotationInput.x += value;
         }
 
         /// <summary>
@@ -3027,113 +3091,128 @@ namespace ECM2.Characters
 
         public virtual void AddRollInput(float value)
         {
-            if (value != 0.0f)
-                characterMovement.rotation *= Quaternion.Euler(0.0f, 0.0f, value);
+            _rotationInput.z += value;
         }
 
         /// <summary>
-        /// Orient the character's towards the given direction using rotationRate as the rate of rotation change.
+        /// Append input rotation (eg: AddPitchInput, AddYawInput, AddRollInput) to character rotation.
         /// </summary>
-        /// <param name="worldDirection">The target direction in world space.</param>
-        /// <param name="isPlanar">If True, the rotation will be performed on the Character's plane (defined by its up-axis).</param>
 
-        protected virtual void RotateTowards(Vector3 worldDirection, bool isPlanar = true)
+        protected virtual void ConsumeRotationInput()
         {
-            Vector3 characterUp = GetUpVector();
+            // If Character movement is disabled, return
 
-            if (isPlanar)
-                worldDirection = worldDirection.projectedOnPlane(characterUp);
-
-            if (worldDirection.isZero())
+            if (IsDisabled())
                 return;
 
-            Quaternion targetRotation = Quaternion.LookRotation(worldDirection, characterUp);
+            // Apply rotation input (if any)
 
-            characterMovement.rotation = 
-                Quaternion.Slerp(characterMovement.rotation, targetRotation, rotationRate * Mathf.Deg2Rad * Time.deltaTime);
+            if (_rotationInput != Vector3.zero)
+            {
+                // Consumes rotation input (e.g. apply and clear it)
+
+                characterMovement.rotation *= Quaternion.Euler(_rotationInput);
+
+                _rotationInput = Vector3.zero;
+            }
         }
 
         /// <summary>
-        /// Append root motion rotation to Character's rotation.
-        /// </summary>
-
-        public virtual void ApplyRootMotionRotation()
-        {
-            if (rootMotionController != null)
-                characterMovement.rotation *= rootMotionController.animDeltaRotation;
-        }
-
-        /// <summary>
-        /// Should collision detection be enabled ?
-        /// </summary>
-
-        public virtual void DetectCollisions(bool detectCollisions)
-        {
-            characterMovement.DetectCollisions(detectCollisions);
-        }
-
-        /// <summary>
-        /// Makes the collision detection system ignore all collisions between Character's capsule collider and otherCollider.
+        /// Initialize player InputActions (if any).
+        /// E.g. Subscribe to input action events and enable input actions here.
         /// </summary>
         
-        public virtual void IgnoreCollision(Collider otherCollider, bool ignore = true)
-        {
-            characterMovement.IgnoreCollision(otherCollider, ignore);
-        }
-
-        /// <summary>
-        /// Temporarily disable ground constraint allowing the Character to freely leave the ground.
-        /// Eg: LaunchCharacter, Jump, etc.
-        /// </summary>
-
-        public virtual void PauseGroundConstraint(float seconds = 0.1f)
-        {
-            characterMovement.PauseGroundConstraint(seconds);
-        }
-
-        /// <summary>
-        /// Setup player InputActions (if any).
-        /// </summary>
-        
-        protected virtual void SetupPlayerInput()
+        protected virtual void InitPlayerInput()
         {
             // Attempts to cache Character InputActions (if any)
 
-            if (actions == null)
+            if (inputActions == null)
                 return;
+            
+            // Movement input action (no handler, this is polled, e.g. GetMovementInput())
 
-            // Movement input action (This is polled)
-
-            movementInputAction = actions.FindAction("Movement");
-
-            // Setup Jump input action handlers
-
-            jumpInputAction = actions.FindAction("Jump");
-            if (jumpInputAction != null)
-            {
-                jumpInputAction.started += OnJump;
-                jumpInputAction.performed += OnJump;
-                jumpInputAction.canceled += OnJump;
-            }
-
-            // Setup Crouch input action handlers
-
-            crouchInputAction = actions.FindAction("Crouch");
-            if (crouchInputAction != null)
-            {
-                crouchInputAction.started += OnCrouch;
-                crouchInputAction.performed += OnCrouch;
-                crouchInputAction.canceled += OnCrouch;
-            }
+            movementInputAction = inputActions.FindAction("Movement");
+            movementInputAction?.Enable();
 
             // Setup Sprint input action handlers
 
-            sprintInputAction = actions.FindAction("Sprint");
+            sprintInputAction = inputActions.FindAction("Sprint");
             if (sprintInputAction != null)
             {
                 sprintInputAction.started += OnSprint;
                 sprintInputAction.performed += OnSprint;
                 sprintInputAction.canceled += OnSprint;
+
+                sprintInputAction.Enable();
+            }
+            
+            // Setup Crouch input action handlers
+
+            crouchInputAction = inputActions.FindAction("Crouch");
+            if (crouchInputAction != null)
+            {
+                crouchInputAction.started += OnCrouch;
+                crouchInputAction.performed += OnCrouch;
+                crouchInputAction.canceled += OnCrouch;
+
+                crouchInputAction.Enable();
+            }
+
+            // Setup Jump input action handlers
+
+            jumpInputAction = inputActions.FindAction("Jump");
+            if (jumpInputAction != null)
+            {
+                jumpInputAction.started += OnJump;
+                jumpInputAction.performed += OnJump;
+                jumpInputAction.canceled += OnJump;
+
+                jumpInputAction.Enable();
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from input action events and disable input actions.
+        /// </summary>
+
+        protected virtual void DeinitPlayerInput()
+        {
+            // Unsubscribe from input action events and disable input actions
+
+            if (movementInputAction != null)
+            {
+                movementInputAction.Disable();
+                movementInputAction = null;
+            }
+
+            if (sprintInputAction != null)
+            {
+                sprintInputAction.started -= OnSprint;
+                sprintInputAction.performed -= OnSprint;
+                sprintInputAction.canceled -= OnSprint;
+
+                sprintInputAction.Disable();
+                sprintInputAction = null;
+            }
+
+            if (crouchInputAction != null)
+            {
+                crouchInputAction.started -= OnCrouch;
+                crouchInputAction.performed -= OnCrouch;
+                crouchInputAction.canceled -= OnCrouch;
+
+                crouchInputAction.Disable();
+                crouchInputAction = null;
+            }
+
+            if (jumpInputAction != null)
+            {
+                jumpInputAction.started -= OnJump;
+                jumpInputAction.performed -= OnJump;
+                jumpInputAction.canceled -= OnJump;
+
+                jumpInputAction.Disable();
+                jumpInputAction = null;
             }
         }
 
@@ -3143,27 +3222,16 @@ namespace ECM2.Characters
 
         protected virtual void HandleInput()
         {
-            // Should handle input ?
+            // Should this character handle input ?
 
-            if (actions == null)
+            if (inputActions == null)
                 return;
 
             // Poll movement InputAction
 
-            var movementInput = GetMovementInput();
-            
-            if (cameraTransform == null)
-            {
-                // If Camera is not assigned, add movement input relative to world axis
+            Vector2 movementInput = GetMovementInput();
 
-                Vector3 movementDirection = Vector3.zero;
-
-                movementDirection += Vector3.right * movementInput.x;
-                movementDirection += Vector3.forward * movementInput.y;
-
-                SetMovementDirection(movementDirection);
-            }
-            else
+            if (camera)
             {
                 // If Camera is assigned, add input movement relative to camera look direction
 
@@ -3175,61 +3243,29 @@ namespace ECM2.Characters
                 movementDirection = movementDirection.relativeTo(cameraTransform);
 
                 SetMovementDirection(movementDirection);
+
+            }
+            else
+            {
+                // If Camera is not assigned, add movement input relative to world axis
+
+                Vector3 movementDirection = Vector3.zero;
+
+                movementDirection += Vector3.right * movementInput.x;
+                movementDirection += Vector3.forward * movementInput.y;
+
+                SetMovementDirection(movementDirection);
             }
         }
 
-        /// <summary>
-        /// Updates the Character's rotation based on its current RotationMode.
-        /// </summary>
-
-        protected virtual void UpdateRotation()
-        {
-            // Is Character movement is disabled, return
-
-            if (IsDisabled())
-                return;
-
-            // Should update Character's rotation ?
-
-            RotationMode rotationMode = GetRotationMode();
-            if (rotationMode == RotationMode.None)
-                return;
-
-            if (rotationMode == RotationMode.OrientToMovement)
-            {
-                // Orient towards input move direction vector (in Character's plane)
-                
-                Vector3 movementDirection = GetMovementDirection();
-
-                RotateTowards(movementDirection);
-            }
-            else if (rotationMode == RotationMode.OrientToCameraViewDirection)
-            {
-                // Orient towards camera view direction (in Character's plane)
-
-                if (cameraTransform == null)
-                    return;
-                
-                Vector3 viewDirection = cameraTransform.forward;
-
-                RotateTowards(viewDirection);
-            }
-            else if (rotationMode == RotationMode.OrientWithRootMotion)
-            {
-                // Append root motion rotation to Character's rotation.
-
-                if (rootMotionController)
-                    ApplyRootMotionRotation();
-            }
-        }
-        
         /// <summary>
         /// Helper method used to feed the Character's animator.
+        /// Optional as you can prefer to externally animate your character.
         /// </summary>
 
         protected virtual void Animate()
         {
-            // EMPTY
+            // EMPTY BY DEFAULT
         }
 
         /// <summary>
@@ -3239,60 +3275,68 @@ namespace ECM2.Characters
 
         protected virtual void OnReset()
         {
-            SetRotationMode(RotationMode.OrientToMovement);
+            _inputActions = null;
 
-            rotationRate = 540.0f;
+            _defaultMovementMode = MovementMode.Walking;
 
-            maxWalkSpeed = 6.0f;
-            minAnalogWalkSpeed = 0.0f;
-            maxAcceleration = 20.0f;
-            brakingDecelerationWalking = 20.0f;
-            groundFriction = 8.0f;
+            _rotationRate = 540.0f;
+            _rotationMode = RotationMode.OrientToMovement;
 
-            useSeparateBrakingFriction = false;
-            brakingFriction = 0.0f;
+            _maxWalkSpeed = 6.0f;
+            _minAnalogWalkSpeed = 0.0f;
+            _maxAcceleration = 20.0f;
+            _brakingDecelerationWalking = 20.0f;
+            _groundFriction = 8.0f;
 
-            sprintSpeedMultiplier = 1.5f;
-            sprintAccelerationMultiplier = 1.0f;
+            _maxFallSpeed = 40.0f;
+            _brakingDecelerationFalling = 0.0f;
+            _fallingLateralFriction = 0.3f;
+            _airControl = 0.3f;
 
-            maxWalkSpeedCrouched = 3.0f;
-            crouchedHeight = 1.0f;
-            crouchedJump = false;
+            _maxFlySpeed = 10.0f;
+            _brakingDecelerationFlying = 0.0f;
+            _flyingFriction = 0.5f;
 
-            maxFallSpeed = 40.0f;
-            brakingDecelerationFalling = 0.0f;
-            fallingLateralFriction = 0.3f;
-            airControl = 0.8f;
+            _canEverSwim = true;
+            _maxSwimSpeed = 3.0f;
+            _brakingDecelerationSwimming = 0.0f;
+            _swimmingFriction = 0.5f;
+            _buoyancy = 1.0f;
 
-            jumpMaxCount = 1;
-            jumpImpulse = 6.0f;
-            jumpMaxHoldTime = 0.35f;
-            jumpPreGroundedTime = 0.15f;
-            jumpPostGroundedTime = 0.15f;
+            _useSeparateBrakingFriction = false;
+            _brakingFriction = 0.0f;
 
-            gravity = new Vector3(0.0f, -30.0f, 0.0f);
+            _canEverSprint = true;
+            _sprintSpeedModifier = 1.5f;
+            _sprintAccelerationModifier = 1.0f;
 
-            canSwim = true;
-            maxSwimSpeed = 3.0f;
-            brakingDecelerationSwimming = 0.0f;
-            swimmingFriction = 0.5f;
-            buoyancy = 1.0f;
+            _canEverCrouch = true;
+            _unCrouchedHeight = 2.0f;
+            _crouchedHeight = 1.25f;
+            _crouchingSpeedModifier = 0.5f;
 
-            maxFlySpeed = 6.0f;
-            brakingDecelerationFlying = 0.0f;
-            flyingFriction = 0.3f;
+            _canEverJump = true;
+            _jumpWhileCrouching = false;
+            _jumpMaxCount = 1;
+            _jumpImpulse = 6.0f;
+            _jumpMaxHoldTime = 0.35f;
+            _jumpPreGroundedTime = 0.15f;
+            _jumpPostGroundedTime = 0.15f;
 
-            mass = 1.0f;
-            impartExternalVelocity = true;
-            impartPlatformMovement = true;
-            impartPlatformRotation = true;
-            impartPlatformVelocity = true;
-            applyPushForce = true;
-            pushForceAffectCharacters = true;
-            applyStandingDownwardForce = true;
+            _gravity = Physics.gravity;
+            _gravityScale = 1.0f;
 
-            pushForceScale = 1.0f;
-            standingDownwardForceScale = 1.0f;
+            _useRootMotion = false;
+
+            _mass = 1.0f;
+            _impartPlatformVelocity = false;
+            _impartPlatformMovement = false;
+            _impartPlatformRotation = false;
+            _enablePhysicsInteraction = false;
+            _applyPushForceToCharacters = false;
+            _applyStandingDownwardForce = false;
+            _pushForceScale = 1.0f;
+            _standingDownwardForceScale = 1.0f;
         }
 
         /// <summary>
@@ -3310,16 +3354,28 @@ namespace ECM2.Characters
             brakingDecelerationWalking = _brakingDecelerationWalking;
             groundFriction = _groundFriction;
 
-            sprintSpeedMultiplier = _sprintSpeedMultiplier;
-            sprintAccelerationMultiplier = _sprintAccelerationMultiplier;
-
-            maxWalkSpeedCrouched = _maxWalkSpeedCrouched;
-            crouchedHeight = _crouchedHeight;
-
             maxFallSpeed = _maxFallSpeed;
             brakingDecelerationFalling = _brakingDecelerationFalling;
             fallingLateralFriction = _fallingLateralFriction;
             airControl = _airControl;
+
+            maxFlySpeed = _maxFlySpeed;
+            brakingDecelerationFlying = _brakingDecelerationFlying;
+            flyingFriction = _flyingFriction;
+
+            maxSwimSpeed = _maxSwimSpeed;
+            brakingDecelerationSwimming = _brakingDecelerationSwimming;
+            swimmingFriction = _swimmingFriction;
+            buoyancy = _buoyancy;
+
+            brakingFriction = _brakingFriction;
+
+            sprintSpeedModifier = _sprintSpeedModifier;
+            sprintAccelerationModifier = _sprintAccelerationModifier;
+
+            unCrouchedHeight = _unCrouchedHeight;
+            crouchedHeight = _crouchedHeight;
+            crouchingSpeedModifier = _crouchingSpeedModifier;
 
             jumpMaxCount = _jumpMaxCount;
             jumpImpulse = _jumpImpulse;
@@ -3327,17 +3383,15 @@ namespace ECM2.Characters
             jumpPreGroundedTime = _jumpPreGroundedTime;
             jumpPostGroundedTime = _jumpPostGroundedTime;
 
-            maxSwimSpeed = _maxSwimSpeed;
-            brakingDecelerationSwimming = _brakingDecelerationSwimming;
-            swimmingFriction = _swimmingFriction;
-            buoyancy = _buoyancy;
+            gravityScale = _gravityScale;
 
-            maxFlySpeed = _maxFlySpeed;
-            brakingDecelerationFlying = _brakingDecelerationFlying;
-            flyingFriction = _flyingFriction;
-
-            mass = _mass;
-
+            mass = mass;
+            impartPlatformVelocity = _impartPlatformVelocity;
+            impartPlatformMovement = _impartPlatformMovement;
+            impartPlatformRotation = _impartPlatformRotation;
+            enablePhysicsInteraction = _enablePhysicsInteraction;
+            applyPushForceToCharacters = _applyPushForceToCharacters;
+            applyStandingDownwardForce = _applyStandingDownwardForce;
             pushForceScale = _pushForceScale;
             standingDownwardForceScale = _standingDownwardForceScale;
         }
@@ -3349,27 +3403,16 @@ namespace ECM2.Characters
 
         protected virtual void OnAwake()
         {
-            // Cache and init components
+            // Cache components
 
+            _transform = GetComponent<Transform>();
             _characterMovement = GetComponent<CharacterMovement>();
-            _characterMovement.SetCallbackTarget(this);
-
             _animator = GetComponentInChildren<Animator>();
             _rootMotionController = GetComponentInChildren<RootMotionController>();
 
-            // Initialize player input action (if any)
-
-            SetupPlayerInput();
-        }
-
-        /// <summary>
-        /// Our OnDestroy method.
-        /// If overriden, must call base method in order to fully initialize the class.
-        /// </summary>
-
-        protected virtual void OnOnDestroy()
-        {
-            _characterMovement.RemoveCallbackTarget();
+            // Enable late fixed update (default)
+            
+            enableLateFixedUpdate = true;
         }
 
         /// <summary>
@@ -3379,12 +3422,29 @@ namespace ECM2.Characters
 
         protected virtual void OnOnEnable()
         {
-            // Enable input actions
+            // Setup player InputActions (if any).
 
-            movementInputAction?.Enable();            
-            jumpInputAction?.Enable();
-            crouchInputAction?.Enable();
-            sprintInputAction?.Enable();
+            InitPlayerInput();
+            
+            // Subscribe to CharacterMovement events
+
+            characterMovement.Collided += OnCollided;
+            characterMovement.FoundGround += OnFoundGround;
+
+            // If enabled, start LateFixedUpdate coroutine
+
+            if (_enableLateFixedUpdateCoroutine)
+                EnableLateFixedUpdate(true);
+
+            // Update CharacterMovement flags
+
+            characterMovement.enablePhysicsInteraction = enablePhysicsInteraction;
+            characterMovement.physicsInteractionAffectsCharacters = applyPushForceToCharacters;
+            characterMovement.pushForceScale = pushForceScale;
+
+            characterMovement.impartPlatformMovement = impartPlatformMovement;
+            characterMovement.impartPlatformRotation = impartPlatformRotation;
+            characterMovement.impartPlatformVelocity = impartPlatformVelocity;
         }
 
         /// <summary>
@@ -3394,12 +3454,19 @@ namespace ECM2.Characters
 
         protected virtual void OnOnDisable()
         {
-            // Disable input actions
+            // Unsubscribe from input action events and disable input actions (if any, e.g. inputActions != null)
 
-            movementInputAction?.Disable();            
-            jumpInputAction?.Disable();
-            crouchInputAction?.Disable();
-            sprintInputAction?.Disable();
+            DeinitPlayerInput();
+
+            // Unsubscribe from CharacterMovement events
+
+            characterMovement.Collided -= OnCollided;
+            characterMovement.FoundGround -= OnFoundGround;
+
+            // If enabled, stops LateFixedUpdate coroutine
+
+            if (_enableLateFixedUpdateCoroutine)
+                EnableLateFixedUpdate(false);
         }
 
         /// <summary>
@@ -3409,9 +3476,9 @@ namespace ECM2.Characters
 
         protected virtual void OnStart()
         {
-            // Defaults to walking movement mode
+            // Sets character's startup movement mode
 
-            SetMovementMode(MovementMode.Walking);
+            SetMovementMode(defaultMovementMode);
         }
 
         /// <summary>
@@ -3420,7 +3487,18 @@ namespace ECM2.Characters
 
         protected virtual void OnFixedUpdate()
         {
-            PerformMovement();
+            // EMPTY BY DEFAULT
+        }
+
+        /// <summary>
+        /// Our LateFixedUpdate method. E.g called AFTER Physics internal update.
+        /// </summary>
+
+        protected virtual void OnLateFixedUpdate()
+        {
+            // Simulate this character
+
+            Simulate(Time.deltaTime);
         }
 
         /// <summary>
@@ -3431,9 +3509,9 @@ namespace ECM2.Characters
         {
             HandleInput();
 
-            UpdateRotation();
-
             Animate();
+
+            RotateWithRootMotion();
         }
 
         /// <summary>
@@ -3442,65 +3520,80 @@ namespace ECM2.Characters
 
         protected virtual void OnLateUpdate()
         {
-            // EMPTY
+            // EMPTY BY DEFAULT
         }
 
         #endregion
 
-        #region MONOBEHAVIOUR
-        
-        private void Reset()
+        #region MONOBEHAVIOR
+
+        public void Reset()
         {
             OnReset();
         }
 
-        private void OnValidate()
+        public void OnValidate()
         {
             OnOnValidate();
         }
-        
-        private void Awake()
+
+        public void Awake()
         {
             OnAwake();
         }
 
-        private void OnDestroy()
-        {
-            OnOnDestroy();
-        }
-        
-        private void OnEnable()
+        public void OnEnable()
         {
             OnOnEnable();
         }
 
-        private void OnDisable()
+        public void OnDisable()
         {
             OnOnDisable();
         }
 
-        private void Start()
+        public void Start()
         {
             OnStart();
         }
 
-        private void FixedUpdate()
+        public void FixedUpdate()
         {
             OnFixedUpdate();
         }
 
-        private void Update()
+        public void OnTriggerEnter(Collider other)
+        {
+            AddPhysicsVolume(other);
+        }
+
+        public void OnTriggerExit(Collider other)
+        {
+            RemovePhysicsVolume(other);
+        }
+
+        private IEnumerator LateFixedUpdate()
+        {
+            WaitForFixedUpdate waitTime = new WaitForFixedUpdate();
+
+            while (true)
+            {
+                yield return waitTime;
+
+                OnLateFixedUpdate();
+            }
+        }
+
+        public void Update()
         {
             OnUpdate();
         }
 
-        private void LateUpdate()
+        public void LateUpdate()
         {
             OnLateUpdate();
         }
 
         #endregion
     }
-
-    #endregion
 }

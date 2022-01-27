@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ECM2.Components
+namespace EasyCharacterMovement
 {
     /// <summary>
     /// CharacterLook.

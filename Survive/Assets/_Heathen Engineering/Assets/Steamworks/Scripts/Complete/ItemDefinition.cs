@@ -1048,7 +1048,7 @@ namespace HeathenEngineering.SteamworksIntegration
             if (!string.IsNullOrEmpty(exchange))
                 sb.Append(",\n\t\t\"exchange\": \"" + exchange + "\"");
 
-            if (item_price.usePricing)
+            if (item_price.usePricing || item_price.useCategory)
             {
                 var price = item_price.ToString();
                 if (!string.IsNullOrEmpty(price))

@@ -6,8 +6,27 @@ namespace HeathenEngineering.SteamworksIntegration
 {
     public class InputAction : Events.GameEvent<InputActionData>
     {
-        public InputActionType type;
-        public string actionName;
+        public InputActionType Type
+        {
+            get => type;
+#if UNITY_EDITOR
+            set => type = value;
+#endif
+        }
+        public string ActionName
+        {
+            get => actionName;
+#if UNITY_EDITOR
+            set => actionName = value;
+#endif
+        }
+
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [SerializeField]
+        private InputActionType type;
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        [SerializeField]
+        private string actionName;
 
         public Steamworks.InputAnalogActionHandle_t AnalogHandle => analogHandle;
         public Steamworks.InputDigitalActionHandle_t DigitalHandle => digitalHandle;
@@ -29,7 +48,7 @@ namespace HeathenEngineering.SteamworksIntegration
             }
 
 
-            if (API.Input.Client.Initalized)
+            if (API.Input.Client.Initialized)
             {
                 var current = controllerMapping[controller];
 

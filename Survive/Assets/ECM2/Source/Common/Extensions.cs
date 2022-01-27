@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ECM2.Common
+namespace EasyCharacterMovement
 {
     public static class Extensions
     {
@@ -28,9 +28,9 @@ namespace ECM2.Common
 
         public static bool isZero(this float value)
         {
-            const float tolerance = 0.0000000001f;
+            const float kTolerance = 0.0000000001f;
 
-            return Mathf.Abs(value) < tolerance;
+            return Mathf.Abs(value) < kTolerance;
         }
 
         /// <summary>
@@ -106,9 +106,9 @@ namespace ECM2.Common
         {
             // Allow 1% error tolerance, to account for numeric imprecision.
 
-            const float errorTolerance = 1.01f;
+            const float kErrorTolerance = 1.01f;
 
-            return vector3.sqrMagnitude > magnitude * magnitude * errorTolerance;
+            return vector3.sqrMagnitude > magnitude * magnitude * kErrorTolerance;
         }
 
         /// <summary>
@@ -229,35 +229,6 @@ namespace ECM2.Common
             Quaternion q = Quaternion.LookRotation(forward, upAxis);
 
             return q * vector3;
-        }
-
-        /// <summary>
-        /// The velocity of the rigidbody at the worldPoint in global space.
-        /// This will take the angularVelocity of the rigidbody into account when calculating the velocity.
-        /// </summary>
-
-        public static Vector3 getVelocityAtPoint(this Rigidbody rigidbody, Vector3 worldPoint)
-        {
-            // If angular velocity is zero, just return velocity
-            
-            Vector3 angularVelocity = rigidbody.angularVelocity;
-
-            if (angularVelocity.isZero())
-                return rigidbody.velocity;
-
-            // If angular velocity is not zero...
-
-            // Calculate the next point where the worldPoint will be, following its actual rotation.
-            // Then compute tangentialVelocity as the deltaPositions / deltaTime.
-
-            Vector3 centerOfMass = rigidbody.worldCenterOfMass;
-
-            Quaternion q = Quaternion.Euler(angularVelocity * Mathf.Rad2Deg * Time.deltaTime);
-            Vector3 rotatedPoint = centerOfMass + q * (worldPoint - centerOfMass);
-
-            Vector3 tangentialVelocity = (rotatedPoint - worldPoint) / Time.deltaTime;
-
-            return rigidbody.velocity + tangentialVelocity;
         }
 
         /// <summary>
