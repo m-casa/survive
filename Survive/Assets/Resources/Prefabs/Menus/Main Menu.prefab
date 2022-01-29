@@ -674,9 +674,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8848189407080983822}
-        m_TargetAssemblyTypeName: Transition, Assembly-CSharp
-        m_MethodName: StartHostTransition
+      - m_Target: {fileID: 7107529125347633017}
+        m_TargetAssemblyTypeName: MainMenu, Assembly-CSharp
+        m_MethodName: HostGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -755,12 +755,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7fe4ecca7ad92846b1b07717e5d1bf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cSteamID:
-    m_SteamID: 109775240978209684
+  networkManagerPrefab: {fileID: 1817182554414097446, guid: 6e4c12f62b0e1374ea254c568bf84da8, type: 3}
+  steamNetworkManagerPrefab: {fileID: 171675568055481899, guid: a78888d980bf38c4cba3b488cf763289, type: 3}
   canvas: {fileID: 5847968047461418226}
+  transition: {fileID: 8848189407080983822}
   title: {fileID: 5847968048957331703}
   lobbyButtons: {fileID: 5847968048865626849}
-  connecting: {fileID: 5278278700180215139}
+  joinButton: {fileID: 5847968048475830927}
+  connectingTxt: {fileID: 5278278700180215139}
 --- !u!1 &5847968048258821725
 GameObject:
   m_ObjectHideFlags: 0
@@ -1060,9 +1062,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8848189407080983822}
-        m_TargetAssemblyTypeName: Transition, Assembly-CSharp
-        m_MethodName: StartJoinTransition
+      - m_Target: {fileID: 7107529125347633017}
+        m_TargetAssemblyTypeName: MainMenu, Assembly-CSharp
+        m_MethodName: JoinGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1493,6 +1495,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39431b10365a60a42b18e34fe12f804c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mainMenu: {fileID: 7107529125347633017}
   flashCanvasGroup: {fileID: 8848189405810129424}
   fadeCanvasGroup: {fileID: 8848189406207988051}

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class CameraManager : MonoBehaviour
 {
@@ -22,8 +23,26 @@ public class CameraManager : MonoBehaviour
         Instance = this;
     }
 
+    void OnEnable()
+    {
+        SceneManager.activeSceneChanged += ResetCinemachineCamera;
+    }
+
+    void OnDisable()
+    {
+        SceneManager.activeSceneChanged -= ResetCinemachineCamera;
+    }
+
     public GameObject GetCinemachineCamera()
     {
         return _cinemachineCamera;
+    }
+
+    private void ResetCinemachineCamera(Scene current, Scene next)
+    {
+        foreach (Transform virtualCamera in _cinemachineCamera.transform)
+        {
+            Destroy(virtualCamera.gameObject);
+        }
     }
 }

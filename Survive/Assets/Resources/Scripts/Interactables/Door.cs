@@ -26,8 +26,8 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
         character.ChangeTransparency();
 
         // Start the door transition
-        character.StartFade(1.0f, 0.0f, 0.5f);
-        transition.StartFade(0.0f, 1.0f, 0.5f);
+        StartCoroutine(character.CharacterFade(1.0f, 0.0f, 0.5f));
+        StartCoroutine(transition.ScreenFade(0.0f, 1.0f, 0.5f));
         yield return new WaitForSeconds(.75f);
 
         // Move the Character to the next room
@@ -36,8 +36,8 @@ public class Door : MonoBehaviour, IInteractable<GameObject>
         yield return new WaitForSeconds(.75f);
 
         // End the door transition
-        character.StartFade(0.0f, 1.0f, 0.5f);
-        transition.StartFade(1.0f, 0.0f, 0.5f);
+        StartCoroutine(character.CharacterFade(0.0f, 1.0f, 0.5f));
+        StartCoroutine(transition.ScreenFade(1.0f, 0.0f, 0.5f));
         yield return new WaitForSeconds(0.5f);
 
         // Re-enable the player's controls

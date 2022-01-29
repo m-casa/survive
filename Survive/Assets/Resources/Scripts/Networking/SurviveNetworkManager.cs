@@ -19,7 +19,7 @@ public class SurviveNetworkManager : NetworkManager
             // Set this player's Steam ID and use numPlayers - 1 since
             //  we're grabbing an index, which starts counting at 0
             CSteamID cSteamId = SteamMatchmaking.GetLobbyMemberByIndex(
-                SteamLobby.LobbyId,
+                SteamLogic.LobbyId,
                 numPlayers - 1);
 
             PlayerInfo playerInfo = conn.identity.GetComponent<PlayerInfo>();
@@ -35,9 +35,9 @@ public class SurviveNetworkManager : NetworkManager
         base.OnServerDisconnect(conn);
     }
 
-    public override void OnClientDisconnect(NetworkConnection conn)
+    public override void OnClientDisconnect()
     {
-        base.OnClientDisconnect(conn);
+        base.OnClientDisconnect();
 
         // If not null, call the event
         ClientDisconnected?.Invoke();

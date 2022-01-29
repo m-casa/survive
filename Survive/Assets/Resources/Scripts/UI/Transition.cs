@@ -3,31 +3,15 @@ using UnityEngine;
 
 public class Transition : MonoBehaviour
 {
-    [SerializeField] private MainMenu mainMenu;
     [SerializeField] private CanvasGroup flashCanvasGroup;
     [SerializeField] private CanvasGroup fadeCanvasGroup;
 
     void Awake()
     {
-        StartFade(1.0f, 0.0f, 1.5f);
+        StartCoroutine(ScreenFade(1.0f, 0.0f, 1.5f));
     }
 
-    public void StartFade(float start, float end, float duration)
-    {
-        StartCoroutine(ScreenFade(start, end, duration));
-    }
-
-    public void StartHostTransition()
-    {
-        StartCoroutine(HostTransition());
-    }
-
-    public void StartJoinTransition()
-    {
-        StartCoroutine(JoinTransition());
-    }
-
-    private IEnumerator ScreenFlash(float start, float end, float duration)
+    public IEnumerator ScreenFlash(float start, float end, float duration)
     {
         for (float t = 0f; t < duration; t += Time.deltaTime)
         {
@@ -52,7 +36,7 @@ public class Transition : MonoBehaviour
         flashCanvasGroup.alpha = start;
     }
 
-    private IEnumerator ScreenFade(float start, float end, float duration)
+    public IEnumerator ScreenFade(float start, float end, float duration)
     {
         for (float t = 0f; t < duration; t += Time.deltaTime)
         {
@@ -66,21 +50,9 @@ public class Transition : MonoBehaviour
         fadeCanvasGroup.alpha = end;
     }
 
-    private IEnumerator HostTransition()
+    public IEnumerator SceneChange()
     {
         yield return StartCoroutine(ScreenFlash(0.0f, 1.0f, 0.15f));
         yield return StartCoroutine(ScreenFade(0.0f, 1.0f, 1.5f));
-
-        StartCoroutine(ScreenFade(1.0f, 0.0f, 1.5f));
-        mainMenu.HostLobby();
-    }
-
-    private IEnumerator JoinTransition()
-    {
-        yield return StartCoroutine(ScreenFlash(0.0f, 1.0f, 0.15f));
-        yield return StartCoroutine(ScreenFade(0.0f, 1.0f, 1.5f));
-
-        StartCoroutine(ScreenFade(1.0f, 0.0f, 1.5f));
-        mainMenu.JoinLocally();
     }
 }

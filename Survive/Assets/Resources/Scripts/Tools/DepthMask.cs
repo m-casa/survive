@@ -9,10 +9,10 @@ public class DepthMask : MonoBehaviour
     {
         foreach (MeshRenderer mesh in meshArray)
         {
+            var mats = mesh.sharedMaterials;
+
             for (int i = 0; i < mesh.sharedMaterials.Length; i++)
             {
-                var mats = mesh.sharedMaterials;
-
                 mats[i] = depthMask;
 
                 mesh.sharedMaterials = mats;

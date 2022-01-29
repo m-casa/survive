@@ -1,15 +1,18 @@
 using HeathenEngineering.SteamworksIntegration;
 using Mirror;
 using Steamworks;
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(NetworkManager))]
-public class SteamLobby : MonoBehaviour
+public class SteamLogic : MonoBehaviour
 {
     public static CSteamID LobbyId { get; private set; }
 
     private const string HostAddressKey = "HostAddress";
+
+    public static event Action LobbyFailed;
+    public static event Action LobbyJoined;
 
     protected Callback<LobbyCreated_t> lobbyCreated;
     protected Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequested;
@@ -37,15 +40,18 @@ public class SteamLobby : MonoBehaviour
     /// <summary>
     /// If our lobby is successfully created, host a server on our local network.
     /// </summary>
-    
+
     private void OnLobbyCreated(LobbyCreated_t callback)
     {
         // Make sure the lobby was successfully created
-        if (callback.m_eResult != EResult.k_EResultOK) { return; }
+        if (callback.m_eResult != EResult.k_EResultOK) 
+        {
+            LobbyFailed?.Invoke();
+
+            return; 
+        }
 
         LobbyId = new CSteamID(callback.m_ulSteamIDLobby);
-
-        Debug.Log("HERE IS THE STEAM ID: " + LobbyId);
 
         // Since other players don't join by IP but rather by the host's Steam ID,
         //  we can ask Steam to keep track of our ID by associating it with HostAddressKey
@@ -63,15 +69,10 @@ public class SteamLobby : MonoBehaviour
    
     private void OnGameLobbyJoinRequested(GameLobbyJoinRequested_t callback)
     {
-        if (NetworkServer.active) 
+        // If we're already in a game, stop the client
+        if (NetworkClient.active)
         {
-            // If we're already hosting a server, stop the server
             NetworkManager.singleton.StopHost();
-        }
-        else if (NetworkClient.active)
-        {
-            // If we're already in a game, stop the client
-            NetworkManager.singleton.StopClient();;
         }
 
         SteamMatchmaking.JoinLobby(callback.m_steamIDLobby);
@@ -87,14 +88,23 @@ public class SteamLobby : MonoBehaviour
         //  have them ignore this part (they're not the one entering)
         if (NetworkServer.active) { return; }
 
+        LobbyJoined?.Invoke();
+
         // Retrieve the host's Steam ID we associated with
         //  HostAddressKey when the lobby was created
         string hostAddress = SteamMatchmaking.GetLobbyData(
             new CSteamID(callback.m_ulSteamIDLobby), 
             HostAddressKey);
 
-        NetworkManager.singleton.networkAddress = hostAddress;
-        NetworkManager.singleton.StartClient();
+        if (!string.IsNullOrWhiteSpace(hostAddress))
+        {
+            NetworkManager.singleton.networkAddress = hostAddress;
+            NetworkManager.singleton.StartClient();
+        }
+        else
+        {
+            LobbyFailed?.Invoke();
+        }
     }
 
     /// <summary>

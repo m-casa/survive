@@ -180,121 +180,6 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Overrides OnStartAuthority.
-    /// Setup the local player's authority.
-    /// </summary>
-
-    public override void OnStartLocalPlayer()
-    {
-        // Disable game objects not used by the local player
-        foreach (GameObject item in disableList)
-        {
-            item.SetActive(false);
-        }
-
-        // Enable game objects used by the local player
-        foreach (GameObject item in enableList)
-        {
-            item.SetActive(true);
-        }
-    }
-
-    /// <summary>
-    /// Extends OnStart.
-    /// Only allow inputs on the local player's Character.
-    /// </summary>
-
-    protected override void OnStart()
-    {
-        base.OnStart();
-
-        if (!isLocalPlayer)
-            UnsubFromInputActions();
-    }
-
-    /// <summary>
-    /// Overrides OnReset.
-    /// Resets speed multipliers.
-    /// </summary>
-
-    protected override void OnReset()
-    {
-        // Character defaults
-        base.OnReset();
-
-        // Speed multiplier defaults
-        forwardSpeedMultiplier = 1.0f;
-        backwardSpeedMultiplier = 0.75f;
-        strafeSpeedMultiplier = 1.0f;
-        quickTurnSpeed = 380;
-
-        SetRotationMode(RotationMode.None);
-    }
-
-    /// <summary>
-    /// Overrides OnOnValidate.
-    /// Validates speed multipliers.
-    /// </summary>
-
-    protected override void OnOnValidate()
-    {
-        // Validates Character fields
-        base.OnOnValidate();
-
-        // Validate speed multipliers
-        forwardSpeedMultiplier = _forwardSpeedMultiplier;
-        backwardSpeedMultiplier = _backwardSpeedMultiplier;
-        strafeSpeedMultiplier = _strafeSpeedMultiplier;
-        quickTurnSpeed = _quickTurnSpeed;
-    }
-
-    /// <summary>
-    /// Overrides OnUpdate.
-    /// Only actively update the local player's state;
-    /// </summary>
-
-    protected override void OnUpdate()
-    {
-        if (isLocalPlayer)
-            base.OnUpdate();
-    }
-
-    /// <summary>
-    /// Unsub from all input action handlers.
-    /// </summary>
-
-    protected virtual void UnsubFromInputActions()
-    {
-        movementInputAction = null;
-
-        if (sprintInputAction != null)
-        {
-            sprintInputAction.started -= OnSprint;
-            sprintInputAction.performed -= OnSprint;
-            sprintInputAction.canceled -= OnSprint;
-
-            sprintInputAction = null;
-        }
-
-        if (interactInputAction != null)
-        {
-            interactInputAction.started -= OnInteract;
-            interactInputAction.performed -= OnInteract;
-            interactInputAction.canceled -= OnInteract;
-
-            interactInputAction = null;
-        }
-
-        if (quickTurnInputAction != null)
-        {
-            quickTurnInputAction.started -= OnQuickTurn;
-            quickTurnInputAction.performed -= OnQuickTurn;
-
-            quickTurnInputAction = null;
-        }
-    }
-
-    /// <summary>
     /// Overrides SetupPlayerInput method.
     /// Sets up InputActions for tank controls.
     /// </summary>
@@ -379,6 +264,86 @@ public class ClassicCharacter : Character
             quickTurnInputAction?.Disable();
             quickTurnInputAction = null;
         }
+    }
+
+    /// <summary>
+    /// Overrides OnStartAuthority.
+    /// Setup the local player's authority.
+    /// </summary>
+
+    public override void OnStartLocalPlayer()
+    {
+        // Disable game objects not used by the local player
+        foreach (GameObject item in disableList)
+        {
+            item.SetActive(false);
+        }
+
+        // Enable game objects used by the local player
+        foreach (GameObject item in enableList)
+        {
+            item.SetActive(true);
+        }
+    }
+
+    /// <summary>
+    /// Extends OnStart.
+    /// Only allow inputs on the local player's Character.
+    /// </summary>
+
+    protected override void OnStart()
+    {
+        base.OnStart();
+
+        if (!isLocalPlayer)
+            UnsubFromInputActions();
+    }
+
+    /// <summary>
+    /// Overrides OnReset.
+    /// Resets speed multipliers.
+    /// </summary>
+
+    protected override void OnReset()
+    {
+        // Character defaults
+        base.OnReset();
+
+        // Speed multiplier defaults
+        forwardSpeedMultiplier = 1.0f;
+        backwardSpeedMultiplier = 0.75f;
+        strafeSpeedMultiplier = 1.0f;
+        quickTurnSpeed = 380;
+
+        SetRotationMode(RotationMode.None);
+    }
+
+    /// <summary>
+    /// Overrides OnOnValidate.
+    /// Validates speed multipliers.
+    /// </summary>
+
+    protected override void OnOnValidate()
+    {
+        // Validates Character fields
+        base.OnOnValidate();
+
+        // Validate speed multipliers
+        forwardSpeedMultiplier = _forwardSpeedMultiplier;
+        backwardSpeedMultiplier = _backwardSpeedMultiplier;
+        strafeSpeedMultiplier = _strafeSpeedMultiplier;
+        quickTurnSpeed = _quickTurnSpeed;
+    }
+
+    /// <summary>
+    /// Overrides OnUpdate.
+    /// Only actively update the local player's state;
+    /// </summary>
+
+    protected override void OnUpdate()
+    {
+        if (isLocalPlayer)
+            base.OnUpdate();
     }
 
     /// <summary>
@@ -494,68 +459,6 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Updates the Character's animation to quick turn.
-    /// </summary>
-
-    protected virtual void PlayQuickTurnAnimation()
-    {
-        animancer.TryPlay("Quick Turn", 0.25f);
-        CmdChangeAnimationClip("Quick Turn");
-    }
-
-    /// <summary>
-    /// Updates the Character's movement animation.
-    /// </summary>
-
-    protected virtual void PlayMovementAnimation()
-    {
-        Vector2 movementInput = GetMovementInput();
-
-        // We're not moving
-        if (movementInput == Vector2.zero)
-        {
-            animancer.TryPlay("Idle", 0.25f);
-            CmdChangeAnimationClip("Idle");
-        }
-
-        // Moving forward
-        else if (movementInput.y > 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
-        {
-            if (IsSprinting())
-            {
-                animancer.TryPlay("Run", 0.25f);
-                CmdChangeAnimationClip("Run");
-            }
-            else
-            {
-                animancer.TryPlay("Walk", 0.25f);
-                CmdChangeAnimationClip("Walk");
-            }
-        }
-
-        // Moving backwards
-        else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
-        {
-            animancer.TryPlay("Walk Backwards", 0.25f);
-            CmdChangeAnimationClip("Walk Backwards");
-        }
-
-        // Turning left
-        else if (movementInput.x < 0)
-        {
-            animancer.TryPlay("Turn Left", 0.25f);
-            CmdChangeAnimationClip("Turn Left");
-        }
-
-        // Turning right
-        else if (movementInput.x > 0f)
-        {
-            animancer.TryPlay("Turn Right", 0.25f);
-            CmdChangeAnimationClip("Turn Right");
-        }
-    }
-
-    /// <summary>
     /// Only allow the Character to sprint forward.
     /// </summary>
 
@@ -605,38 +508,99 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Fade the Character in or out.
+    /// Updates the Character's animation to quick turn.
     /// </summary>
 
-    protected virtual IEnumerator CharacterFade(float start, float end, float duration)
+    protected virtual void PlayQuickTurnAnimation()
     {
-        if (end != 0.0f)
+        CmdChangeAnimationClip("Quick Turn");
+        animancer.TryPlay("Quick Turn", 0.25f);
+    }
+
+    /// <summary>
+    /// Updates the Character's movement animation.
+    /// </summary>
+
+    protected virtual void PlayMovementAnimation()
+    {
+        Vector2 movementInput = GetMovementInput();
+
+        // We're not moving
+        if (movementInput == Vector2.zero)
         {
-            characterMesh.enabled = true;
-            blobShadow.SetActive(true);
+            CmdChangeAnimationClip("Idle");
+            animancer.TryPlay("Idle", 0.25f);
         }
 
-        Color tempColor = characterMesh.material.color;
-
-        for (float t = 0f; t < duration; t += Time.deltaTime)
+        // Moving forward
+        else if (movementInput.y > 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
         {
-            float normalizedTime = t / duration;
-
-            // Right here, you can now use normalizedTime as the third parameter in any Lerp from start to end
-            tempColor.a = Mathf.Lerp(start, end, normalizedTime);
-            characterMesh.material.color = tempColor;
-
-            yield return null;
+            if (IsSprinting())
+            {
+                CmdChangeAnimationClip("Run");
+                animancer.TryPlay("Run", 0.25f);
+            }
+            else
+            {
+                CmdChangeAnimationClip("Walk");
+                animancer.TryPlay("Walk", 0.25f);
+            }
         }
 
-        // Without this, the value will end at something like 0.9992367
-        tempColor.a = end;
-        characterMesh.material.color = tempColor;
-
-        if (end == 0.0f)
+        // Moving backwards
+        else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
         {
-            characterMesh.enabled = false;
-            blobShadow.SetActive(false);
+            CmdChangeAnimationClip("Walk Backwards");
+            animancer.TryPlay("Walk Backwards", 0.25f);
+        }
+
+        // Turning left
+        else if (movementInput.x < 0)
+        {
+            CmdChangeAnimationClip("Turn Left");
+            animancer.TryPlay("Turn Left", 0.25f);
+        }
+
+        // Turning right
+        else if (movementInput.x > 0f)
+        {
+            CmdChangeAnimationClip("Turn Right");
+            animancer.TryPlay("Turn Right", 0.25f);
+        }
+    }
+
+    /// <summary>
+    /// Unsub from all input action handlers.
+    /// </summary>
+
+    protected virtual void UnsubFromInputActions()
+    {
+        movementInputAction = null;
+
+        if (sprintInputAction != null)
+        {
+            sprintInputAction.started -= OnSprint;
+            sprintInputAction.performed -= OnSprint;
+            sprintInputAction.canceled -= OnSprint;
+
+            sprintInputAction = null;
+        }
+
+        if (interactInputAction != null)
+        {
+            interactInputAction.started -= OnInteract;
+            interactInputAction.performed -= OnInteract;
+            interactInputAction.canceled -= OnInteract;
+
+            interactInputAction = null;
+        }
+
+        if (quickTurnInputAction != null)
+        {
+            quickTurnInputAction.started -= OnQuickTurn;
+            quickTurnInputAction.performed -= OnQuickTurn;
+
+            quickTurnInputAction = null;
         }
     }
 
@@ -678,9 +642,9 @@ public class ClassicCharacter : Character
     /// </summary>
 
     [Command]
-    protected virtual void CmdStartFade(float start, float end, float duration)
+    protected virtual void CmdCharacterFade(float start, float end, float duration)
     {
-        RpcStartFade(start, end, duration);
+        RpcCharacterFade(start, end, duration);
     }
 
     /// <summary>
@@ -688,7 +652,7 @@ public class ClassicCharacter : Character
     /// </summary>
     
     [ClientRpc(includeOwner = false)]
-    protected virtual void RpcStartFade(float start, float end, float duration)
+    protected virtual void RpcCharacterFade(float start, float end, float duration)
     {
         StartCoroutine(CharacterFade(start, end, duration));
     }
@@ -798,6 +762,11 @@ public class ClassicCharacter : Character
 
     public virtual void ChangeTransparency()
     {
+        // The local player needs to let other clients know
+        //  to change the transparency for this character
+        if (isLocalPlayer)
+            CmdChangeTransparency();
+
         if (characterMesh.material == defaultMaterial)
         {
             characterMesh.material = transparentMaterial;
@@ -806,22 +775,47 @@ public class ClassicCharacter : Character
         {
             characterMesh.material = defaultMaterial;
         }
-
-        // The local player needs to let other clients know
-        //  to change the transparency for this character
-        if (isLocalPlayer)
-            CmdChangeTransparency();
     }
 
     /// <summary>
-    /// Call the CharacterFade method.
+    /// Fade the Character in or out.
     /// </summary>
 
-    public virtual void StartFade(float start, float end, float duration)
+    public virtual IEnumerator CharacterFade(float start, float end, float duration)
     {
-        StartCoroutine(CharacterFade(start, end, duration));
+        // The local player needs to let other clients know
+        //  to fade this character in or out
+        if (isLocalPlayer)
+            CmdCharacterFade(start, end, duration);
 
-        CmdStartFade(start, end, duration);
+        if (end != 0.0f)
+        {
+            characterMesh.enabled = true;
+            blobShadow.SetActive(true);
+        }
+
+        Color tempColor = characterMesh.material.color;
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            float normalizedTime = t / duration;
+
+            // Right here, you can now use normalizedTime as the third parameter in any Lerp from start to end
+            tempColor.a = Mathf.Lerp(start, end, normalizedTime);
+            characterMesh.material.color = tempColor;
+
+            yield return null;
+        }
+
+        // Without this, the value will end at something like 0.9992367
+        tempColor.a = end;
+        characterMesh.material.color = tempColor;
+
+        if (end == 0.0f)
+        {
+            characterMesh.enabled = false;
+            blobShadow.SetActive(false);
+        }
     }
 
     #endregion

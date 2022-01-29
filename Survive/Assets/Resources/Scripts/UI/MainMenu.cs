@@ -1,20 +1,25 @@
 using HeathenEngineering.SteamworksIntegration;
 using Mirror;
 using Steamworks;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class MainMenu : MonoBehaviour
 {
-    public CSteamID cSteamID;
+    [Header("Network Managers")]
+    [SerializeField] private GameObject networkManagerPrefab;
+    [SerializeField] private GameObject steamNetworkManagerPrefab;
 
+    [Header("UI")]
     [SerializeField] private Canvas canvas;
+    [SerializeField] private Transition transition;
     [SerializeField] private GameObject title;
     [SerializeField] private GameObject lobbyButtons;
-    [SerializeField] private GameObject connecting;
+    [SerializeField] private GameObject joinButton;
+    [SerializeField] private GameObject connectingTxt;
 
-    protected Callback<LobbyCreated_t> lobbyCreated;
-    protected Callback<LobbyEnter_t> lobbyEnter;
+    private GameObject networkManager;
 
     /// <summary>
     /// Setup the canvas to use the main camera for screen space.
@@ -35,9 +40,7 @@ public class MainMenu : MonoBehaviour
         // Make sure the Steam API is available (Steam is running)
         if (!SteamSettings.Initialized) { return; }
 
-        // These are callbacks that will run methods when a steam event has occurred
-        lobbyCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
-        lobbyEnter = Callback<LobbyEnter_t>.Create(OnLobbyEnter);
+        joinButton.SetActive(false);
     }
 
     /// <summary>
@@ -47,6 +50,9 @@ public class MainMenu : MonoBehaviour
     void OnEnable()
     {
         SurviveNetworkManager.ClientDisconnected += HandleClientDisconnected;
+
+        SteamLogic.LobbyFailed += HandleClientDisconnected;
+        SteamLogic.LobbyJoined += HandleClientConnecting;
     }
 
     /// <summary>
@@ -56,22 +62,45 @@ public class MainMenu : MonoBehaviour
     void OnDisable()
     {
         SurviveNetworkManager.ClientDisconnected -= HandleClientDisconnected;
+
+        SteamLogic.LobbyFailed -= HandleClientDisconnected;
+        SteamLogic.LobbyJoined -= HandleClientConnecting;
     }
 
     /// <summary>
-    /// Create a lobby on our local network.
+    /// Calls the Host coroutine.
+    /// </summary>
+    
+    public void HostGame()
+    {
+        StartCoroutine(Host());
+    }
+
+    /// <summary>
+    /// Calls the Join coroutine.
+    /// </summary>
+
+    public void JoinGame()
+    {
+        StartCoroutine(Join());
+    }
+
+    /// <summary>
+    /// Host a lobby on our local network.
     /// Use Steam if the API is initialized
     /// </summary>
 
-    public void HostLobby()
+    private IEnumerator Host()
     {
+        yield return StartCoroutine(transition.SceneChange());
+
         HandleClientConnecting();
 
         if (SteamSettings.Initialized)
         {
             SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypeFriendsOnly, NetworkManager.singleton.maxConnections);
 
-            return;
+            yield break;
         }
 
         NetworkManager.singleton.StartHost();
@@ -81,39 +110,29 @@ public class MainMenu : MonoBehaviour
     /// Join the lobby on our local network.
     /// </summary>
 
-    public void JoinLocally()
+    private IEnumerator Join()
     {
+        yield return StartCoroutine(transition.SceneChange());
+
         HandleClientConnecting();
-
-        if (SteamSettings.Initialized)
-        {
-            SteamMatchmaking.JoinLobby(cSteamID);
-
-            return;
-        }
 
         NetworkManager.singleton.StartClient();
     }
 
     /// <summary>
-    /// If our lobby is not successfully created, reset the main menu.
+    /// Spawns the appropriate Network Manager.
     /// </summary>
 
-    private void OnLobbyCreated(LobbyCreated_t callback)
+    private void SpawnNetworkManager()
     {
-        if (callback.m_eResult != EResult.k_EResultOK)
+        if (SteamSettings.Initialized)
         {
-            HandleClientDisconnected();
+            networkManager = Instantiate(steamNetworkManagerPrefab);
         }
-    }
-
-    /// <summary>
-    /// If we successfully joined the lobby, show we're connecting.
-    /// </summary>
-
-    private void OnLobbyEnter(LobbyEnter_t callback)
-    {
-        HandleClientConnecting();
+        else
+        {
+            networkManager = Instantiate(networkManagerPrefab);
+        }
     }
 
     /// <summary>
@@ -122,9 +141,13 @@ public class MainMenu : MonoBehaviour
 
     private void HandleClientConnecting()
     {
+        StartCoroutine(transition.ScreenFade(1.0f, 0.0f, 1.5f));
+
         title.SetActive(false);
         lobbyButtons.SetActive(false);
-        connecting.SetActive(true);
+        connectingTxt.SetActive(true);
+
+        SpawnNetworkManager();
     }
 
     /// <summary>
@@ -133,9 +156,11 @@ public class MainMenu : MonoBehaviour
 
     private void HandleClientDisconnected()
     {
+        Destroy(networkManager);
+
+        connectingTxt.SetActive(false);
         title.SetActive(true);
         lobbyButtons.SetActive(true);
-        connecting.SetActive(false);
 
         foreach (Button button in lobbyButtons.GetComponentsInChildren<Button>())
         {

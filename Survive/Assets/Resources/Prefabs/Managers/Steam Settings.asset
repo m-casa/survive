@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   applicationId:
     m_AppId: 1456390
-  isDebugging: 1
+  isDebugging: 0
   server:
     autoInitalize: 0
     autoLogon: 0
@@ -61,9 +61,9 @@ MonoBehaviour:
   achievements: []
   dlc: []
   leaderboards: []
-  evtSteamInitalized:
+  evtSteamInitialized:
     m_PersistentCalls:
       m_Calls: []
-  evtSteamInitalizationError:
+  evtSteamInitializationError:
     m_PersistentCalls:
       m_Calls: []
