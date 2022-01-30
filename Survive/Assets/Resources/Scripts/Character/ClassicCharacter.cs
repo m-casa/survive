@@ -70,6 +70,7 @@ public class ClassicCharacter : Character
     #region FIELDS
 
     protected Material defaultMaterial;
+    protected string currentAnimationClip;
 
     protected bool _interactButtonPressed;
 
@@ -177,6 +178,9 @@ public class ClassicCharacter : Character
 
         // Cache the Character's default material
         defaultMaterial = characterMesh.material;
+
+        // Cache the Character's starting animation clip
+        currentAnimationClip = "Idle";
     }
 
     /// <summary>
@@ -513,7 +517,12 @@ public class ClassicCharacter : Character
 
     protected virtual void PlayQuickTurnAnimation()
     {
-        CmdChangeAnimationClip("Quick Turn");
+        if (currentAnimationClip != "Quick Turn")
+        {
+            CmdChangeAnimationClip("Quick Turn");
+            currentAnimationClip = "Quick Turn";
+        }
+
         animancer.TryPlay("Quick Turn", 0.25f);
     }
 
@@ -528,7 +537,12 @@ public class ClassicCharacter : Character
         // We're not moving
         if (movementInput == Vector2.zero)
         {
-            CmdChangeAnimationClip("Idle");
+            if (currentAnimationClip != "Idle")
+            {
+                CmdChangeAnimationClip("Idle");
+                currentAnimationClip = "Idle";
+            }
+
             animancer.TryPlay("Idle", 0.25f);
         }
 
@@ -537,12 +551,22 @@ public class ClassicCharacter : Character
         {
             if (IsSprinting())
             {
-                CmdChangeAnimationClip("Run");
+                if (currentAnimationClip != "Run")
+                {
+                    CmdChangeAnimationClip("Run");
+                    currentAnimationClip = "Run";
+                }
+
                 animancer.TryPlay("Run", 0.25f);
             }
             else
             {
-                CmdChangeAnimationClip("Walk");
+                if (currentAnimationClip != "Walk")
+                {
+                    CmdChangeAnimationClip("Walk");
+                    currentAnimationClip = "Walk";
+                }
+
                 animancer.TryPlay("Walk", 0.25f);
             }
         }
@@ -550,21 +574,36 @@ public class ClassicCharacter : Character
         // Moving backwards
         else if (movementInput.y < 0f) //&& (movementInput.x > -0.5f && movementInput.x < 0.5f))
         {
-            CmdChangeAnimationClip("Walk Backwards");
+            if (currentAnimationClip != "Walk Backwards")
+            {
+                CmdChangeAnimationClip("Walk Backwards");
+                currentAnimationClip = "Walk Backwards";
+            }
+
             animancer.TryPlay("Walk Backwards", 0.25f);
         }
 
         // Turning left
         else if (movementInput.x < 0)
         {
-            CmdChangeAnimationClip("Turn Left");
+            if (currentAnimationClip != "Turn Left")
+            {
+                CmdChangeAnimationClip("Turn Left");
+                currentAnimationClip = "Turn Left";
+            }
+
             animancer.TryPlay("Turn Left", 0.25f);
         }
 
         // Turning right
         else if (movementInput.x > 0f)
         {
-            CmdChangeAnimationClip("Turn Right");
+            if (currentAnimationClip != "Turn Right")
+            {
+                CmdChangeAnimationClip("Turn Right");
+                currentAnimationClip = "Turn Right";
+            }
+
             animancer.TryPlay("Turn Right", 0.25f);
         }
     }
