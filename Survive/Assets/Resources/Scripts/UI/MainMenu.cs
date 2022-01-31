@@ -1,7 +1,9 @@
 using HeathenEngineering.SteamworksIntegration;
 using Mirror;
 using Steamworks;
+using System;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,11 +16,15 @@ public class MainMenu : MonoBehaviour
     [Header("UI")]
     [SerializeField] private Canvas canvas;
     [SerializeField] private Transition transition;
-    [SerializeField] private GameObject title;
-    [SerializeField] private GameObject lobbyButtons;
+    [SerializeField] private TextMeshProUGUI[] options;
+    [SerializeField] private GameObject[] menuScreens;
+    [SerializeField] private GameObject menuTitle;
     [SerializeField] private GameObject joinButton;
     [SerializeField] private GameObject connectingTxt;
 
+    public static event Action EffectsChanged;
+
+    private CameraManager cameraManager;
     private GameObject networkManager;
 
     /// <summary>
@@ -27,6 +33,8 @@ public class MainMenu : MonoBehaviour
 
     void Awake()
     {
+        cameraManager = CameraManager.Instance;
+
         canvas.worldCamera = Camera.main;
         canvas.planeDistance = 0.12f;
     }
@@ -83,6 +91,99 @@ public class MainMenu : MonoBehaviour
     public void JoinGame()
     {
         StartCoroutine(Join());
+    }
+
+    /// <summary>
+    /// Closes the application.
+    /// </summary>
+
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
+    /// <summary>
+    /// Changes the resolution effect in PSXEffects.
+    /// 0 = Resolution
+    /// </summary>
+
+    public void ChangePsxResolution()
+    {
+        cameraManager.ChangeResolution();
+
+        EffectsChanged?.Invoke();
+
+        if (options[0].text == "LOW")
+        {
+            options[0].text = "HIGH";
+        }
+        else
+        {
+            options[0].text = "LOW";
+        }
+    }
+
+    /// <summary>
+    /// Changes the color depth effect in PSXEffects.
+    /// 1 = Color Depth
+    /// </summary>
+
+    public void ChangePsxColorDepth()
+    {
+        cameraManager.ChangeColorDepth();
+
+        EffectsChanged?.Invoke();
+
+        if (options[1].text == "LOW")
+        {
+            options[1].text = "HIGH";
+        }
+        else
+        {
+            options[1].text = "LOW";
+        }
+    }
+
+    /// <summary>
+    /// Changes the scanlines effect in PSXEffects.
+    /// 2 = Scanlines
+    /// </summary>
+
+    public void ChangePsxScanlines()
+    {
+        cameraManager.ChangeScanlines();
+
+        EffectsChanged?.Invoke();
+
+        if (options[2].text == "ON")
+        {
+            options[2].text = "OFF";
+        }
+        else
+        {
+            options[2].text = "ON";
+        }
+    }
+
+    /// <summary>
+    /// Changes the dithering effect in PSXEffects.
+    /// 3 = Dithering
+    /// </summary>
+
+    public void ChangePsxDithering()
+    {
+        cameraManager.ChangeDithering();
+
+        EffectsChanged?.Invoke();
+
+        if (options[3].text == "ON")
+        {
+            options[3].text = "OFF";
+        }
+        else
+        {
+            options[3].text = "ON";
+        }
     }
 
     /// <summary>
@@ -143,8 +244,13 @@ public class MainMenu : MonoBehaviour
     {
         StartCoroutine(transition.ScreenFade(1.0f, 0.0f, 1.5f));
 
-        title.SetActive(false);
-        lobbyButtons.SetActive(false);
+        menuTitle.SetActive(false);
+
+        foreach (GameObject menuScreen in menuScreens)
+        {
+            menuScreen.SetActive(false);
+        }
+
         connectingTxt.SetActive(true);
 
         SpawnNetworkManager();
@@ -152,6 +258,7 @@ public class MainMenu : MonoBehaviour
 
     /// <summary>
     /// What to do if we couldn't connect to the server.
+    /// 0 = Main Screen, 1 = Play Screen
     /// </summary>
 
     private void HandleClientDisconnected()
@@ -159,10 +266,10 @@ public class MainMenu : MonoBehaviour
         Destroy(networkManager);
 
         connectingTxt.SetActive(false);
-        title.SetActive(true);
-        lobbyButtons.SetActive(true);
+        menuTitle.SetActive(true);
+        menuScreens[0].SetActive(true);
 
-        foreach (Button button in lobbyButtons.GetComponentsInChildren<Button>())
+        foreach (Button button in menuScreens[1].GetComponentsInChildren<Button>())
         {
             button.interactable = true;
         }

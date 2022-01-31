@@ -285,6 +285,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cinemachineCamera: {fileID: 5467251689876646824}
+  _psxEffects: {fileID: 2468384920444737157}
 --- !u!1 &5467251689876646824
 GameObject:
   m_ObjectHideFlags: 0
