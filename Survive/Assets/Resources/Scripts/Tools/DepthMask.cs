@@ -14,9 +14,9 @@ public class DepthMask : MonoBehaviour
             for (int i = 0; i < mesh.sharedMaterials.Length; i++)
             {
                 mats[i] = depthMask;
-
-                mesh.sharedMaterials = mats;
             }
+
+            mesh.sharedMaterials = mats;
         }
     }
 }

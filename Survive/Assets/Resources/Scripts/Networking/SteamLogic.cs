@@ -96,6 +96,8 @@ public class SteamLogic : MonoBehaviour
             new CSteamID(callback.m_ulSteamIDLobby), 
             HostAddressKey);
 
+        // Make sure the host's address still exists
+        //  by checking if pure white space or a null value was returned
         if (!string.IsNullOrWhiteSpace(hostAddress))
         {
             NetworkManager.singleton.networkAddress = hostAddress;

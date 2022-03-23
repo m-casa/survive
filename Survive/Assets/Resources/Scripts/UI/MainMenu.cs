@@ -242,16 +242,16 @@ public class MainMenu : MonoBehaviour
 
     private void HandleClientConnecting()
     {
-        StartCoroutine(transition.ScreenFade(1.0f, 0.0f, 1.5f));
-
-        menuTitle.SetActive(false);
-
         foreach (GameObject menuScreen in menuScreens)
         {
             menuScreen.SetActive(false);
         }
 
+        menuTitle.SetActive(false);
+
         connectingTxt.SetActive(true);
+
+        StartCoroutine(transition.ScreenFade(1.0f, 0.0f, 1.5f));
 
         SpawnNetworkManager();
     }
