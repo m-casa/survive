@@ -26,11 +26,15 @@ namespace Febucci.UI.Core
             }
         }
 
+        Color32 temp;
         public override void ApplyEffect(ref CharacterData data, int charIndex)
         {
-            for (byte i = 0; i < data.colors.Length; i++)
+            for (byte i = 0; i < TextUtilities.verticesPerChar; i++)
             {
-                data.colors[i] = Color.HSVToRGB(Mathf.PingPong(time.timeSinceStart * hueShiftSpeed + charIndex * hueShiftWaveSize, 1), 1, 1);
+                //shifts hue
+                temp = Color.HSVToRGB(Mathf.PingPong(time.timeSinceStart * hueShiftSpeed + charIndex * hueShiftWaveSize, 1), 1, 1);
+                temp.a = data.colors[i].a; //preserves original alpha
+                data.colors[i] = temp;
             }
         }
 

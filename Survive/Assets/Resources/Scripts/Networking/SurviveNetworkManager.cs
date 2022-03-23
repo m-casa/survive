@@ -8,7 +8,7 @@ public class SurviveNetworkManager : NetworkManager
 {
     public static event Action ClientDisconnected;
 
-    public override void OnServerAddPlayer(NetworkConnection conn)
+    public override void OnServerAddPlayer(NetworkConnectionToClient conn)
     {
         // Add player
         GameObject player = Instantiate(playerPrefab);
@@ -29,7 +29,7 @@ public class SurviveNetworkManager : NetworkManager
         }
     }
 
-    public override void OnServerDisconnect(NetworkConnection conn)
+    public override void OnServerDisconnect(NetworkConnectionToClient conn)
     {
         // Call base functionality (actually destroys the player)
         base.OnServerDisconnect(conn);

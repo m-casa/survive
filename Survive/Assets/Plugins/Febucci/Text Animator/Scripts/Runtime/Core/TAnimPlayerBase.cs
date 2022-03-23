@@ -79,6 +79,11 @@ namespace Febucci.UI.Core
         /// <c>true</c> if the typewriter is currently showing letters.
         /// </summary>
         protected bool isBaseInsideRoutine => isInsideRoutine;
+        
+        /// <summary>
+        /// <c>true</c> if the typewriter is waiting for the player input in the 'waitinput' action tag
+        /// </summary>
+        [HideInInspector] public bool isWaitingForPlayerInput { get; private set; }
         bool isInsideRoutine = false;
         bool isDisappearing = false;
 
@@ -171,6 +176,7 @@ namespace Febucci.UI.Core
             if (!textAnimator.allLettersShown)
             {
                 isInsideRoutine = true;
+                isWaitingForPlayerInput = false;
                 isDisappearing = false;
 
                 wantsToSkip = false;
@@ -232,7 +238,9 @@ namespace Febucci.UI.Core
                                     break;
 
                                 case "waitinput":
+                                    isWaitingForPlayerInput = true;
                                     yield return WaitInput();
+                                    isWaitingForPlayerInput = false;
                                     break;
 
                                 case "speed":
@@ -321,6 +329,7 @@ namespace Febucci.UI.Core
                 }
 
                 isInsideRoutine = false;
+                isWaitingForPlayerInput = false;
 
                 textToShow = string.Empty; //text has been showed, no need to store it now
 
@@ -350,7 +359,8 @@ namespace Febucci.UI.Core
             }
 
             textToShow = text;
-
+            
+            isWaitingForPlayerInput = false;
             wantsToSkip = false;
 
             textAnimator.SetText(textToShow, useTypeWriter);
@@ -479,27 +489,55 @@ namespace Febucci.UI.Core
         IEnumerator DisappearRoutine()
         {
             isDisappearing = true;
-            float t;
-
-            IEnumerator WaitFor(float duration)
+            float t = 0;
+            float deltaTime = 0;
+            
+            void UpdateDeltaTime()
             {
-                t = 0;
-                while (isDisappearing && t < duration)
-                {
-                    t += textAnimator.time.deltaTime * typewriterPlayerSpeed;
-                    yield return null;
-                }
+                deltaTime = textAnimator.time.deltaTime * typewriterPlayerSpeed;
             }
 
+            UpdateDeltaTime();
+            
             bool CanDisappear() => isDisappearing && textAnimator.firstVisibleCharacter <= textAnimator.maxVisibleCharacters && textAnimator.maxVisibleCharacters > 0;
 
+            IEnumerator WaitFor(float timeToWait)
+            {
+                if (timeToWait <= 0)
+                    yield break;
+                
+                while (t < timeToWait) //waits 
+                {
+                    t += deltaTime;
+                    yield return null;
+                    UpdateDeltaTime();
+                }
+
+                t %= timeToWait;
+            }
+            
             if (disappearanceOrientation == DisappearanceOrientation.SameAsTypewriter)
             {
                 var charInfo = textAnimator.tmproText.textInfo.characterInfo;
-                while (CanDisappear())
+                while (CanDisappear() && textAnimator.firstVisibleCharacter<charInfo.Length)
                 {
                     textAnimator.firstVisibleCharacter++;
-                    yield return WaitFor(GetWaitDisappearanceTimeOf(charInfo[textAnimator.firstVisibleCharacter - 1].character));
+
+                    float timeToWait = GetWaitDisappearanceTimeOf(charInfo[textAnimator.firstVisibleCharacter - 1].character);
+                    
+                    //waiting less time than a frame, we don't wait yet
+                    if (timeToWait < deltaTime)
+                    {
+                        t += timeToWait;
+
+                        if (t >= deltaTime) //waits only if we "surpassed" a frame duration
+                        {
+                            yield return null;
+                            t %= deltaTime;
+                        }
+                    }
+                    else 
+                        yield return WaitFor(timeToWait);
                 }
 
             }
@@ -508,12 +546,30 @@ namespace Febucci.UI.Core
                 while (CanDisappear())
                 {
                     textAnimator.maxVisibleCharacters--;
-                    yield return WaitFor(GetWaitDisappearanceTimeOf(textAnimator.latestCharacterShown.character));
+                    
+                    float timeToWait = GetWaitDisappearanceTimeOf(textAnimator.latestCharacterShown.character);
+
+                    //waiting less time than a frame, we don't wait yet
+                    if (timeToWait < deltaTime)
+                    {
+                        t += timeToWait;
+
+                        if (t >= deltaTime) //waits only if we "surpassed" a frame duration
+                        {
+                            yield return null;
+                            t %= deltaTime;
+                        }
+                    }
+                    else yield return WaitFor(timeToWait);
                 }
             }
 
+            //Waits until all letters are completely hidden/disappeared
+            while (textAnimator.anyLetterVisible)
+                yield return null;
+
             //Fires the event if the entire text has been hidden (so, this method has not been interrupted)
-            if (textAnimator.firstVisibleCharacter > textAnimator.maxVisibleCharacters && textAnimator.allLettersShown)
+            if (textAnimator.firstVisibleCharacter > textAnimator.maxVisibleCharacters && textAnimator.allLettersShown || textAnimator.maxVisibleCharacters == 0)
             {
                 onTextDisappeared.Invoke();
             }

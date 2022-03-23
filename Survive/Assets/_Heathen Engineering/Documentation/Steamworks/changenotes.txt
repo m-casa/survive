@@ -1,17 +1,27 @@
-v2019.2.15.1
+v2019.2.17.3
 
 Note:
-This asset is dependent on Steamworks.NET
-You should install Steamworks.NET via teh Unity Package Manager by selecting the '+' (plus) button and pasting the URL (https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net) into the provided field and clickting the "Add" button to comit.
-This will install Steamworks.NET from the latest available GitHub and can be repeated as required to update the install.
+This asset is dependent on Steamworks.NET and System Core 
+Both Steamworks.NET and System Core can be installed via the Package Manager or by downloading the code from Git Hub.
+This asset will assist you in installing both Steamworks.NET and System Core or you can follow the instructions on our Knowledge Base
 
-Patch Notes:
-Every interface, componenet, object and enum is now documented with additional documents for each sample scene and common learning topics. This patch is a signifigant update that changes every aspect of the kit and reorganizes many tools. Its recomended that you fully remove older versions before installing this version.
+This asset is a copy of what is available on Heathen's SourceRepo on GitHub. you can gain access to Heathen's SourceRepo by becoming a GitHub supporter.
+https://github.com/sponsors/heathen-engineering
+At the 10 USD level you get full source access to Steamworks Complete, PhysKit Complete and UX Complete plus additional assets not available on Unity Asset Store
+such as Steam uGUI Tools and dedicated support, issue tracking and feedback systems.
 
-Each API wrapped by the new interfaces manages all available callbacks as Unity Events and callResults as Actions
+Heathen Knowledge Base
 
-Change
-- Updated the Inventory import to refresh the local inventory from memory then refresh memory and update again. This catches the case that Valve refuses to update the local cash due to recent update.
+GitHub
+- Updated to be in line with the GitHub version, GitHub is now the primary source for Steamworks Complete Unity Asset Store will be mainted as a copy but may be a few versions behind.
+
+Added
+- Added support to read clam chat members from the Clan object
+
+Fixed
+- Corrected a bug where the Steam Game Server query was not reading Internet servers correctly
+- Corrected a bug where the system might perform a check for Steam running out side of the editor before checking if restart required causing the check to miss the restart if required 
+
 
 ====================
 PLEASE NOTE

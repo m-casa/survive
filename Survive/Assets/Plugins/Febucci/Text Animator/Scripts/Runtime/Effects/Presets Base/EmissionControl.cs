@@ -24,7 +24,6 @@ namespace Febucci.UI.Core
 
         public void Initialize(float effectsMaxDuration)
         {
-            effectWeigth = 0;
             passedTime = 0;
 
             Keyframe[] totalKeys = new Keyframe[
@@ -57,6 +56,8 @@ namespace Febucci.UI.Core
             intensityOverDuration.postWrapMode = WrapMode.Loop;
 
             this.cycleDuration = intensityOverDuration.CalculateCurveDuration();
+
+            effectWeigth = intensityOverDuration.Evaluate(passedTime); //sets the initial/start weight of the effect, so that effects will be correctly applied on the first frame
             maxDuration = cycleDuration * cycles;
         }
 

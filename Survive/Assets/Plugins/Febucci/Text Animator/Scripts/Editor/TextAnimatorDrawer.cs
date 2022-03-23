@@ -8,53 +8,6 @@ namespace Febucci.UI.Core.Editors
     [CustomEditor(typeof(TextAnimator))]
     class TextAnimatorDrawer : Editor
     {
-        #region Utilties
-
-        const string menuParent = "Tools/Febucci/TextAnimator/";
-        const string linksCategory = "Links/";
-        const string utilsCategory = "Utils/";
-
-        [MenuItem(menuParent + utilsCategory + "Locate Global Data", false, 0)]
-        static void LocateGlobalData()
-        {
-            var foundData = Resources.Load(TAnimGlobalDataScriptable.resourcesPath);
-            if (foundData != null)
-            {
-                Selection.activeObject = foundData;
-            }
-            else
-            {
-                Debug.LogWarning($"Text Animator: No Scriptable data found, please create one in path {TAnimGlobalDataScriptable.resourcesPath}");
-            }
-        }
-
-        [MenuItem(menuParent + linksCategory + "📄 Documentation", false, 0)]
-        static void Documentation()
-        {
-            Application.OpenURL("https://www.febucci.com/text-animator-unity/docs/");
-        }
-
-        [MenuItem(menuParent + linksCategory + "📅 Roadmap", false, 50)]
-        static void Roadmap()
-        {
-            Application.OpenURL("https://www.febucci.com/text-animator-unity/roadmap/");
-        }
-
-        [MenuItem(menuParent + linksCategory + "📝 Changelog", false, 51)]
-        static void Changelog()
-        {
-            Application.OpenURL("https://www.febucci.com/text-animator-unity/changelog/");
-        }
-
-        [MenuItem(menuParent + linksCategory + "🆘 Support", false, 52)]
-        static void Support()
-        {
-            Application.OpenURL("https://www.febucci.com/text-animator-unity/support/");
-        }
-
-
-        #endregion
-
         const string alertTextSizeDep = "This effect's strength changes with different sizes and fonts.";
 
 #if UNITY_2018
@@ -908,6 +861,7 @@ namespace Febucci.UI.Core.Editors
 
         GUIContent easyIntegrationLabel = new GUIContent("Use Easy Integration");
         SerializedProperty triggerTypeWriter;
+        SerializedProperty isResettingEffectsOnNewText;
         SerializedProperty timeScale;
         SerializedProperty tags_fallbackBehaviors;
         SerializedProperty tags_fallbackAppearances;
@@ -1040,6 +994,7 @@ namespace Febucci.UI.Core.Editors
             effectIntensity = serializedObject.FindProperty("effectIntensityMultiplier");
             referenceFontSize = serializedObject.FindProperty("referenceFontSize");
             useDynamicScaling = serializedObject.FindProperty("useDynamicScaling");
+            isResettingEffectsOnNewText = serializedObject.FindProperty("isResettingEffectsOnNewText");
 
             triggerTypeWriter = serializedObject.FindProperty("triggerAnimPlayerOnChange");
             timeScale = serializedObject.FindProperty("timeScale");
@@ -1332,9 +1287,13 @@ namespace Febucci.UI.Core.Editors
                         if (useDynamicScaling.boolValue)
                             EditorGUILayout.PropertyField(referenceFontSize);
                     }
-
-                    EditorGUILayout.PropertyField(timeScale);
-
+                    
+                    //Effects time
+                    {
+                        EditorGUILayout.PropertyField(timeScale);
+                        EditorGUILayout.PropertyField(isResettingEffectsOnNewText);
+                    }
+                    
                     EditorGUILayout.PropertyField(effectIntensity);
 
                 }

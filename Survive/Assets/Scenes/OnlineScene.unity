@@ -234,6 +234,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: ScreenshotCompanion
       objectReference: {fileID: 0}
+    - target: {fileID: 1000011987023596, guid: 3e8cdb2d9a3264041936d8a30d8be2af, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4000012850680594, guid: 3e8cdb2d9a3264041936d8a30d8be2af, type: 3}
       propertyPath: m_RootOrder
       value: 7

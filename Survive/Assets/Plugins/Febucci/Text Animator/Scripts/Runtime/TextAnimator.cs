@@ -166,8 +166,13 @@ namespace Febucci.UI
         [SerializeField, Tooltip("If true, the typewriter is triggered automatically once the TMPro text changes (requires a TextAnimatorPlayer component). Otherwise, it shows the entire text instantly.")]
         bool triggerAnimPlayerOnChange = false;
 
+        /// <summary>
+        /// Multiplies the intensity for all the effects that behave differently with fonts and sizes.
+        /// - <see href="https://www.febucci.com/text-animator-unity/docs/how-to-add-effects-to-your-texts/#intensity-multiplier">Documentation.</see>
+        /// </summary>
+        /// <seealso cref="UpdateEffectsIntensity"/>
         [SerializeField]
-        float effectIntensityMultiplier = 50;
+        public float effectIntensityMultiplier = 50;
 
         [UnityEngine.Serialization.FormerlySerializedAs("defaultAppearance"), SerializeField, Header("Text Appearance")]
         AppearancesContainer appearancesContainer = new AppearancesContainer();
@@ -181,11 +186,26 @@ namespace Febucci.UI
         [SerializeField] BuiltinAppearancesDataScriptable scriptable_globalAppearancesValues;
 #pragma warning restore 0649
 
+        /// <summary>
+        /// True if you want effects to have the same intensities even if text is larger/smaller than default (example: when TMPro's AutoSize changes the size based on screen size)
+        /// </summary>
+        /// <seealso cref="UpdateEffectsIntensity"/>
         [SerializeField, Tooltip("True if you want effects to have the same intensities even if text is larger/smaller than default (example: when TMPro's AutoSize changes the size based on screen size)")]
-        bool useDynamicScaling = false;
+        public bool useDynamicScaling = false;
+        /// <summary>
+        /// Used for scaling, represents the text's size where/when effects intensity behave like intended.
+        /// </summary>
+        /// <seealso cref="UpdateEffectsIntensity"/>"/>
         [SerializeField, Tooltip("Used for scaling, represents the text's size where/when effects intensity behave like intended.")]
-        float referenceFontSize = -1;
+        public float referenceFontSize = -1;
 
+        /// <summary>
+        /// True if you want effects time to be reset when a new text is set (default option), false otherwise.
+        /// </summary>
+        [SerializeField, Tooltip("True if you want effects time to be reset when a new text is set (default option), false otherwise.")]
+        public bool isResettingEffectsOnNewText = true;
+
+        
         #endregion
 
         #region Public Variables
@@ -261,6 +281,37 @@ namespace Febucci.UI
         public bool allLettersShown => _maxVisibleCharacters >= tmproText.textInfo.characterCount;
 
         /// <summary>
+        /// <c>true</c> if any letter is still visible in the text
+        /// </summary>
+        /// <remarks>
+        /// You can use this to check if the disappearance effects are still running.
+        /// </remarks>
+        public bool anyLetterVisible
+        {
+            get
+            {
+                if (characters.Length == 0) return true;
+
+                bool IsCharacterVisible(int index)
+                {
+                    return characters[index].data.passedTime > 0;
+                }
+                
+                //searches for the first character or the last one first, since they're most probably the first ones to be shown (based on orientation)
+                if (IsCharacterVisible(0) || IsCharacterVisible(tmproText.textInfo.characterCount-1))
+                    return true;
+                
+                //searches for the other, which might still be running their appearance/disappearance
+                for(int i=1;i<tmproText.textInfo.characterCount-1;i++)
+                    if (IsCharacterVisible(i))
+                        return true;
+
+                return false;
+            }
+            
+        }
+            
+        /// <summary>
         /// The latest TextMeshPro character shown by the typewriter.
         /// </summary>
         public TMP_CharacterInfo latestCharacterShown { get; private set; } //TODO rename in "latestCharacterVisible" for better clarity, since users can now "decrease" the max visible character visible as well
@@ -317,20 +368,21 @@ namespace Febucci.UI
             }
         }
 
-        bool IsCharacterVisible(int i)
-        {
-            return i <= textInfo.characterCount
-                && i >= _firstVisibleCharacter
-                && i < _maxVisibleCharacters;
-        }
-
         void AssertCharacterTimes()
         {
+            
+            bool IsCharacterShown(int i)
+            {
+                return i <= textInfo.characterCount
+                       && i >= _firstVisibleCharacter
+                       && i < _maxVisibleCharacters;
+            }
+
             for (int i = 0; i < characters.Length; i++)
             {
                 //P.S. Do not change characters' passed time here, since this method might be called by the user while the Update is already applying effects, and it could cause some glitches for that frame
 
-                characters[i].wantsToDisappear = !IsCharacterVisible(i);
+                characters[i].wantsToDisappear = !IsCharacterShown(i);
             }
         }
 
@@ -1019,7 +1071,6 @@ namespace Febucci.UI
 
         List<int> temp_effectsToApply = new List<int>(); //temporary
 
-
         void _SetText(string text, ShowTextMode showTextMode)
         {
             //Prevents to calculate everything for an empty text
@@ -1039,7 +1090,9 @@ namespace Febucci.UI
             skipAppearanceEffects = false;
             hasActions = false;
             noparseEnabled = false;
-            m_time.ResetData(); //resets time
+            
+            if(isResettingEffectsOnNewText)
+                m_time.ResetData(); //resets time
 
             behaviorEffects.Clear();
             appearanceEffects.Clear();
@@ -1306,7 +1359,7 @@ namespace Febucci.UI
 
             #region Effects and Features Initialization
 
-            SetupEffectsIntensity();
+            UpdateEffectsIntensity();
 
             foreach (var effect in this.appearanceEffects)
             {
@@ -1505,9 +1558,9 @@ namespace Febucci.UI
         }
 
         /// <summary>
-        /// Assigns intensity multiplier and effect values/parameters to effects
+        /// Updates the effect intensity, based on <see cref="effectIntensityMultiplier"/>, <see cref="useDynamicScaling"/> and <see cref="referenceFontSize"/>
         /// </summary>
-        void SetupEffectsIntensity()
+        public void UpdateEffectsIntensity()
         {
             float intensity = effectIntensityMultiplier;
 
@@ -1519,7 +1572,7 @@ namespace Febucci.UI
 
             void SetEffectsIntensity<T>(List<T> effects) where T : EffectsBase
             {
-                foreach (var effect in effects)
+                foreach (T effect in effects)
                 {
                     effect.uniformIntensity = intensity;
                 }
@@ -1543,9 +1596,9 @@ namespace Febucci.UI
             sourceColor = tmproText.color;
             tmpFirstVisibleCharacter = tmproText.firstVisibleCharacter;
 
-            SetupEffectsIntensity();
+            UpdateEffectsIntensity();
             //Updates the characters sources
-            for (int i = 0; i < textInfo.characterCount; i++)
+            for (int i = 0; i < textInfo.characterCount && i < characters.Length; i++)
             {
                 //Updates TMP char info
                 characters[i].data.tmp_CharInfo = textInfo.characterInfo[i];
@@ -1748,6 +1801,13 @@ namespace Febucci.UI
             if (!hasText)
                 return;
 
+            //applies effects
+            UpdateEffectsToMesh();
+        }
+
+        void UpdateEffectsToMesh()
+        {
+            
 
             m_time.UpdateDeltaTime(timeScale);
             m_time.IncreaseTime();
@@ -1771,7 +1831,7 @@ namespace Febucci.UI
             }
             #endregion
 
-            for (int i = 0; i < textInfo.characterCount; i++)
+            for (int i = 0; i < textInfo.characterCount && i < characters.Length; i++)
             {
 
 #if INTEGRATE_NANINOVEL
@@ -1890,7 +1950,9 @@ namespace Febucci.UI
         {
             //The mesh might have changed when the gameObject was disabled (eg. change of "autoSize")
             forceMeshRefresh = true;
-            Update();
+            
+            textInfo = tmproText.textInfo;
+            UpdateEffectsToMesh();
             
 #if UNITY_EDITOR
             TAnim_EditorHelper.onChangesApplied += EDITORONLY_ResetEffects;
@@ -1966,7 +2028,7 @@ namespace Febucci.UI
                     disappearanceEffects[i].SetDefaultValues(appearancesContainer.values);
                 }
 
-                SetupEffectsIntensity();
+                UpdateEffectsIntensity();
 
                 for (int i = 0; i < behaviorEffects.Count; i++)
                 {
