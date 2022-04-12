@@ -161,6 +161,28 @@ namespace EasyCharacterMovement
 
         #endregion
 
+        #region EVENTS
+
+        public delegate void ArrivedEventHandler();
+
+        /// <summary>
+        /// Event triggered when agent reaches its destination.
+        /// </summary>
+
+        public event ArrivedEventHandler Arrived;
+
+        /// <summary>
+        /// Trigger Arrived event.
+        /// Called when agent reaches its destination.
+        /// </summary>
+
+        public virtual void OnArrive()
+        {
+            Arrived?.Invoke();
+        }
+
+        #endregion
+
         #region METHODS
 
         /// <summary>
@@ -274,6 +296,10 @@ namespace EasyCharacterMovement
                 // Destination is reached, stop movement
 
                 StopMovement();
+
+                // Trigger event
+
+                OnArrive();
             }
             else
             {

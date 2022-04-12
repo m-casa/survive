@@ -34,6 +34,10 @@ namespace Febucci.UI.Core
 
             [PositiveValue] public float rotationDuration = defDuration;
             public float rotationStartAngle = 180;
+            
+            
+            [PositiveValue] public float randomDirDuration = defDuration;
+            [NotZero] public float randomDirAmplitude = 1f;
         }
 
 

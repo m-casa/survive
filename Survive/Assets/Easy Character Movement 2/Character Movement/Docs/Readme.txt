@@ -1,6 +1,18 @@
 Character Movement
 ------------------
 
+VERSION 1.0.5
+
+	- Greatly improved the 'Collide and Slide' algorithm. This is capable of correctly detecting and resolving overlaps found during the movement loop.
+
+	- Added Use Flat Top option, when enabled will treat head collisions as if the character is using a shape with a flat top.
+
+	- Exposed moving platform info through the movingPlatform property.
+
+	- Minor bug fixes and improvements.
+
+
+
 VERSION 1.0.4
 
 	- Fixed a bug with SetDimensions and SetHeight functions not updating Collider size in editor.

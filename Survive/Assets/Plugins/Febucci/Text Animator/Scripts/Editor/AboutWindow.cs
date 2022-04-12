@@ -7,7 +7,7 @@ namespace Febucci.UI
 {
     public class AboutWindow : EditorWindow
     {
-        const string currentVersion = "1.3.1";
+        const string currentVersion = "1.3.2";
 
 
         #region Utilties
@@ -44,7 +44,7 @@ namespace Febucci.UI
 
 
         const int windowWidth = 350;
-        const int windowHeight = 435;
+        const int windowHeight = 485;
 
         [InitializeOnLoadMethod]
         private static void FirstSetup()
@@ -121,11 +121,19 @@ namespace Febucci.UI
 
             //--Extras--
             GUILayout.Label("Extras", EditorStyles.boldLabel);
-            GUILayout.Label(
-                "Please consider writing a review for the asset. It takes one minute but it really helps. Thanks!",
+            
+            
+            GUILayout.Label("Would you like to be included in a future Text Animator showcase?",
                 EditorStyles.wordWrappedMiniLabel);
-            if (GUILayout.Button("Review on the Asset Store"))
+            if (GUILayout.Button("-> Submit your game/project"))
+                Application.OpenURL("https://www.febucci.com/text-animator-unity/showcase/");
+            
+            GUILayout.Space(1);
+            GUILayout.Label("Please consider writing a review for the asset. It takes one minute but it really helps. Thanks!",
+                EditorStyles.wordWrappedMiniLabel);
+            if (GUILayout.Button("♥ Review on the Asset Store"))
                 Application.OpenURL("https://assetstore.unity.com/packages/slug/158707");
+            
 
             GUILayout.Space(5);
             GUILayout.Label("Cheers! @febucci", EditorStyles.centeredGreyMiniLabel);

@@ -132,7 +132,7 @@ namespace EasyCharacterMovement
         //[SerializeField]
         private float _flyingFriction;
 
-        [Space(15f)]
+        [Header("Swimming")]
         [Tooltip("If True, this Character is capable to Swim or move through fluid volumes.")]
         //[SerializeField]
         private bool _canEverSwim;
@@ -227,7 +227,7 @@ namespace EasyCharacterMovement
         //[SerializeField]
         private bool _useRootMotion;
 
-        [Space(15f)]
+        [Header("Platform Movement")]
         [Tooltip("Whether the Character moves with the moving platform it is standing on.")]
         [SerializeField]
         private bool _impartPlatformMovement;
@@ -240,7 +240,7 @@ namespace EasyCharacterMovement
         [SerializeField]
         private bool _impartPlatformVelocity;
 
-        [Space(15f)]
+        [Header("Physics Interactions")]
         [Tooltip("If enabled, the player will interact with dynamic rigidbodies when walking into them.")]
         [SerializeField]
         private bool _enablePhysicsInteraction;
@@ -3537,47 +3537,47 @@ namespace EasyCharacterMovement
 
         #region MONOBEHAVIOR
 
-        public void Reset()
+        protected virtual void Reset()
         {
             OnReset();
         }
 
-        public void OnValidate()
+        protected virtual void OnValidate()
         {
             OnOnValidate();
         }
 
-        public void Awake()
+        protected virtual void Awake()
         {
             OnAwake();
         }
 
-        public void OnEnable()
+        protected virtual void OnEnable()
         {
             OnOnEnable();
         }
 
-        public void OnDisable()
+        protected virtual void OnDisable()
         {
             OnOnDisable();
         }
 
-        public void Start()
+        protected virtual void Start()
         {
             OnStart();
         }
 
-        public void FixedUpdate()
+        protected virtual void FixedUpdate()
         {
             OnFixedUpdate();
         }
 
-        public void OnTriggerEnter(Collider other)
+        protected virtual void OnTriggerEnter(Collider other)
         {
             AddPhysicsVolume(other);
         }
 
-        public void OnTriggerExit(Collider other)
+        protected virtual void OnTriggerExit(Collider other)
         {
             RemovePhysicsVolume(other);
         }
@@ -3594,12 +3594,12 @@ namespace EasyCharacterMovement
             }
         }
 
-        public void Update()
+        protected virtual void Update()
         {
             OnUpdate();
         }
 
-        public void LateUpdate()
+        protected virtual void LateUpdate()
         {
             OnLateUpdate();
         }

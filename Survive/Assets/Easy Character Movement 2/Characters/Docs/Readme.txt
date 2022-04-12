@@ -1,6 +1,35 @@
 Easy Character Movement 2
 -------------------------
 
+VERSION 1.2.0
+
+
+	- Added a new ReadMe welcome screen.
+
+
+	Character Movement:
+	-------------------
+
+	- Greatly improved the 'Collide and Slide' algorithm. This is capable of correctly detecting and resolving overlaps found during the movement loop.
+
+	- Added Use Flat Top option, when enabled will treat head collisions as if the character is using a shape with a flat top.
+
+	- Exposed moving platform info through the movingPlatform property.
+
+	- Minor bug fixes and improvements.
+
+
+	Character(s):
+	-------------
+
+	- Character Monobehaviour methods are now private, this is to enforce the use of 'On' methods (ie: OnAwake, etc) instead.
+
+	- Added a missing Custom Simulation Character example.
+
+	- Added OnArrived event to the AgentCharacter.
+	
+
+
 VERSION 1.1.7
 
 	- Fixed a bug with CharacterMovement SetDimensions and SetHeight functions not updating Collider size in editor.

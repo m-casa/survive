@@ -106,8 +106,7 @@ namespace Febucci.UI
 
         private void Awake()
         {
-            Canvas[] canvases = new Canvas[0];
-            canvases = gameObject.GetComponentsInParent<Canvas>(true);
+            Canvas[] canvases = gameObject.GetComponentsInParent<Canvas>(true);
 
             //-----
             //TMPro UI references a canvas, but if it's null [in its case, the object is inactive] it doesn't generate the mesh and it throws error(s).
@@ -120,6 +119,12 @@ namespace Febucci.UI
                 hasParentCanvas = parentCanvas != null;
             }
 
+#if UNITY_2019_2_OR_NEWER
+            gameObject.TryGetComponent(out attachedInputField);
+#else
+            attachedInputField = gameObject.GetComponentInParent<TMP_InputField>();
+#endif
+            
 #if INTEGRATE_NANINOVEL
             reveablelText = GetComponent<Naninovel.UI.IRevealableText>();
             isNaninovelPresent = reveablelText != null;
@@ -170,7 +175,6 @@ namespace Febucci.UI
         /// Multiplies the intensity for all the effects that behave differently with fonts and sizes.
         /// - <see href="https://www.febucci.com/text-animator-unity/docs/how-to-add-effects-to-your-texts/#intensity-multiplier">Documentation.</see>
         /// </summary>
-        /// <seealso cref="UpdateEffectsIntensity"/>
         [SerializeField]
         public float effectIntensityMultiplier = 50;
 
@@ -189,13 +193,11 @@ namespace Febucci.UI
         /// <summary>
         /// True if you want effects to have the same intensities even if text is larger/smaller than default (example: when TMPro's AutoSize changes the size based on screen size)
         /// </summary>
-        /// <seealso cref="UpdateEffectsIntensity"/>
         [SerializeField, Tooltip("True if you want effects to have the same intensities even if text is larger/smaller than default (example: when TMPro's AutoSize changes the size based on screen size)")]
         public bool useDynamicScaling = false;
         /// <summary>
         /// Used for scaling, represents the text's size where/when effects intensity behave like intended.
         /// </summary>
-        /// <seealso cref="UpdateEffectsIntensity"/>"/>
         [SerializeField, Tooltip("Used for scaling, represents the text's size where/when effects intensity behave like intended.")]
         public float referenceFontSize = -1;
 
@@ -319,7 +321,8 @@ namespace Febucci.UI
         #endregion
 
         #region Managament variables
-
+        
+        
         /// <summary>
         /// Contains TextAnimator's current time values.
         /// </summary>
@@ -337,6 +340,7 @@ namespace Febucci.UI
         //----- TMPro workaround -----
         bool hasParentCanvas;
         Canvas parentCanvas;
+        TMP_InputField attachedInputField;
         //-----
 
         //----- TMPro values cache -----
@@ -1346,7 +1350,9 @@ namespace Febucci.UI
                 tmproText.renderMode = TextRenderFlags.DontRender;
 
                 //--generates mesh and text info--
-                tmproText.text = text; //<-- sets the text
+                if (attachedInputField) attachedInputField.text = text; //renders input field
+                else tmproText.text = text; //<-- sets the text
+                
                 tmproText.ForceMeshUpdate(true);
 
                 textInfo = tmproText.GetTextInfo(tmproText.text);
@@ -1358,8 +1364,6 @@ namespace Febucci.UI
 
 
             #region Effects and Features Initialization
-
-            UpdateEffectsIntensity();
 
             foreach (var effect in this.appearanceEffects)
             {
@@ -1558,19 +1562,21 @@ namespace Febucci.UI
         }
 
         /// <summary>
-        /// Updates the effect intensity, based on <see cref="effectIntensityMultiplier"/>, <see cref="useDynamicScaling"/> and <see cref="referenceFontSize"/>
+        /// Updates effect intensity based on the text size.
         /// </summary>
-        public void UpdateEffectsIntensity()
+        /// <param name="charSize"></param>
+        void UpdateEffectIntensityWithSize(float charSize)
         {
             float intensity = effectIntensityMultiplier;
 
             if (useDynamicScaling)
             {
-                //multiplies by font size
-                intensity *= tmproText.fontSize / referenceFontSize;
+                // multiplies by current character size, which could be modified by "size" tags and so
+                // be different than the basic tmp font size value 
+                intensity *= charSize / referenceFontSize;
             }
-
-            void SetEffectsIntensity<T>(List<T> effects) where T : EffectsBase
+            
+            void SetEffectsIntensity<T>(List<T> effects) where T: EffectsBase
             {
                 foreach (T effect in effects)
                 {
@@ -1588,6 +1594,7 @@ namespace Febucci.UI
         #region Mesh
 
         int tmpFirstVisibleCharacter;
+        int tmpMaxVisibleCharacters;
         void CopyMeshSources()
         {
             forceMeshRefresh = false;
@@ -1595,8 +1602,8 @@ namespace Febucci.UI
             sourceRect = tmproText.rectTransform.rect;
             sourceColor = tmproText.color;
             tmpFirstVisibleCharacter = tmproText.firstVisibleCharacter;
+            tmpMaxVisibleCharacters = tmproText.maxVisibleCharacters;
 
-            UpdateEffectsIntensity();
             //Updates the characters sources
             for (int i = 0; i < textInfo.characterCount && i < characters.Length; i++)
             {
@@ -1625,7 +1632,7 @@ namespace Febucci.UI
         void UpdateMesh()
         {
             //Updates the mesh
-            for (int i = 0; i < textInfo.characterCount; i++)
+            for (int i = 0; i < textInfo.characterCount && i < characters.Length; i++)
             {
                 //Avoids updating if we're on an invisible character, like a spacebar
                 //Do not switch this with "i<visibleCharacters", since the plugin has to update not yet visible characters
@@ -1813,7 +1820,7 @@ namespace Febucci.UI
             m_time.IncreaseTime();
 
             #region Effects Calculation
-
+            
             for (int i = 0; i < behaviorEffects.Count; i++)
             {
                 behaviorEffects[i].SetAnimatorData(m_time);
@@ -1831,6 +1838,7 @@ namespace Febucci.UI
             }
             #endregion
 
+            
             for (int i = 0; i < textInfo.characterCount && i < characters.Length; i++)
             {
 
@@ -1874,7 +1882,11 @@ namespace Febucci.UI
 
                 characters[i].ResetColors();
                 characters[i].ResetVertices();
-
+                
+                //Updates again the effects intensity, since this character might have a different font size
+                //compared to the others (e.g. modified by TMPRO's size tag)
+                UpdateEffectIntensityWithSize(textInfo.characterInfo[i].pointSize);
+                
                 //character is appearing
                 if (!characters[i].isDisappearing)
                 {
@@ -1938,6 +1950,7 @@ namespace Febucci.UI
                 || tmproText.rectTransform.rect != sourceRect
                 || tmproText.color != sourceColor
                 || tmproText.firstVisibleCharacter != tmpFirstVisibleCharacter
+                || tmproText.maxVisibleCharacters != tmpMaxVisibleCharacters
                 )
             {
                 tmproText.ForceMeshUpdate();
@@ -2027,8 +2040,6 @@ namespace Febucci.UI
                 {
                     disappearanceEffects[i].SetDefaultValues(appearancesContainer.values);
                 }
-
-                UpdateEffectsIntensity();
 
                 for (int i = 0; i < behaviorEffects.Count; i++)
                 {

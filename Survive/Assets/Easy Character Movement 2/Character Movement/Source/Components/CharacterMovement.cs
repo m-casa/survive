@@ -73,6 +73,23 @@ namespace EasyCharacterMovement
     #region STRUCTS
 
     /// <summary>
+    /// RaycastHitComparer used to sort a RayCastHit array by distance (ASC order).
+    /// </summary>
+
+    public class RaycastHitComparer : IComparer<RaycastHit>
+    {
+        public int Compare(RaycastHit x, RaycastHit y)
+        {
+            if (x.distance < y.distance)
+                return -1;
+            else if (x.distance > y.distance)
+                return 1;
+
+            return 0;
+        }
+    }
+
+    /// <summary>
     /// Holds information about found ground (if any).
     /// </summary>
 
@@ -455,7 +472,7 @@ namespace EasyCharacterMovement
         /// Structure containing information about platform.
         /// </summary>
 
-        private struct MovingPlatform
+        public struct MovingPlatform
         {
             /// <summary>
             /// The last frame active platform.
@@ -573,6 +590,10 @@ namespace EasyCharacterMovement
         [SerializeField]
         private bool _slopeLimitOverride;
 
+        [Tooltip("When enabled, will treat head collisions as if the character is using a shape with a flat top.")]
+        [SerializeField]
+        private bool _useFlatTop;
+
         [Tooltip("Performs ground checks as if the character is using a shape with a flat base." +
                  "This avoids the situation where characters slowly lower off the side of a ledge (as their capsule 'balances' on the edge).")]
         [SerializeField]
@@ -608,6 +629,8 @@ namespace EasyCharacterMovement
 
         private readonly HashSet<Rigidbody> _ignoredRigidbodies = new HashSet<Rigidbody>();
         private readonly HashSet<Collider> _ignoredColliders = new HashSet<Collider>();
+
+        private readonly RaycastHitComparer _hitComparer = new RaycastHitComparer();
 
         private readonly RaycastHit[] _hits = new RaycastHit[kMaxCollisionCount];
         private readonly Collider[] _overlaps = new Collider[kMaxOverlapCount];
@@ -881,6 +904,16 @@ namespace EasyCharacterMovement
         }
 
         /// <summary>
+        /// When enabled, will treat head collisions as if the character is using a shape with a flat top.
+        /// </summary>
+
+        public bool useFlatTop
+        {
+            get => _useFlatTop;
+            set => _useFlatTop = value;
+        }
+
+        /// <summary>
         /// Performs ground checks as if the character is using a shape with a flat base.
         /// This avoids the situation where characters slowly lower off the side of a ledge (as their capsule 'balances' on the edge).
         /// </summary>
@@ -1039,6 +1072,12 @@ namespace EasyCharacterMovement
         /// </summary>
 
         public FindGroundResult currentGround => _currentGround;
+
+        /// <summary>
+        /// Structure containing information about current moving platform (if any).
+        /// </summary>
+
+        public MovingPlatform movingPlatform => _movingPlatform;
 
         /// <summary>
         /// The terminal velocity when landed (eg: isGrounded).
@@ -1262,6 +1301,43 @@ namespace EasyCharacterMovement
             return localToWorld.TransformDirection(bestLocalNormal);
         }
 
+        private static Vector3 FindBoxOpposingNormal(Vector3 displacement, Vector3 hitNormal, Transform hitTransform)
+        {
+            Transform localToWorld = hitTransform;
+
+            Vector3 localContactNormal = localToWorld.InverseTransformDirection(hitNormal);
+            Vector3 localTraceDirDenorm = localToWorld.InverseTransformDirection(displacement);
+
+            Vector3 bestLocalNormal = localContactNormal;
+            float bestOpposingDot = float.MaxValue;
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (localContactNormal[i] > kKindaSmallNumber)
+                {
+                    float traceDotFaceNormal = localTraceDirDenorm[i];
+                    if (traceDotFaceNormal < bestOpposingDot)
+                    {
+                        bestOpposingDot = traceDotFaceNormal;
+                        bestLocalNormal = Vector3.zero;
+                        bestLocalNormal[i] = 1.0f;
+                    }
+                }
+                else if (localContactNormal[i] < -kKindaSmallNumber)
+                {
+                    float traceDotFaceNormal = -localTraceDirDenorm[i];
+                    if (traceDotFaceNormal < bestOpposingDot)
+                    {
+                        bestOpposingDot = traceDotFaceNormal;
+                        bestLocalNormal = Vector3.zero;
+                        bestLocalNormal[i] = -1.0f;
+                    }
+                }
+            }
+
+            return localToWorld.TransformDirection(bestLocalNormal);
+        }
+
         private static Vector3 FindTerrainOpposingNormal(ref RaycastHit inHit)
         {
             TerrainCollider terrainCollider = inHit.collider as TerrainCollider;
@@ -1338,6 +1414,16 @@ namespace EasyCharacterMovement
         #endregion
 
         #region METHODS
+
+        public static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        public static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+        }
 
         /// <summary>
         /// Apply friction and braking deceleration to given velocity.
@@ -1968,12 +2054,71 @@ namespace EasyCharacterMovement
         {
             return _collisionResults[index];
         }
-        
+
+        /// <summary>
+        /// Compute the minimal translation distance (MTD) required to separate the given colliders apart at specified poses.
+        /// Uses an inflated capsule for better results.
+        /// </summary>
+
+        private bool ComputeInflatedMTD(Vector3 characterPosition, Quaternion characterRotation, float mtdInflation,
+            Collider hitCollider, Transform hitTransform, out Vector3 mtdDirection, out float mtdDistance)
+        {
+            mtdDirection = Vector3.zero;
+            mtdDistance = 0.0f;
+
+            _capsuleCollider.radius = _radius + mtdInflation * 1.0f;
+            _capsuleCollider.height = _height + mtdInflation * 2.0f;
+
+            bool mtdResult = Physics.ComputePenetration(_capsuleCollider, characterPosition, characterRotation,
+                hitCollider, hitTransform.position, hitTransform.rotation, out Vector3 recoverDirection, out float recoverDistance);
+
+            if (mtdResult)
+            {
+                if (IsFinite(recoverDirection))
+                {
+                    mtdDirection = recoverDirection;
+                    mtdDistance = Mathf.Max(Mathf.Abs(recoverDistance) - mtdInflation, 0.0f) + kKindaSmallNumber;
+                }
+                else
+                {
+                    Debug.LogWarning($"Warning: ComputeInflatedMTD_Internal: MTD returned NaN " + recoverDirection.ToString("F4"));
+                }
+            }
+
+            _capsuleCollider.radius = _radius;
+            _capsuleCollider.height = _height;
+
+            return mtdResult;
+        }
+
+        /// <summary>
+        /// Compute the minimal translation distance (MTD) required to separate the given colliders apart at specified poses.
+        /// Uses an inflated capsule for better results, try MTD with a small inflation for better accuracy, then a larger one in case the first one fails due to precision issues.
+        /// </summary>
+
+        private bool ComputeMTD(Vector3 characterPosition, Quaternion characterRotation, Collider hitCollider, Transform hitTransform, out Vector3 mtdDirection, out float mtdDistance)
+        {
+            const float kSmallMTDInflation = 0.0025f;
+            const float kLargeMTDInflation = 0.0175f;
+
+            if (ComputeInflatedMTD(characterPosition, characterRotation, kSmallMTDInflation, hitCollider, hitTransform, out mtdDirection, out mtdDistance) ||
+                ComputeInflatedMTD(characterPosition, characterRotation, kLargeMTDInflation, hitCollider, hitTransform, out mtdDirection, out mtdDistance))
+            {
+                // Success
+
+                return true;
+            }
+
+            // Failure
+
+            return false;
+        }
+
         /// <summary>
         /// Resolves any character's volume overlaps against specified colliders.
         /// </summary>
-        
-        private void Depenetrate(DepenetrationBehavior depenetrationBehavior = DepenetrationBehavior.IgnoreNone)
+
+        private void ResolveOverlaps(DepenetrationBehavior depenetrationBehavior = DepenetrationBehavior.IgnoreNone)
         {
             if (!detectCollisions)
                 return;
@@ -1982,9 +2127,6 @@ namespace EasyCharacterMovement
             bool ignoreDynamic = (depenetrationBehavior & DepenetrationBehavior.IgnoreDynamic) != 0;
             bool ignoreKinematic = (depenetrationBehavior & DepenetrationBehavior.IgnoreKinematic) != 0;
 
-            _capsuleCollider.radius = _radius + kSmallContactOffset * 1.0f;
-            _capsuleCollider.height = _height + kSmallContactOffset * 2.0f;
-
             for (int i = 0; i < _advanced.maxDepenetrationIterations; i++)
             {
                 Vector3 top = updatedPosition + _transformedCapsuleTopCenter;
@@ -1992,7 +2134,7 @@ namespace EasyCharacterMovement
 
                 int overlapCount = Physics.OverlapCapsuleNonAlloc(bottom, top, _radius, _overlaps, _collisionLayers, triggerInteraction);
                 if (overlapCount == 0)
-                    return;
+                    break;
 
                 for (int j = 0; j < overlapCount; j++)
                 {
@@ -2005,38 +2147,34 @@ namespace EasyCharacterMovement
 
                     if (ignoreStatic && attachedRigidbody == null)
                         continue;
-                    
+
                     if (attachedRigidbody)
                     {
                         bool isKinematic = attachedRigidbody.isKinematic;
 
                         if (ignoreKinematic && isKinematic)
                             continue;
-                        
+
                         if (ignoreDynamic && !isKinematic)
                             continue;
                     }
 
-                    Transform overlappedColliderTransform = overlappedCollider.transform;
-
-                    if (Physics.ComputePenetration(_capsuleCollider, updatedPosition, updatedRotation,
-                        overlappedCollider, overlappedColliderTransform.position, overlappedColliderTransform.rotation,
-                        out Vector3 recoverDirection, out float recoverDistance))
+                    if (ComputeMTD(updatedPosition, updatedRotation, overlappedCollider, overlappedCollider.transform, out Vector3 recoverDirection, out float recoverDistance))
                     {
                         recoverDirection = ConstrainDirectionToPlane(recoverDirection);
 
                         HitLocation hitLocation = ComputeHitLocation(recoverDirection);
-                        
+
                         bool isWalkable = IsWalkable(overlappedCollider, recoverDirection);
 
-                        recoverDirection = ComputeBlockingNormal(recoverDirection, isWalkable);
+                        Vector3 impactNormal = ComputeBlockingNormal(recoverDirection, isWalkable);
 
-                        updatedPosition += recoverDirection * (recoverDistance + kPenetrationOffset);
+                        updatedPosition += impactNormal * (recoverDistance + kPenetrationOffset);
 
                         if (_collisionCount < kMaxCollisionCount)
                         {
                             Vector3 point;
-                            
+
                             if (hitLocation == HitLocation.Above)
                                 point = updatedPosition + _transformedCapsuleTopCenter - recoverDirection * _radius;
                             else if (hitLocation == HitLocation.Below)
@@ -2057,9 +2195,9 @@ namespace EasyCharacterMovement
                                 otherVelocity = GetRigidbodyVelocity(attachedRigidbody, point),
 
                                 point = point,
-                                normal = recoverDirection,
+                                normal = impactNormal,
 
-                                surfaceNormal = recoverDirection,
+                                surfaceNormal = impactNormal,
 
                                 collider = overlappedCollider
                             };
@@ -2069,9 +2207,6 @@ namespace EasyCharacterMovement
                     }
                 }
             }
-
-            _capsuleCollider.radius = _radius;
-            _capsuleCollider.height = _height;
         }
 
         /// <summary>
@@ -2229,28 +2364,30 @@ namespace EasyCharacterMovement
 
             if (rawHitCount == 0)
                 return false;
-
-            bool foundHit = false;
-
+            
             float closestDistance = Mathf.Infinity;
 
+            int hitIndex = -1;
             for (int i = 0; i < rawHitCount; i++)
             {
                 ref RaycastHit hit = ref _hits[i];
-
                 if (hit.distance <= 0.0f || ShouldFilter(hit.collider))
                     continue;
 
                 if (hit.distance < closestDistance)
                 {
-                    foundHit = true;
-
-                    hitResult = hit;
-                    closestDistance = hitResult.distance;
+                    closestDistance = hit.distance;
+                    hitIndex = i;
                 }
             }
 
-            return foundHit;
+            if (hitIndex != -1)
+            {
+                hitResult = _hits[hitIndex];
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -2273,32 +2410,148 @@ namespace EasyCharacterMovement
             if (rawHitCount == 0)
                 return false;
 
-            bool foundHit = false;
             float closestDistance = Mathf.Infinity;
 
+            int hitIndex = -1;
             for (int i = 0; i < rawHitCount; i++)
             {
                 ref RaycastHit hit = ref _hits[i];
-
                 if (ShouldFilter(hit.collider))
                     continue;
 
                 if (hit.distance <= 0.0f)
-                {
                     startPenetrating = true;
-                    continue;
-                }
-
-                if (hit.distance < closestDistance)
+                else if (hit.distance < closestDistance)
                 {
-                    foundHit = true;
-
-                    hitResult = hit;
-                    closestDistance = hitResult.distance;
+                    closestDistance = hit.distance;
+                    hitIndex = i;
                 }
             }
 
-            return foundHit;
+            if (hitIndex != -1)
+            {
+                hitResult = _hits[hitIndex];
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Casts a capsule against all colliders in the Scene and returns detailed information on what was hit.
+        /// Returns True when the capsule sweep intersects any collider, otherwise false. 
+        /// Unlike previous version this correctly restun (if deried) valid hits for blocking overlaps along with MTD to resolve penetration.
+        /// </summary>
+
+        private bool CapsuleCastEx(Vector3 characterPosition, float castRadius, Vector3 castDirection, float castDistance, int layerMask,
+            out RaycastHit hitResult, out bool startPenetrating, out Vector3 recoverDirection, out float recoverDistance, bool ignoreNonBlockingOverlaps = false)
+        {
+            hitResult = default;
+
+            startPenetrating = default;
+            recoverDirection = default;
+            recoverDistance = default;
+
+            Vector3 top = characterPosition + _transformedCapsuleTopCenter;
+            Vector3 bottom = characterPosition + _transformedCapsuleBottomCenter;
+
+            int rawHitCount =
+                Physics.CapsuleCastNonAlloc(bottom, top, castRadius, castDirection, _hits, castDistance, layerMask, triggerInteraction);
+
+            if (rawHitCount == 0)
+                return false;
+
+            for (int i = 0; i < rawHitCount; i++)
+            {
+                ref RaycastHit hit = ref _hits[i];
+                if (ShouldFilter(hit.collider))
+                    continue;
+
+                bool isOverlapping = hit.distance <= 0.0f;
+                if (isOverlapping)
+                {
+                    if (ComputeMTD(characterPosition, updatedRotation, hit.collider, hit.collider.transform, out Vector3 mtdDirection, out float mtdDistance))
+                    {
+                        mtdDirection = ConstrainDirectionToPlane(mtdDirection);
+
+                        HitLocation hitLocation = ComputeHitLocation(mtdDirection);
+
+                        Vector3 point;
+                        if (hitLocation == HitLocation.Above)
+                            point = characterPosition + _transformedCapsuleTopCenter - mtdDirection * _radius;
+                        else if (hitLocation == HitLocation.Below)
+                            point = characterPosition + _transformedCapsuleBottomCenter - mtdDirection * _radius;
+                        else
+                            point = characterPosition + _transformedCapsuleCenter - mtdDirection * _radius;
+
+                        Vector3 impactNormal = ComputeBlockingNormal(mtdDirection, IsWalkable(hit.collider, mtdDirection));
+
+                        hit.point = point;
+                        hit.normal = impactNormal;
+                        hit.distance = -mtdDistance;
+                    }
+                }
+            }
+
+            Array.Sort(_hits, 0, rawHitCount, _hitComparer);
+
+            float mostOpposingDot = Mathf.Infinity;
+
+            int hitIndex = -1;
+            for (int i = 0; i < rawHitCount; i++)
+            {
+                ref RaycastHit hit = ref _hits[i];
+                if (ShouldFilter(hit.collider))
+                    continue;
+
+                bool isOverlapping = hit.distance <= 0.0f && !hit.point.isZero();
+                if (isOverlapping)
+                {
+                    // Overlaps
+
+                    float movementDotNormal = Vector3.Dot(castDirection, hit.normal);
+
+                    if (ignoreNonBlockingOverlaps)
+                    {
+                        // If we started penetrating, we may want to ignore it if we are moving out of penetration.
+                        // This helps prevent getting stuck in walls.
+
+                        bool isMovingOut = movementDotNormal > 0.0f;
+                        if (isMovingOut)
+                            continue;
+                    }
+                    
+                    if (movementDotNormal < mostOpposingDot)
+                    {
+                        mostOpposingDot = movementDotNormal;
+                        hitIndex = i;
+                    }
+                }
+                else if (hitIndex == -1)
+                {
+                    // Hits
+                    // First non-overlapping blocking hit should be used, if no valid overlapping hit was found (ie, hitIndex == -1).
+
+                    hitIndex = i;
+                    break;
+                }
+            }
+
+            if (hitIndex >= 0)
+            {
+                hitResult = _hits[hitIndex];
+
+                if (hitResult.distance <= 0.0f)
+                {
+                    startPenetrating = true;
+                    recoverDirection = hitResult.normal;
+                    recoverDistance = Mathf.Abs(hitResult.distance);
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -2316,15 +2569,13 @@ namespace EasyCharacterMovement
 
             bool innerCapsuleHit =
                 CapsuleCast(sweepOrigin, sweepRadius, sweepDirection, sweepDistance + sweepRadius, sweepLayerMask,
-                    out RaycastHit innerCapsuleHitResult, out bool innerCapsuleStartPenetrating) && innerCapsuleHitResult.distance <= sweepDistance;
+                    out RaycastHit innerCapsuleHitResult, out startPenetrating) && innerCapsuleHitResult.distance <= sweepDistance;
 
             float outerCapsuleRadius = sweepRadius + kContactOffset;
 
             bool outerCapsuleHit =
                 CapsuleCast(sweepOrigin, outerCapsuleRadius, sweepDirection, sweepDistance + outerCapsuleRadius,
-                    sweepLayerMask, out RaycastHit outerCapsuleHitResult, out bool outerCapsuleStartPenetrating) && outerCapsuleHitResult.distance <= sweepDistance;
-
-            startPenetrating = innerCapsuleStartPenetrating || outerCapsuleStartPenetrating;
+                    sweepLayerMask, out RaycastHit outerCapsuleHitResult, out _) && outerCapsuleHitResult.distance <= sweepDistance;
 
             bool foundBlockingHit = innerCapsuleHit || outerCapsuleHit;
             if (!foundBlockingHit)
@@ -2350,6 +2601,168 @@ namespace EasyCharacterMovement
         }
 
         /// <summary>
+        /// Tests if the character would collide with anything, if it was moved through the Scene.
+        /// Returns True when the rigidbody sweep intersects any collider, otherwise false.
+        /// Unlike previous version this correctly restun (if deried) valid hits for blocking overlaps along with MTD to resolve penetration.
+        /// </summary>
+
+        private bool SweepTestEx(Vector3 sweepOrigin, float sweepRadius, Vector3 sweepDirection, float sweepDistance, int sweepLayerMask,
+            out RaycastHit hitResult, out bool startPenetrating, out Vector3 recoverDirection, out float recoverDistance, bool ignoreBlockingOverlaps = false)
+        {
+            // Cast further than the distance we need, to try to take into account small edge cases (e.g. Casts fail 
+            // when moving almost parallel to an obstacle for small distances).
+
+            hitResult = default;
+
+            bool innerCapsuleHit =
+                CapsuleCastEx(sweepOrigin, sweepRadius, sweepDirection, sweepDistance + sweepRadius, sweepLayerMask,
+                out RaycastHit innerCapsuleHitResult, out startPenetrating, out recoverDirection, out recoverDistance, ignoreBlockingOverlaps) && innerCapsuleHitResult.distance <= sweepDistance;
+
+            if (innerCapsuleHit && startPenetrating)
+            {
+                hitResult = innerCapsuleHitResult;
+                hitResult.distance = Mathf.Max(0.0f, hitResult.distance - kSmallContactOffset);
+
+                return true;
+            }
+
+            float outerCapsuleRadius = sweepRadius + kContactOffset;
+
+            bool outerCapsuleHit =
+                CapsuleCast(sweepOrigin, outerCapsuleRadius, sweepDirection, sweepDistance + outerCapsuleRadius, sweepLayerMask,
+                out RaycastHit outerCapsuleHitResult, out _) && outerCapsuleHitResult.distance <= sweepDistance;
+
+            bool foundBlockingHit = innerCapsuleHit || outerCapsuleHit;
+            if (!foundBlockingHit)
+                return false;
+
+            if (!outerCapsuleHit)
+            {
+                hitResult = innerCapsuleHitResult;
+                hitResult.distance = Mathf.Max(0.0f, hitResult.distance - kContactOffset);
+            }
+            else if (innerCapsuleHit && innerCapsuleHitResult.distance < outerCapsuleHitResult.distance)
+            {
+                hitResult = innerCapsuleHitResult;
+                hitResult.distance = Mathf.Max(0.0f, hitResult.distance - kContactOffset);
+            }
+            else
+            {
+                hitResult = outerCapsuleHitResult;
+                hitResult.distance = Mathf.Max(0.0f, hitResult.distance - kSmallContactOffset);
+            }
+
+            return true;
+        }
+
+        private bool ResolvePenetration(Vector3 displacement, Vector3 proposedAdjustment)
+        {
+            Vector3 adjustment = ConstrainVectorToPlane(proposedAdjustment);
+            if (adjustment.isZero())
+                return false;
+
+            // We really want to make sure that precision differences or differences between the overlap test and sweep tests don't put us into another overlap,
+            // so make the overlap test a bit more restrictive.
+
+            const float kOverlapInflation = 0.001f;
+
+            if (!(OverlapTest(updatedPosition + adjustment, updatedRotation, _radius + kOverlapInflation, _height, _collisionLayers, _overlaps, triggerInteraction) > 0))
+            {
+                // Safe to move without sweeping
+
+                updatedPosition += adjustment;
+
+                return true;
+            }
+            else
+            {
+                Vector3 lastPosition = updatedPosition;
+
+                // Try sweeping as far as possible, ignoring non-blocking overlaps, otherwise we wouldn't be able to sweep out of the object to fix the penetration.
+
+                bool hit = CapsuleCastEx(updatedPosition, _radius, adjustment.normalized, adjustment.magnitude, _collisionLayers,
+                    out RaycastHit sweepHitResult, out bool startPenetrating, out Vector3 recoverDirection, out float recoverDistance, true);
+
+                if (!hit)
+                    updatedPosition += adjustment;
+                else
+                    updatedPosition += adjustment.normalized * Mathf.Max(sweepHitResult.distance - kSmallContactOffset, 0.0f);
+
+                // Still stuck?
+
+                bool moved = updatedPosition != lastPosition;
+                if (!moved && startPenetrating)
+                {
+                    // Combine two MTD results to get a new direction that gets out of multiple surfaces.
+
+                    Vector3 secondMTD = recoverDirection * (recoverDistance + kContactOffset + kPenetrationOffset);
+                    Vector3 combinedMTD = adjustment + secondMTD;
+                    
+                    if (secondMTD != adjustment && !combinedMTD.isZero())
+                    {
+                        lastPosition = updatedPosition;
+                        
+                        hit = CapsuleCastEx(updatedPosition, _radius, combinedMTD.normalized, combinedMTD.magnitude, 
+                            _collisionLayers, out sweepHitResult, out _, out _, out _, true);
+
+                        if (!hit)
+                            updatedPosition += combinedMTD;
+                        else
+                            updatedPosition += combinedMTD.normalized * Mathf.Max(sweepHitResult.distance - kSmallContactOffset, 0.0f);
+
+                        moved = updatedPosition != lastPosition;
+                    }
+                }
+
+                // Still stuck?
+
+                if (!moved)
+                {
+                    // Try moving the proposed adjustment plus the attempted move direction.
+                    // This can sometimes get out of penetrations with multiple objects.
+
+                    Vector3 moveDelta = ConstrainVectorToPlane(displacement);
+                    if (!moveDelta.isZero())
+                    {
+                        lastPosition = updatedPosition;
+
+                        Vector3 newAdjustment = adjustment + moveDelta;
+                        hit = CapsuleCastEx(updatedPosition, _radius, newAdjustment.normalized, newAdjustment.magnitude, 
+                            _collisionLayers, out sweepHitResult, out _, out _, out _, true);
+
+                        if (!hit)
+                            updatedPosition += newAdjustment;
+                        else
+                            updatedPosition += newAdjustment.normalized * Mathf.Max(sweepHitResult.distance - kSmallContactOffset, 0.0f);
+
+                        moved = updatedPosition != lastPosition;
+
+                        // Finally, try the original move without MTD adjustments, but allowing depenetration along the MTD normal.
+                        // This was blocked because ignoreBlockingOverlaps was false for the original move to try a better depenetration normal, but we might be running in to other geometry in the attempt.
+                        // This won't necessarily get us all the way out of penetration, but can in some cases and does make progress in exiting the penetration.
+
+                        if (!moved && Vector3.Dot(moveDelta, adjustment) > 0.0f)
+                        {
+                            lastPosition = updatedPosition;
+
+                            hit = CapsuleCastEx(updatedPosition, _radius, moveDelta.normalized, moveDelta.magnitude,
+                                _collisionLayers, out sweepHitResult, out _, out _, out _, true);
+
+                            if (!hit)
+                                updatedPosition += moveDelta;
+                            else
+                                updatedPosition += moveDelta.normalized * Mathf.Max(sweepHitResult.distance - kSmallContactOffset, 0.0f);
+
+                            moved = updatedPosition != lastPosition;
+                        }
+                    }
+                }
+
+                return moved;
+            }
+        }
+        
+        /// <summary>
         /// Sweeps the character's volume along its displacement vector, stopping at near hit point if collision is detected or applies full displacement if not.
         /// Returns True when the rigidbody sweep intersects any collider, otherwise false.
         /// </summary>
@@ -2366,11 +2779,27 @@ namespace EasyCharacterMovement
             float sweepDistance = displacement.magnitude;
 
             int sweepLayerMask = _collisionLayers;
+            
+            bool hit = SweepTestEx(sweepOrigin, sweepRadius, sweepDirection, sweepDistance, sweepLayerMask, 
+                out RaycastHit hitResult, out bool startPenetrating, out Vector3 recoverDirection, out float recoverDistance);
 
-            bool foundBlockingHit = SweepTest(sweepOrigin, sweepRadius, sweepDirection, sweepDistance, sweepLayerMask,
-                out RaycastHit hitResult, out _);
+            if (startPenetrating)
+            {
+                // Handle initial penetrations
 
-            if (!foundBlockingHit)
+                Vector3 requestedAdjustement = recoverDirection * (recoverDistance + kContactOffset + kPenetrationOffset);
+
+                if (ResolvePenetration(displacement, requestedAdjustement))
+                {
+                    // Retry original movement
+
+                    sweepOrigin = updatedPosition;
+                    hit = SweepTestEx(sweepOrigin, sweepRadius, sweepDirection, sweepDistance, sweepLayerMask,
+                        out hitResult, out startPenetrating, out _, out _);
+                }
+            }
+
+            if (!hit)
                 return false;
 
             HitLocation hitLocation = ComputeHitLocation(hitResult.normal);
@@ -2378,7 +2807,7 @@ namespace EasyCharacterMovement
             Vector3 displacementToHit = sweepDirection * hitResult.distance;
             Vector3 remainingDisplacement = displacement - displacementToHit;
 
-            Vector3 hitPosition = characterPosition + displacementToHit;
+            Vector3 hitPosition = sweepOrigin + displacementToHit;
 
             Vector3 surfaceNormal = hitResult.normal;
 
@@ -2394,6 +2823,8 @@ namespace EasyCharacterMovement
 
             collisionResult = new CollisionResult
             {
+                startPenetrating = startPenetrating,
+
                 hitLocation = hitLocation,
                 isWalkable = isWalkable,
 
@@ -2476,7 +2907,7 @@ namespace EasyCharacterMovement
         /// Calculate slide vector along a surface.
         /// </summary>
 
-        private Vector3 ComputeCollisionResponse(Vector3 displacement, Vector3 inNormal, bool isWalkable)
+        private Vector3 ComputeSlideVector(Vector3 displacement, Vector3 inNormal, bool isWalkable)
         {
             if (isGrounded)
             {
@@ -2518,22 +2949,33 @@ namespace EasyCharacterMovement
         /// Resolve collisions of Character's bounding volume during a Move call.
         /// </summary>
 
-        private int ResolveCollision(int iteration, Vector3 inputDisplacement, ref Vector3 inVelocity,
+        private int SlideAlongSurface(int iteration, Vector3 inputDisplacement, ref Vector3 inVelocity,
             ref Vector3 displacement, ref CollisionResult inHit, ref Vector3 prevNormal)
         {
+            if (useFlatTop && inHit.hitLocation == HitLocation.Above)
+            {
+                Vector3 surfaceNormal = FindBoxOpposingNormal(displacement, inHit.normal, inHit.transform);
+
+                if (inHit.normal != surfaceNormal)
+                {
+                    inHit.normal = surfaceNormal;
+                    inHit.surfaceNormal = surfaceNormal;
+                }
+            }
+
             inHit.normal = ComputeBlockingNormal(inHit.normal, inHit.isWalkable);
 
             if (inHit.isWalkable && isConstrainedToGround)
             {
-                inVelocity = ComputeCollisionResponse(inVelocity, inHit.normal, true);
-                displacement = ComputeCollisionResponse(displacement, inHit.normal, true);
+                inVelocity = ComputeSlideVector(inVelocity, inHit.normal, true);
+                displacement = ComputeSlideVector(displacement, inHit.normal, true);
             }
             else
             {
                 if (iteration == 0)
                 {
-                    inVelocity = ComputeCollisionResponse(inVelocity, inHit.normal, inHit.isWalkable);
-                    displacement = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                    inVelocity = ComputeSlideVector(inVelocity, inHit.normal, inHit.isWalkable);
+                    displacement = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
 
                     iteration++;
                 }
@@ -2543,7 +2985,7 @@ namespace EasyCharacterMovement
 
                     Vector3 oVel = inputDisplacement.projectedOnPlane(crease);
 
-                    Vector3 nVel = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                    Vector3 nVel = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
                             nVel = nVel.projectedOnPlane(crease);
 
                     if (oVel.dot(nVel) <= 0.0f || prevNormal.dot(inHit.normal) < 0.0f)
@@ -2555,8 +2997,8 @@ namespace EasyCharacterMovement
                     }
                     else
                     {
-                        inVelocity = ComputeCollisionResponse(inVelocity, inHit.normal, inHit.isWalkable);
-                        displacement = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                        inVelocity = ComputeSlideVector(inVelocity, inHit.normal, inHit.isWalkable);
+                        displacement = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
                     }
                 }
                 else
@@ -2585,7 +3027,7 @@ namespace EasyCharacterMovement
                 ? DepenetrationBehavior.IgnoreDynamic
                 : DepenetrationBehavior.IgnoreNone;
 
-            Depenetrate(depenetrationFlags);
+            ResolveOverlaps(depenetrationFlags);
 
             //
             // If grounded, discard velocity vertical component
@@ -2666,7 +3108,7 @@ namespace EasyCharacterMovement
                 //
                 // Slide along blocking overlap
 
-                iteration = ResolveCollision(iteration, inputDisplacement, ref _velocity, ref displacement,
+                iteration = SlideAlongSurface(iteration, inputDisplacement, ref _velocity, ref displacement,
                     ref collisionResult, ref prevNormal);
             }
 
@@ -2745,7 +3187,7 @@ namespace EasyCharacterMovement
                 //
                 // Resolve collision (slide along hit surface)
 
-                iteration = ResolveCollision(iteration, inputDisplacement, ref _velocity, ref displacement,
+                iteration = SlideAlongSurface(iteration, inputDisplacement, ref _velocity, ref displacement,
                     ref collisionResult, ref prevNormal);
 
                 //
@@ -2864,32 +3306,31 @@ namespace EasyCharacterMovement
             if (rawHitCount == 0)
                 return false;
 
-            bool foundHit = false;
             float closestDistance = Mathf.Infinity;
 
+            int hitIndex = -1;
             for (int i = 0; i < rawHitCount; i++)
             {
                 ref RaycastHit hit = ref _hits[i];
-
                 if (ShouldFilter(hit.collider))
                     continue;
 
                 if (hit.distance <= 0.0f)
-                {
                     startPenetrating = true;
-                    continue;
-                }
-
-                if (hit.distance < closestDistance)
+                else if (hit.distance < closestDistance)
                 {
-                    foundHit = true;
-
-                    hitResult = hit;
-                    closestDistance = hitResult.distance;
+                    closestDistance = hit.distance;
+                    hitIndex = i;
                 }
             }
 
-            return foundHit;
+            if (hitIndex != -1)
+            {
+                hitResult = _hits[hitIndex];
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -2908,32 +3349,31 @@ namespace EasyCharacterMovement
             if (rawHitCount == 0)
                 return false;
 
-            bool foundBlockingHit = false;
             float closestDistance = Mathf.Infinity;
 
+            int hitIndex = -1;
             for (int i = 0; i < rawHitCount; i++)
             {
                 ref RaycastHit hit = ref _hits[i];
-
                 if (ShouldFilter(hit.collider))
                     continue;
 
                 if (hit.distance <= 0.0f)
-                {
                     startPenetrating = true;
-                    continue;
-                }
-
-                if (hit.distance < closestDistance)
+                else if (hit.distance < closestDistance)
                 {
-                    foundBlockingHit = true;
-
-                    hitResult = hit;
-                    closestDistance = hitResult.distance;
+                    closestDistance = hit.distance;
+                    hitIndex = i;
                 }
             }
 
-            return foundBlockingHit;
+            if (hitIndex != -1)
+            {
+                hitResult = _hits[hitIndex];
+                return true;
+            }
+
+            return false;
         }
         
         /// <summary>
@@ -3290,10 +3730,10 @@ namespace EasyCharacterMovement
 
                 int sweepLayerMask = _collisionLayers;
 
-                bool blockingHit = SweepTest(sweepOrigin, sweepRadius, sweepDirection, sweepDistance, sweepLayerMask,
-                    out RaycastHit hitResult, out _);
+                bool hit = SweepTestEx(sweepOrigin, sweepRadius, sweepDirection, sweepDistance, sweepLayerMask,
+                    out RaycastHit hitResult, out bool startPenetrating, out _, out _, true);
 
-                if (!blockingHit)
+                if (!hit && !startPenetrating)
                 {
                     // No collision, apply full displacement
 
@@ -3535,18 +3975,18 @@ namespace EasyCharacterMovement
         /// Unlike previous, this do not modifies / updates character's velocity.
         /// </summary>
 
-        private int ResolveCollision(int iteration, Vector3 inputDisplacement, ref Vector3 displacement,
+        private int SlideAlongSurface(int iteration, Vector3 inputDisplacement, ref Vector3 displacement,
             ref CollisionResult inHit, ref Vector3 prevNormal)
         {
             inHit.normal = ComputeBlockingNormal(inHit.normal, inHit.isWalkable);
 
             if (inHit.isWalkable && isConstrainedToGround)
-                displacement = ComputeCollisionResponse(displacement, inHit.normal, true);
+                displacement = ComputeSlideVector(displacement, inHit.normal, true);
             else
             {
                 if (iteration == 0)
                 {
-                    displacement = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                    displacement = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
                     iteration++;
                 }
                 else if (iteration == 1)
@@ -3555,7 +3995,7 @@ namespace EasyCharacterMovement
 
                     Vector3 oVel = inputDisplacement.projectedOnPlane(crease);
 
-                    Vector3 nVel = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                    Vector3 nVel = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
                             nVel = nVel.projectedOnPlane(crease);
 
                     if (oVel.dot(nVel) <= 0.0f || prevNormal.dot(inHit.normal) < 0.0f)
@@ -3565,7 +4005,7 @@ namespace EasyCharacterMovement
                     }
                     else
                     {
-                        displacement = ComputeCollisionResponse(displacement, inHit.normal, inHit.isWalkable);
+                        displacement = ComputeSlideVector(displacement, inHit.normal, inHit.isWalkable);
                     }
                 }
                 else
@@ -3610,7 +4050,7 @@ namespace EasyCharacterMovement
                 //
                 // Resolve collision (slide along hit surface)
 
-                iteration = ResolveCollision(iteration, inputDisplacement, ref displacement, ref collisionResult, ref prevNormal);
+                iteration = SlideAlongSurface(iteration, inputDisplacement, ref displacement, ref collisionResult, ref prevNormal);
 
                 //
                 // Cache collision result

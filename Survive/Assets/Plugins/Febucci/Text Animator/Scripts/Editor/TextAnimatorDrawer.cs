@@ -152,6 +152,7 @@ namespace Febucci.UI.Core.Editors
             Effect appDiagExp;
             Effect appOffset;
             Effect appRot;
+            Effect appRandomDir;
 
             public AppearanceDefaultEffects(SerializedProperty defaults) : base("Built-in appearances/disappearances", docs_builtinEffects + "#appearances-and-disappearances")
             {
@@ -224,6 +225,16 @@ namespace Febucci.UI.Core.Editors
                     new EffectValuePair { valueName = "rotationDuration", label = "Duration" },
                     new EffectValuePair { valueName = "rotationStartAngle", label = "StartAngle" }
                     );
+                
+                appRandomDir = new Effect(
+                    "Random Direction",
+                    TAnimTags.ap_RandomDir,
+                    true,
+                    defaults,
+                    true,
+                    new EffectValuePair { valueName = "randomDirAmplitude", label = "Amplitude" },
+                    new EffectValuePair { valueName = "randomDirDuration", label = "Duration" }
+                    );
             }
 
             internal override void DrawBody()
@@ -235,6 +246,7 @@ namespace Febucci.UI.Core.Editors
                 appHoriExp.Show();
                 appDiagExp.Show();
                 appRot.Show();
+                appRandomDir.Show();
             }
         }
 

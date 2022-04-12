@@ -24,6 +24,7 @@
         public const string ap_Size = "size";
         public const string ap_Fade = "fade";
         public const string ap_Offset = "offset";
+        public const string ap_RandomDir = "rdir";
         public const string ap_VertExp = "vertexp";
         public const string ap_HoriExp = "horiexp";
         public const string ap_DiagExp = "diagexp";
@@ -60,6 +61,7 @@
             ap_HoriExp,
             ap_DiagExp,
             ap_Rot,
+            ap_RandomDir
         };
 
 
