@@ -669,6 +669,7 @@ public class ClassicCharacter : Character
     /// Changes the transparency of the Character 
     ///  for the player that made this call.
     /// </summary>
+    
     [ClientRpc(includeOwner = false)]
     protected virtual void RpcChangeTransparency()
     {

@@ -6,7 +6,6 @@ public class CameraManager : MonoBehaviour
     public static CameraManager Instance { get; private set; }
 
     [SerializeField] private GameObject _cinemachineCamera;
-
     [SerializeField] private PSXEffects _psxEffects;
 
     void Awake()

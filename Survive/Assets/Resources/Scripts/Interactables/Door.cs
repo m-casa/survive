@@ -3,14 +3,8 @@ using UnityEngine;
 
 public class Door : MonoBehaviour, IInteractable<GameObject>
 {
+    [SerializeField] private Transition transition;
     [SerializeField] private GameObject exitPoint;
-
-    private Transition transition;
-
-    void Start()
-    {
-        transition = GetComponentInParent<MansionSetup>().GetTransition();
-    }
 
     public void Interact(GameObject player)
     {
