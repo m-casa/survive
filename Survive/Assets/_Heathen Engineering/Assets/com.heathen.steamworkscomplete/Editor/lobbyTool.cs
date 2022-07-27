@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if HE_SYSCORE && STEAMWORKS_NET
 using System;
 using UnityEditor;
 using UnityEngine;
@@ -112,7 +112,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PrefixLabel("User ID: ");
-            EditorGUILayout.SelectableLabel(member.user.cSteamId.ToString(), GUILayout.Height(18));
+            EditorGUILayout.SelectableLabel(member.user.id.ToString(), GUILayout.Height(18));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();

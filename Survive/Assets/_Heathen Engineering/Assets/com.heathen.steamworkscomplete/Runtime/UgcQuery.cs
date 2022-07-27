@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -22,14 +22,14 @@ namespace HeathenEngineering.SteamworksIntegration
         private AppId_t consumerApp;
         private AccountID_t account;
         private uint _Page = 1;
-        public uint Page { get { return _Page; } private set { _Page = value; } }
+        public uint Page { get { return _Page; } set { SetPage(value); } }
         private UnityAction<UgcQuery> callback;
 
         public CallResult<SteamUGCQueryCompleted_t> m_SteamUGCQueryCompleted;
 
         public List<UGCCommunityItem> ResultsList = new List<UGCCommunityItem>();
 
-        public UgcQuery()
+        private UgcQuery()
         {
             m_SteamUGCQueryCompleted = CallResult<SteamUGCQueryCompleted_t>.Create(HandleQueryCompleted);
         }
@@ -85,6 +85,27 @@ namespace HeathenEngineering.SteamworksIntegration
                 account = account,
                 Page = 1,
                 handle = API.UserGeneratedContent.Client.CreateQueryUserRequest(account, listType, matchingType, sortOrder, creatorApp, consumerApp, 1)
+            };
+
+            return nQuery;
+        }
+
+        public static UgcQuery Create(UserData user, EUserUGCList listType, EUGCMatchingUGCType matchingType, EUserUGCListSortOrder sortOrder, AppId_t creatorApp, AppId_t consumerApp)
+        {
+            UgcQuery nQuery = new UgcQuery
+            {
+                matchedRecordCount = 0,
+                pageCount = 1,
+                isAllQuery = false,
+                isUserQuery = true,
+                listType = listType,
+                sortOrder = sortOrder,
+                matchingType = matchingType,
+                creatorApp = creatorApp,
+                consumerApp = consumerApp,
+                account = user.AccountId,
+                Page = 1,
+                handle = API.UserGeneratedContent.Client.CreateQueryUserRequest(user.AccountId, listType, matchingType, sortOrder, creatorApp, consumerApp, 1)
             };
 
             return nQuery;
@@ -178,13 +199,13 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <returns></returns>
         public bool SetSearchText(string text) => API.UserGeneratedContent.Client.SetSearchText(handle, text);
 
-        public bool SetNextPage() =>  SetPage((uint)Mathf.Clamp((int)Page + 1, 1, int.MaxValue));
+        public bool SetNextPage() =>  SetPage((uint)Mathf.Clamp((int)_Page + 1, 1, pageCount));
 
-        public bool SetPreviousPage() => SetPage((uint)Mathf.Clamp((int)Page - 1, 1, int.MaxValue));
+        public bool SetPreviousPage() => SetPage((uint)Mathf.Clamp((int)_Page - 1, 1, pageCount));
 
         public bool SetPage(uint page)
         {
-            Page = page > 0 ? page : 1;
+            _Page = page > 0 ? page : 1;
             if (isAllQuery)
             {
                 ReleaseHandle();
@@ -238,6 +259,18 @@ namespace HeathenEngineering.SteamworksIntegration
                         SteamUGCDetails_t details;
                         API.UserGeneratedContent.Client.GetQueryResult(param.m_handle, (uint)i, out details);
                         var nRecord = new UGCCommunityItem(details);
+                        API.UserGeneratedContent.Client.GetQueryMetadata(param.m_handle, (uint)i, out nRecord.metadata, Constants.k_cchDeveloperMetadataMax);
+                        nRecord.metadata?.Trim();
+
+                        var tagCount = API.UserGeneratedContent.Client.GetQueryNumKeyValueTags(param.m_handle, (uint)i);
+                        nRecord.keyValueTags = new StringKeyValuePair[tagCount];
+                        for(int tagI = 0; tagI < tagCount; tagI++)
+                        {
+                            API.UserGeneratedContent.Client.GetQueryKeyValueTag(param.m_handle, (uint)i, (uint)tagI, out string key, 255, out string value, 255);
+                            nRecord.keyValueTags[tagI].key = key?.Trim();
+                            nRecord.keyValueTags[tagI].value = value?.Trim();
+                        }
+
                         ResultsList.Add(nRecord);
                     }
                     ReleaseHandle();

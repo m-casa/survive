@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -14,7 +14,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/ClipState
     /// 
-    public sealed class ClipState : AnimancerState
+    public class ClipState : AnimancerState
     {
         /************************************************************************************************************************/
 
@@ -144,7 +144,7 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <inheritdoc/>
-        public sealed class Drawer : Editor.AnimancerStateDrawer<ClipState>
+        public class Drawer : Editor.AnimancerStateDrawer<ClipState>
         {
             /************************************************************************************************************************/
 
@@ -156,8 +156,8 @@ namespace Animancer
             /// <inheritdoc/>
             protected override void AddContextMenuFunctions(UnityEditor.GenericMenu menu)
             {
-                menu.AddDisabledItem(new GUIContent(DetailsPrefix + "Animation Type: " +
-                    Editor.AnimationBindings.GetAnimationType(Target._Clip)));
+                menu.AddDisabledItem(new GUIContent(
+                    $"{DetailsPrefix}Animation Type: {Editor.AnimationBindings.GetAnimationType(Target._Clip)}"));
 
                 base.AddContextMenuFunctions(menu);
 

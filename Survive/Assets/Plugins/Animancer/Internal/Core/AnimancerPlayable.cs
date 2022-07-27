@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Collections;
@@ -237,7 +237,10 @@ namespace Animancer
 
         private bool _KeepChildrenConnected;
 
-        /// <summary>Should playables stay connected to the graph at all times?</summary>
+        /// <summary>
+        /// Should playables stay connected to the graph at all times?
+        /// Otherwise they will be disconnected when their  <see cref="AnimancerNode.Weight"/> is 0.
+        /// </summary>
         /// 
         /// <remarks>
         /// Humanoid Rigs default this value to <c>false</c> so that playables will be disconnected from the graph
@@ -315,7 +318,7 @@ namespace Animancer
         /************************************************************************************************************************/
         #endregion
         /************************************************************************************************************************/
-        #region Initialisation
+        #region Initialization
         /************************************************************************************************************************/
 
         /// <summary>
@@ -363,7 +366,7 @@ namespace Animancer
 
         /************************************************************************************************************************/
 
-        /// <summary>[Internal] Called by Unity as it creates this <see cref="AnimancerPlayable"/>.</summary>
+        /// <summary>[Internal] Called by Unity when it creates this <see cref="AnimancerPlayable"/>.</summary>
         public override void OnPlayableCreate(Playable playable)
         {
             _RootPlayable = playable;
@@ -424,7 +427,7 @@ namespace Animancer
             for (int i = 0; i < outputCount; i++)
             {
                 output = _Graph.GetOutput(i);
-                if (output.GetSourcePlayable().IsPlayableOfType<ScriptPlayable<AnimancerPlayable>>())
+                if (output.GetSourcePlayable().Equals(_RootPlayable))
                     return true;
             }
 
@@ -485,7 +488,10 @@ namespace Animancer
             // Generic Rigs can blend with an underlying Animator Controller but Humanoids can't.
             SkipFirstFade = isHumanoid || animator.runtimeAnimatorController == null;
 
+#pragma warning disable CS0618 // Type or member is obsolete.
             AnimationPlayableUtilities.Play(animator, _RootPlayable, _Graph);
+#pragma warning restore CS0618 // Type or member is obsolete.
+
             _IsGraphPlaying = true;
         }
 
@@ -493,9 +499,8 @@ namespace Animancer
 
         /// <summary>[Pro-Only]
         /// Inserts a `playable` after the root of the <see cref="Graph"/> so that it can modify the final output.
-        /// <para></para>
-        /// It can be removed using <see cref="AnimancerUtilities.RemovePlayable"/>.
         /// </summary>
+        /// <remarks>It can be removed using <see cref="AnimancerUtilities.RemovePlayable"/>.</remarks>
         public void InsertOutputPlayable(Playable playable)
         {
             var output = _Graph.GetOutput(0);
@@ -506,9 +511,10 @@ namespace Animancer
 
         /// <summary>[Pro-Only]
         /// Inserts an animation job after the root of the <see cref="Graph"/> so that it can modify the final output.
-        /// <para></para>
-        /// It can can be removed by passing the returned value into <see cref="AnimancerUtilities.RemovePlayable"/>.
         /// </summary>
+        /// <remarks>
+        /// It can can be removed by passing the returned value into <see cref="AnimancerUtilities.RemovePlayable"/>.
+        /// </remarks>
         public AnimationScriptPlayable InsertOutputJob<T>(T data) where T : struct, IAnimationJob
         {
             var playable = AnimationScriptPlayable.Create(_Graph, data, 1);
@@ -1294,7 +1300,7 @@ namespace Animancer
         /// <see cref="PrepareFrame"/> method gets called after all other playables are updated in order to call
         /// <see cref="IUpdatable.Update"/> on the <see cref="_PostUpdatables"/>.
         /// </summary>
-        private sealed class PostUpdate : PlayableBehaviour
+        private class PostUpdate : PlayableBehaviour
         {
             /************************************************************************************************************************/
 
@@ -1320,7 +1326,7 @@ namespace Animancer
 
             /************************************************************************************************************************/
 
-            /// <summary>Called by Unity as it creates this <see cref="AnimancerPlayable"/>.</summary>
+            /// <summary>[Internal] Called by Unity when it creates this <see cref="AnimancerPlayable"/>.</summary>
             public override void OnPlayableCreate(Playable playable) => _Playable = playable;
 
             /************************************************************************************************************************/

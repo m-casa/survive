@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using Unity.Collections;
@@ -58,9 +58,12 @@ namespace Animancer
 
         /************************************************************************************************************************/
 
-        /// <summary>[Animancer Extension] Returns true as long as the `value` is not NaN or Infinity.</summary>
+        /// <summary>[Animancer Extension] Is the `value` not NaN or Infinity?</summary>
         /// <remarks>Newer versions of the .NET framework apparently have a <c>float.IsFinite</c> method.</remarks>
         public static bool IsFinite(this float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+        /// <summary>[Animancer Extension] Are all components of the `value` not NaN or Infinity?</summary>
+        public static bool IsFinite(this Vector2 value) => value.x.IsFinite() && value.y.IsFinite();
 
         /************************************************************************************************************************/
 
@@ -78,6 +81,22 @@ namespace Animancer
                 return $"Null ({obj.GetType()})";
 
             return obj.ToString();
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Ensures that the length and contents of `copyTo` match `copyFrom`.</summary>
+        public static void CopyExactArray<T>(T[] copyFrom, ref T[] copyTo)
+        {
+            if (copyFrom == null)
+            {
+                copyTo = null;
+                return;
+            }
+
+            var length = copyFrom.Length;
+            SetLength(ref copyTo, length);
+            Array.Copy(copyFrom, copyTo, length);
         }
 
         /************************************************************************************************************************/
@@ -269,7 +288,7 @@ namespace Animancer
                     return animator.GetBool(parameter.nameHash);
 
                 default:
-                    throw new ArgumentException($"Unsupported {nameof(AnimatorControllerParameterType)}: " + parameter.type);
+                    throw CreateUnsupportedArgumentException(parameter.type);
             }
         }
 
@@ -289,7 +308,7 @@ namespace Animancer
                     return playable.GetBool(parameter.nameHash);
 
                 default:
-                    throw new ArgumentException($"Unsupported {nameof(AnimatorControllerParameterType)}: " + parameter.type);
+                    throw CreateUnsupportedArgumentException(parameter.type);
             }
         }
 
@@ -320,7 +339,7 @@ namespace Animancer
                     break;
 
                 default:
-                    throw new ArgumentException($"Unsupported {nameof(AnimatorControllerParameterType)}: " + parameter.type);
+                    throw CreateUnsupportedArgumentException(parameter.type);
             }
         }
 
@@ -349,7 +368,7 @@ namespace Animancer
                     break;
 
                 default:
-                    throw new ArgumentException($"Unsupported {nameof(AnimatorControllerParameterType)}: " + parameter.type);
+                    throw CreateUnsupportedArgumentException(parameter.type);
             }
         }
 
@@ -365,6 +384,16 @@ namespace Animancer
         {
             return new NativeArray<T>(1, Allocator.Persistent, NativeArrayOptions.ClearMemory);
         }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Returns a string stating that the `value` is unsupported.</summary>
+        public static string GetUnsupportedMessage<T>(T value)
+            => $"Unsupported {typeof(T).FullName}: {value}";
+
+        /// <summary>Returns an exception stating that the `value` is unsupported.</summary>
+        public static ArgumentException CreateUnsupportedArgumentException<T>(T value)
+            => new ArgumentException(GetUnsupportedMessage(value));
 
         /************************************************************************************************************************/
         #endregion
@@ -390,9 +419,8 @@ namespace Animancer
         /// </summary>
         public static T GetOrAddAnimancerComponent<T>(this Animator animator) where T : Component, IAnimancerComponent
         {
-            var animancer = animator.GetComponent<T>();
-            if (animancer != null)
-                return animancer;
+            if (animator.TryGetComponent<T>(out var component))
+                return component;
             else
                 return animator.AddAnimancerComponent<T>();
         }

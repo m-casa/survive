@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Collections;
@@ -461,7 +461,7 @@ namespace Animancer
             {
 #if UNITY_ASSERTIONS
                 if (!value.IsFinite())
-                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(Time)} must be finite");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(Time)} {Strings.MustBeFinite}");
 #endif
 
                 _Time = value;
@@ -581,7 +581,7 @@ namespace Animancer
         {
 #if UNITY_ASSERTIONS
             if (!time.IsFinite())
-                throw new ArgumentOutOfRangeException(nameof(time), time, $"{nameof(Time)} must be finite");
+                throw new ArgumentOutOfRangeException(nameof(time), time, $"{nameof(Time)} {Strings.MustBeFinite}");
 #endif
 
             var root = Root;
@@ -817,7 +817,7 @@ namespace Animancer
 
         /// <summary>
         /// Returns true if the animation is playing and has not yet passed the
-        /// <see cref="AnimancerEvent.Sequence.endEvent"/>.
+        /// <see cref="AnimancerEvent.Sequence.EndEvent"/>.
         /// </summary>
         /// <remarks>
         /// This method is called by <see cref="IEnumerator.MoveNext"/> so this object can be used as a custom yield
@@ -834,7 +834,7 @@ namespace Animancer
                 float endTime;
                 if (_EventDispatcher != null)
                 {
-                    endTime = _EventDispatcher.Events.endEvent.normalizedTime;
+                    endTime = _EventDispatcher.Events.NormalizedEndTime;
                     if (float.IsNaN(endTime))
                         endTime = Length;
                     else
@@ -849,7 +849,7 @@ namespace Animancer
                 float endTime;
                 if (_EventDispatcher != null)
                 {
-                    endTime = _EventDispatcher.Events.endEvent.normalizedTime;
+                    endTime = _EventDispatcher.Events.NormalizedEndTime;
                     if (float.IsNaN(endTime))
                         endTime = 0;
                     else

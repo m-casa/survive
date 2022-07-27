@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using HeathenEngineering.Events;
 using Steamworks;
 using System;
@@ -65,7 +65,7 @@ namespace HeathenEngineering.SteamworksIntegration
             [Serializable]
             public class FailureEvent : UnityEvent<SteamServerConnectFailure_t> { }
 
-            public bool autoInitalize = false;
+            public bool autoInitialize = false;
             public bool autoLogon = false;
             //public bool enableMirror = true;
 
@@ -144,7 +144,7 @@ namespace HeathenEngineering.SteamworksIntegration
                 if (!Initialized)
                 {
                     HasInitalizationError = true;
-                    InitalizationErrorMessage = "Steam API failed to initalize!\nOne of the following issues must be true:\n"
+                    InitalizationErrorMessage = "Steam API failed to initialize!\nOne of the following issues must be true:\n"
                             + "The Steam couldn't determine the App ID of the game. If you're running your server from the executable or debugger directly then you must have a steam_appid.txt in your server directory next to the executable, with your app ID in it and nothing else. Steam will look for this file in the current working directory. If you are running your executable from a different directory you may need to relocate the steam_appid.txt file.\n"
                             + "Ensure that you own a license for the App ID on the currently active Steam account (if login via token). Your game must show up in your Steam library.\n"
                             + "The App ID is not completely set up, i.e. in Release State: Unavailable, or it's missing default packages.";
@@ -314,7 +314,6 @@ namespace HeathenEngineering.SteamworksIntegration
                     Debug.Log("Steam API has been initialized with App ID: " + SteamUtils.GetAppID());
                 }
 
-#if HE_STEAMCOMPLETE
                 inventory.Load();
 
                 foreach (var board in current.leaderboards)
@@ -333,10 +332,9 @@ namespace HeathenEngineering.SteamworksIntegration
                         if (result)
                             Debug.Log("Steam Input API initialized.");
                         else
-                            Debug.LogWarning("Steam Input API failed to initalize!");
+                            Debug.LogWarning("Steam Input API failed to initialize!");
                     }
                 }
-#endif
 
                 if (current.applicationId != SteamUtils.GetAppID())
                 {
@@ -348,7 +346,7 @@ namespace HeathenEngineering.SteamworksIntegration
                 }
             }
 
-#if HE_STEAMCOMPLETE
+
 #region Input System
             public List<InputActionSet> actionSets = new List<InputActionSet>();
             public List<InputActionSetLayer> actionSetLayers = new List<InputActionSetLayer>();
@@ -387,7 +385,7 @@ namespace HeathenEngineering.SteamworksIntegration
             /// </remarks>
             public InventorySettings inventory = new InventorySettings();
 #endregion
-#endif
+
         }
 #endregion
 
@@ -399,9 +397,7 @@ namespace HeathenEngineering.SteamworksIntegration
             InitalizationErrorMessage = string.Empty;
 
             API.Friends.Client.UnloadAvatarImages();
-#if HE_STEAMCOMPLETE
             API.Input.Client.UnloadGlyphImages();
-#endif
         }
 
         /// <summary>
@@ -431,9 +427,9 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <remarks>
         /// <para>
         /// This is the app id value the developer would have typed in to the Unity Editor when setting up the project.
-        /// Note that hackers can easily modify this value to cause the Steamworks API to initalize as a different game or can use the steam_appid.txt to force the Steamworks API to register as a different ID.
+        /// Note that hackers can easily modify this value to cause the Steamworks API to initialize as a different game or can use the steam_appid.txt to force the Steamworks API to register as a different ID.
         /// You can confirm what ID Valve sees this program as running as by calling <see cref="GetAppId"/> you can then compare this fixed value to insure your user is not attempting to manipulate your program.
-        /// In addition if you are integrating deeply with the Steamworks API such as using stats, achievements, leaderboards and other features with a configuration specific to your app ID ... this will further insure that if a user manages to initalize as an app other than your App ID ... such as an attempt to pirate your game that these features will break insuring a degraded experance for pirates.
+        /// In addition if you are integrating deeply with the Steamworks API such as using stats, achievements, leaderboards and other features with a configuration specific to your app ID ... this will further insure that if a user manages to initialize as an app other than your App ID ... such as an attempt to pirate your game that these features will break insuring a degraded experance for pirates.
         /// </para>
         /// </remarks>
         /// <example>
@@ -470,7 +466,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </summary>
         /// <remarks>
         /// <para>This value gets set to true when <see cref="Init"/> is called by the <see cref="SteamworksClientApiSystem"/>.
-        /// Note that if Steamworks API fails to initalize such as if the Steamworks client is not installed, running and logged in with a valid Steamworks user then the call to Init will fail and the <see cref="Initialized"/> value will remain false.</para>
+        /// Note that if Steamworks API fails to initialize such as if the Steamworks client is not installed, running and logged in with a valid Steamworks user then the call to Init will fail and the <see cref="Initialized"/> value will remain false.</para>
         /// </remarks>
         public static bool Initialized { get; private set; }
 
@@ -521,7 +517,6 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </remarks>
         public static List<StatObject> Stats => current.stats;
 
-#if HE_STEAMCOMPLETE
 #region DLC System
         /// <summary>
         /// The list of dlc registered for this applicaiton.
@@ -541,19 +536,19 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </remarks>
         public static List<LeaderboardObject> Leaderboards => current.leaderboards;
         #endregion
-#endif
+
         #endregion
 
         #region Utility Functions
 
         /// <summary>
-        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
+        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initialize
         /// </summary>
         /// <remarks>
-        /// This should only be used in the rare cases you need to initalize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
+        /// This should only be used in the rare cases you need to initialize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
         /// </remarks>
         /// <param name="doNotDestroy">Optionally mark the created Steamworks Behaviour object as Do Not Destroy On Load</param>
-        public void CreateBehaviour(bool doNotDestroy = false)
+        public void CreateBehaviour(bool doNotDestroy = false, Action initializedCallback = null, Action<string> errorCallback = null)
         {
             if (!Initialized)
             {
@@ -562,16 +557,23 @@ namespace HeathenEngineering.SteamworksIntegration
                 if (doNotDestroy)
                     DontDestroyOnLoad(steamGO);
                 var behaviour = steamGO.AddComponent<SteamworksBehaviour>();
+
+                if (initializedCallback != null)
+                    behaviour.evtSteamInitialized.AddListener(initializedCallback.Invoke);
+
+                if(errorCallback != null)
+                    behaviour.evtSteamInitializationError.AddListener(errorCallback.Invoke);
+
                 behaviour.settings = this;
                 steamGO.SetActive(true);
             }
         }
 
         /// <summary>
-        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initalize
+        /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initialize
         /// </summary>
         /// <remarks>
-        /// This should only be used in the rare cases you need to initalize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
+        /// This should only be used in the rare cases you need to initialize Steam API on demand. In a typical araingment you would defiine the Steamworks Beahviour at developer time in the Unity Editor as part of a scene that is only ever loaded once.
         /// </remarks>
         /// <param name="doNotDestroy">Optionally mark the created Steamworks Behaviour object as Do Not Destroy On Load</param>
         public static void CreateBeahviour(SteamSettings settings, bool doNotDestroy = false) => settings.CreateBehaviour(doNotDestroy);
@@ -645,7 +647,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </remarks>
         public List<AchievementObject> achievements = new List<AchievementObject>();
 
-#if HE_STEAMCOMPLETE
+
 #region DLC System
         public List<DownloadableContentObject> dlc = new List<DownloadableContentObject>();
 #endregion
@@ -660,7 +662,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </remarks>
         public List<LeaderboardObject> leaderboards = new List<LeaderboardObject>();
 #endregion
-#endif
+
 #endregion
 
 #region Events
@@ -678,7 +680,7 @@ namespace HeathenEngineering.SteamworksIntegration
             if (Initialized)
             {
                 HasInitalizationError = true;
-                InitalizationErrorMessage = "Tried to initalize the Steamworks API twice in one session!";
+                InitalizationErrorMessage = "Tried to initialize the Steamworks API twice in one session!";
                 evtSteamInitializationError.Invoke(InitalizationErrorMessage);
                 Debug.LogWarning(InitalizationErrorMessage);
                 return;
@@ -731,10 +733,8 @@ namespace HeathenEngineering.SteamworksIntegration
 
 #if !UNITY_SERVER
 
-#if HE_STEAMCOMPLETE
             if (API.Input.Client.Initialized)
                 API.Input.Client.Shutdown();
-#endif
 
             SteamAPI.Shutdown();
 #else

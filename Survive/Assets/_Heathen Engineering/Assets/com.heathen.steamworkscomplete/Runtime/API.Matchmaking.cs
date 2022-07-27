@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -307,7 +307,14 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// </summary>
             /// <param name="type">The type and visibility of this lobby. This can be changed later via SetLobbyType.</param>
             /// <param name="maxMembers">The maximum number of players that can join this lobby. This can not be above 250.</param>
-            /// <param name="callback"></param>
+            /// <param name="callback">
+            /// An action to be invoked when the creation is completed
+            /// <code>
+            /// void Callback(Lobby result, bool ioError)
+            /// {
+            /// }
+            /// </code>
+            /// </param>
             public static void CreateLobby(ELobbyType type, int maxMembers, Action<Lobby, bool> callback)
             {
                 if (callback == null)

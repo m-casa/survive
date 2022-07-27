@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Linq;
@@ -19,6 +19,43 @@ namespace HeathenEngineering.SteamworksIntegration
     public struct Clan : IEquatable<CSteamID>, IEquatable<Clan>, IEquatable<ulong>, IComparable<CSteamID>, IComparable<Clan>, IComparable<ulong>
     {
         public CSteamID id;
+        public ulong SteamId
+        {
+            get => id.m_SteamID;
+            set => id = new CSteamID(value);
+        }
+        public AccountID_t AccountId
+        {
+            get => id.GetAccountID();
+            set
+            {
+                id = new CSteamID(value, EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeClan);
+            }
+        }
+        public uint FriendId
+        {
+            get => AccountId.m_AccountID;
+            set
+            {
+                id = new CSteamID(new AccountID_t(value), EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeClan);
+            }
+        }
+        /// <summary>
+        /// Is this Clan value a valid value.
+        /// This does not indicate it is a clan simply that structurally the data is possibly a clan
+        /// </summary>
+        public bool IsValid
+        {
+            get
+            {
+                if (id == CSteamID.Nil
+                    || id.GetEAccountType() != EAccountType.k_EAccountTypeClan
+                    || id.GetEUniverse() != EUniverse.k_EUniversePublic)
+                    return false;
+                else
+                    return true;
+            }
+        }
         public Texture2D Icon => API.Friends.Client.GetLoadedAvatar(id);
         public string Name => API.Clans.Client.GetName(id);
         public string Tag => API.Clans.Client.GetTag(id);
@@ -30,6 +67,30 @@ namespace HeathenEngineering.SteamworksIntegration
         public bool IsPublic => API.Clans.Client.IsClanPublic(this);
         public bool IsUserOwner => Owner == UserData.Me;
         public bool IsUserOfficer => Officers.Any(p => p == UserData.Me);
+        /// <summary>
+        /// Get the clan represented by this account ID
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static Clan Get(uint accountId) => new CSteamID(new AccountID_t(accountId), EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeClan);
+        /// <summary>
+        /// Get the clan represented by this account ID
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static Clan Get(AccountID_t accountId) => new CSteamID(accountId, EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeClan);
+        /// <summary>
+        /// Get the clan represented by this CSteamID value
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public static Clan Get(ulong id) => new Clan { id = new CSteamID(id) };
+        /// <summary>
+        /// Get the clan represented by this CSteamID
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public static Clan Get(CSteamID id) => new Clan { id = id };
         /// <summary>
         /// Allows the user to join Steam group (clan) chats right within the game.
         /// </summary>

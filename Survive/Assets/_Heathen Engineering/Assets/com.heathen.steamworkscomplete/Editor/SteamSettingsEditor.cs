@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System.Collections.Generic;
 using System.IO;
@@ -47,17 +47,6 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             DrawCommonSettings();
             DrawServerSettings();
 
-#if !HE_STEAMCOMPLETE
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
-            if (GUILayout.Button("Buy Steamworks Complete"))
-            {
-                GUI.FocusControl(null);
-
-                Application.OpenURL("https://assetstore.unity.com/packages/tools/integration/steamworks-v2-complete-190316");
-            }
-#endif
         }
 
         private void ValidationChecks()
@@ -78,14 +67,12 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
         private void DrawCommonSettings()
         {
             EditorGUILayout.BeginHorizontal();
-#if HE_STEAMCOMPLETE
             if (GUILayout.Button("Open Debug Window"))
             {
                 GUI.FocusControl(null);
 
                 SteamInspector_Code.ShowExample();
             }
-#endif
             var debug = GUILayout.Toggle(settings.isDebugging, "Enable Debug Messages", EditorStyles.toolbarButton);
             if(settings.isDebugging != debug)
             {
@@ -287,7 +274,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
-            var autoInt = GUILayout.Toggle(settings.server.autoInitalize, (settings.server.autoInitalize ? "Disable" : "Enable") + " Auto-Initalize", EditorStyles.toolbarButton);
+            var autoInt = GUILayout.Toggle(settings.server.autoInitialize, (settings.server.autoInitialize ? "Disable" : "Enable") + " Auto-Initialize", EditorStyles.toolbarButton);
             var autoLog = GUILayout.Toggle(settings.server.autoLogon, (settings.server.autoLogon ? "Disable" : "Enable") + " Auto-Logon", EditorStyles.toolbarButton);
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.BeginHorizontal();
@@ -304,10 +291,10 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             EditorGUILayout.EndHorizontal();
             //var mirror = GUILayout.Toggle(settings.server.enableMirror, (settings.server.enableMirror ? "Disable" : "Enable") + " Mirror Support", EditorStyles.toolbarButton);
 
-            if (autoInt != settings.server.autoInitalize)
+            if (autoInt != settings.server.autoInitialize)
             {
                 Undo.RecordObject(target, "editor");
-                settings.server.autoInitalize = autoInt;
+                settings.server.autoInitialize = autoInt;
                 EditorUtility.SetDirty(target);
             }
 
@@ -625,7 +612,6 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
         private void DrawLeaderboardList()
         {
-#if HE_STEAMCOMPLETE
 #region Steam Complete
             if (settings.leaderboards == null)
                 settings.leaderboards = new List<LeaderboardObject>();
@@ -726,23 +712,11 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 //EditorGUI.indentLevel = mil;
             }
 #endregion
-#else
-            leaderboardFoldout = EditorGUILayout.Foldout(leaderboardFoldout, "Leaderboards: ");
-            if(leaderboardFoldout)
-            {
-                if (GUILayout.Button("Buy Steamworks Complete"))
-                {
-                    GUI.FocusControl(null);
-
-                    Application.OpenURL("https://assetstore.unity.com/packages/tools/integration/steamworks-v2-complete-190316");
-                }
-            }
-#endif
+            
         }
 
         private void DrawDLCList()
         {
-#if HE_STEAMCOMPLETE
             if (settings.dlc == null)
                 settings.dlc = new List<DownloadableContentObject>();
 
@@ -849,23 +823,11 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 
                 GUI.backgroundColor = bgColor;
             }
-#else
-            dlcFoldout = EditorGUILayout.Foldout(dlcFoldout, "Downloadable Content: ");
-            if(dlcFoldout)
-            {
-                if (GUILayout.Button("Buy Steamworks Complete"))
-                {
-                    GUI.FocusControl(null);
-
-                    Application.OpenURL("https://assetstore.unity.com/packages/tools/integration/steamworks-v2-complete-190316");
-                }
-            }
-#endif
         }
 
         private void DrawInventoryArea()
         {
-#if HE_STEAMCOMPLETE
+
             settings.client.inventory.items.RemoveAll(p => p == null);
 
             foreach(var item in settings.client.inventory.items)
@@ -1063,23 +1025,10 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
                 EditorGUI.indentLevel--;
             }
-#else
-            inventoryFoldout = EditorGUILayout.Foldout(inventoryFoldout, "Inventory: ");
-            if(inventoryFoldout)
-            {
-                if (GUILayout.Button("Buy Steamworks Complete"))
-                {
-                    GUI.FocusControl(null);
-
-                    Application.OpenURL("https://assetstore.unity.com/packages/tools/integration/steamworks-v2-complete-190316");
-                }
-            }
-#endif
         }
 
         private void DrawInputArea()
         {
-#if HE_STEAMCOMPLETE
             //inputFoldout
             inputFoldout = EditorGUILayout.Foldout(inputFoldout, "Input: " + (settings.client.actions.Count + settings.client.actionSets.Count + settings.client.actionSetLayers.Count).ToString());
 
@@ -1198,10 +1147,8 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
                 EditorGUI.indentLevel--;
             }
-#endif
         }
 
-#if HE_STEAMCOMPLETE
         private bool DrawItem(ItemDefinition item)
         {
             var color = GUI.contentColor;
@@ -1393,7 +1340,6 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
             return id;
         }
-#endif
     }
 }
 #endif

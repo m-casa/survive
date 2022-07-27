@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using Animancer.Units;
 using UnityEngine;
@@ -24,7 +24,7 @@ namespace Animancer
         /// <summary>The standard prefix for <see cref="AddComponentMenu"/> for the examples.</summary>
         public const string ExamplesMenuPrefix = MenuPrefix + "Examples/";
 
-        /// <summary>The menu path of the <see cref="Editor.AnimancerToolsWindow"/>.</summary>
+        /// <summary>The menu path of the <see cref="Editor.Tools.AnimancerToolsWindow"/>.</summary>
         public const string AnimancerToolsMenuPath = "Window/Animation/Animancer Tools";
 
         /// <summary>
@@ -49,6 +49,11 @@ namespace Animancer
         /// <summary>A prefix for tooltips on Pro-Only features.</summary>
         /// <remarks><c>"[Pro-Only] "</c> in Animancer Lite or <c>""</c> in Animancer Pro.</remarks>
         public const string ProOnlyTag = "";
+
+        /************************************************************************************************************************/
+
+        /// <summary>An error message for when <see cref="AnimancerUtilities.IsFinite(float)"/> fails.</summary>
+        public const string MustBeFinite = "must not be NaN or Infinity";
 
         /************************************************************************************************************************/
 
@@ -92,6 +97,8 @@ namespace Animancer
             /************************************************************************************************************************/
 #if UNITY_EDITOR
             /************************************************************************************************************************/
+
+            public const string KeepChildrenConnected = APIDocumentation + "/" + nameof(AnimancerPlayable) + "/FEFD6C35";
 
             public const string Examples = Docs + "examples";
             public const string UnevenGround = Docs + "examples/ik/uneven-ground";

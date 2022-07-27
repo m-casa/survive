@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -17,7 +17,7 @@ namespace Animancer.Editor
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/SerializableEventSequenceDrawer
     /// 
     [CustomPropertyDrawer(typeof(Sequence), true)]
-    public sealed class SerializableEventSequenceDrawer : PropertyDrawer
+    public class SerializableEventSequenceDrawer : PropertyDrawer
     {
         /************************************************************************************************************************/
 
@@ -54,6 +54,9 @@ namespace Animancer.Editor
         /// </summary>
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            if (property.hasMultipleDifferentValues)
+                return AnimancerGUI.LineHeight;
+
             using (var context = Context.Get(property))
             {
                 var height = AnimancerGUI.LineHeight;
@@ -193,6 +196,8 @@ namespace Animancer.Editor
 
             var rootControlID = GUIUtility.GetControlID(EventTimeHash - 1, FocusType.Passive);
 
+            var warnings = OptionalWarning.LockedEvents.DisableTemporarily();
+
             var eventCount = Mathf.Max(1, context.Times.Count);
             for (int i = 0; i < eventCount; i++)
             {
@@ -223,6 +228,8 @@ namespace Animancer.Editor
                     GUIUtility.ExitGUI();
                 }
             }
+
+            warnings.Enable();
         }
 
         /************************************************************************************************************************/
@@ -598,7 +605,7 @@ namespace Animancer.Editor
                     var events = context.Sequence?.InitializedEvents;
                     if (events != null)
                     {
-                        var animancerEvent = index < events.Count ? events[index] : events.endEvent;
+                        var animancerEvent = index < events.Count ? events[index] : events.EndEvent;
                         if (AnimancerEvent.IsNullOrDummy(animancerEvent.callback))
                         {
                             context.Callbacks.Property.serializedObject.ApplyModifiedProperties();
@@ -830,7 +837,7 @@ namespace Animancer.Editor
                 var events = context.Sequence?.InitializedEvents;
                 if (events != null)
                 {
-                    events.endEvent = new AnimancerEvent(float.NaN, null);
+                    events.EndEvent = new AnimancerEvent(float.NaN, null);
                 }
             }
             else// Otherwise remove it.
@@ -887,7 +894,7 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         /// <summary>Details of an <see cref="AnimancerEvent.Sequence.Serializable"/>.</summary>
-        public sealed class Context : IDisposable
+        public class Context : IDisposable
         {
             /************************************************************************************************************************/
 

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -15,7 +15,7 @@ namespace Animancer.Editor
     /// <summary>[Editor-Only] Draws the Inspector GUI for an <see cref="IAnimancerComponent.Playable"/>.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/AnimancerPlayableDrawer
     /// 
-    public sealed class AnimancerPlayableDrawer
+    public class AnimancerPlayableDrawer
     {
         /************************************************************************************************************************/
 
@@ -67,12 +67,15 @@ namespace Animancer.Editor
                 LayerInfos[i].DoGUI();
 
             DoLayerWeightWarningGUI(target);
+            DoWeightlessPlayWarningGUI(target);
 
             if (ShowInternalDetails)
                 DoInternalDetailsGUI(playable);
 
             if (EditorGUI.EndChangeCheck() && !playable.IsGraphPlaying)
                 playable.Evaluate();
+
+            DoMultipleAnimationSystemWarningGUI(target);
         }
 
         /************************************************************************************************************************/
@@ -88,7 +91,7 @@ namespace Animancer.Editor
             if (animator == null)
                 return;
 
-            var controller = (AnimatorController)animator.runtimeAnimatorController;
+            var controller = animator.runtimeAnimatorController;
             if (controller == null)
                 return;
 
@@ -97,45 +100,48 @@ namespace Animancer.Editor
             var label = AnimancerGUI.GetNarrowText("Native Animator Controller");
 
             EditorGUI.BeginChangeCheck();
-            controller = (AnimatorController)EditorGUILayout.ObjectField(label, controller, typeof(AnimatorController), true);
+            controller = (RuntimeAnimatorController)EditorGUILayout.ObjectField(label, controller, typeof(RuntimeAnimatorController), true);
             if (EditorGUI.EndChangeCheck())
                 animator.runtimeAnimatorController = controller;
 
-            var layers = controller.layers;
-            for (int i = 0; i < layers.Length; i++)
+            if (controller is AnimatorController editorController)
             {
-                var layer = layers[i];
-
-                var runtimeState = animator.IsInTransition(i) ?
-                    animator.GetNextAnimatorStateInfo(i) :
-                    animator.GetCurrentAnimatorStateInfo(i);
-
-                var states = layer.stateMachine.states;
-                var editorState = GetState(states, runtimeState.shortNameHash);
-
-                var area = AnimancerGUI.LayoutSingleLineRect(AnimancerGUI.SpacingMode.Before);
-
-                var weight = i == 0 ? 1 : animator.GetLayerWeight(i);
-
-                string stateName;
-                if (editorState != null)
+                var layers = editorController.layers;
+                for (int i = 0; i < layers.Length; i++)
                 {
-                    stateName = editorState.name;
+                    var layer = layers[i];
 
-                    var isLooping = editorState.motion != null && editorState.motion.isLooping;
-                    AnimancerStateDrawer<ClipState>.DoTimeHighlightBarGUI(
-                        area, true, weight, runtimeState.normalizedTime * runtimeState.length, runtimeState.length, isLooping);
+                    var runtimeState = animator.IsInTransition(i) ?
+                        animator.GetNextAnimatorStateInfo(i) :
+                        animator.GetCurrentAnimatorStateInfo(i);
+
+                    var states = layer.stateMachine.states;
+                    var editorState = GetState(states, runtimeState.shortNameHash);
+
+                    var area = AnimancerGUI.LayoutSingleLineRect(AnimancerGUI.SpacingMode.Before);
+
+                    var weight = i == 0 ? 1 : animator.GetLayerWeight(i);
+
+                    string stateName;
+                    if (editorState != null)
+                    {
+                        stateName = editorState.name;
+
+                        var isLooping = editorState.motion != null && editorState.motion.isLooping;
+                        AnimancerStateDrawer<ClipState>.DoTimeHighlightBarGUI(
+                            area, true, weight, runtimeState.normalizedTime * runtimeState.length, runtimeState.length, isLooping);
+                    }
+                    else
+                    {
+                        stateName = "State Not Found";
+                    }
+
+                    AnimancerGUI.DoWeightLabel(ref area, weight);
+
+                    stateName = AnimancerGUI.GetNarrowText(stateName);
+
+                    EditorGUI.LabelField(area, layer.name, stateName);
                 }
-                else
-                {
-                    stateName = "State Not Found";
-                }
-
-                AnimancerGUI.DoWeightLabel(ref area, weight);
-
-                stateName = AnimancerGUI.GetNarrowText(stateName);
-
-                EditorGUI.LabelField(area, layer.name, stateName);
             }
 
             AnimancerGUI.EndVerticalBox(GUI.skin.box);
@@ -265,6 +271,76 @@ namespace Animancer.Editor
 
             if (AnimancerGUI.TryUseClickEventInLastRect())
                 EditorUtility.OpenWithDefaultApp(Strings.DocsURLs.Layers + "#blending");
+        }
+
+        /************************************************************************************************************************/
+
+        private void DoWeightlessPlayWarningGUI(IAnimancerComponent target)
+        {
+            if (target.Playable.KeepChildrenConnected)
+                return;
+
+            for (int iLayer = 0; iLayer < _LayerCount; iLayer++)
+            {
+                var layer = LayerInfos[iLayer].Target;
+                var stateCount = layer.ChildCount;
+                for (int iState = 0; iState < stateCount; iState++)
+                {
+                    var state = layer[iState];
+                    if (state.IsPlaying &&
+                        state.Weight == 0 &&
+                        state.TargetWeight == 0)
+                    {
+                        EditorGUILayout.HelpBox(
+                            "A state is playing at weight 0, which will not work unless you set" +
+                            $" {nameof(AnimancerPlayable)}.{nameof(AnimancerPlayable.KeepChildrenConnected)} = true." +
+                            " Click here for more information.",
+                            MessageType.Warning);
+
+                        if (AnimancerGUI.TryUseClickEventInLastRect())
+                            EditorUtility.OpenWithDefaultApp(Strings.DocsURLs.KeepChildrenConnected);
+
+                        return;
+                    }
+                }
+            }
+        }
+
+        /************************************************************************************************************************/
+
+        private void DoMultipleAnimationSystemWarningGUI(IAnimancerComponent target)
+        {
+            const string OnlyOneSystemWarning =
+                "This is not supported. Each object can only be controlled by one system at a time.";
+
+            using (ObjectPool.Disposable.AcquireList<IAnimancerComponent>(out var animancers))
+            {
+                target.gameObject.GetComponents(animancers);
+                if (animancers.Count > 1)
+                {
+                    for (int i = 0; i < animancers.Count; i++)
+                    {
+                        var other = animancers[i];
+                        if (other != target && other.Animator == target.Animator)
+                        {
+                            EditorGUILayout.HelpBox(
+                                $"There are multiple {nameof(IAnimancerComponent)}s trying to control the target" +
+                                $" {nameof(Animator)}. {OnlyOneSystemWarning}",
+                                MessageType.Warning);
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (target.Animator.TryGetComponent<Animation>(out _))
+            {
+                EditorGUILayout.HelpBox(
+                    $"There is a Legacy {nameof(Animation)} component on the same object as the target" +
+                    $" {nameof(Animator)}. {OnlyOneSystemWarning}",
+                    MessageType.Warning);
+            }
         }
 
         /************************************************************************************************************************/
@@ -422,6 +498,7 @@ namespace Animancer.Editor
         internal static readonly BoolPref
             SortStatesByName = new BoolPref(KeyPrefix, MenuPrefix + "Sort States By Name", true),
             HideInactiveStates = new BoolPref(KeyPrefix, MenuPrefix + "Hide Inactive States", false),
+            HideSingleLayerHeader = new BoolPref(KeyPrefix, MenuPrefix + "Hide Single Layer Header", true),
             RepaintConstantly = new BoolPref(KeyPrefix, MenuPrefix + "Repaint Constantly", true),
             SeparateActiveFromInactiveStates = new BoolPref(KeyPrefix, MenuPrefix + "Separate Active From Inactive States", false),
             ScaleTimeBarByWeight = new BoolPref(KeyPrefix, MenuPrefix + "Scale Time Bar by Weight", true),
@@ -437,6 +514,7 @@ namespace Animancer.Editor
         {
             RepaintConstantly.AddToggleFunction(menu);
             SortStatesByName.AddToggleFunction(menu);
+            HideSingleLayerHeader.AddToggleFunction(menu);
             HideInactiveStates.AddToggleFunction(menu);
             SeparateActiveFromInactiveStates.AddToggleFunction(menu);
             ScaleTimeBarByWeight.AddToggleFunction(menu);

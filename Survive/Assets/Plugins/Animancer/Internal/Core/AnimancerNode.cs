@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Collections;
@@ -298,9 +298,7 @@ namespace Animancer
         protected internal virtual void Update(out bool needsMoreUpdates)
         {
             UpdateFade(out needsMoreUpdates);
-
             ApplyWeight();
-
         }
 
         /************************************************************************************************************************/
@@ -867,7 +865,7 @@ namespace Animancer
             {
 #if UNITY_ASSERTIONS
                 if (!value.IsFinite())
-                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(Speed)} must be finite");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(Speed)} {Strings.MustBeFinite}");
 
                 OptionalWarning.UnsupportedSpeed.Log(UnsupportedSpeedMessage, Root?.Component);
 #endif

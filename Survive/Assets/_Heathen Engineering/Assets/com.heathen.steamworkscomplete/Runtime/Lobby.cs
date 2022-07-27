@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,43 @@ namespace HeathenEngineering.SteamworksIntegration
     public struct Lobby : IEquatable<CSteamID>, IEquatable<ulong>
     {
         public CSteamID id;
-
+        public ulong SteamId
+        {
+            get => id.m_SteamID;
+            set => id = new CSteamID(value);
+        }
+        public AccountID_t AccountId
+        {
+            get => id.GetAccountID();
+            set
+            {
+                id = new CSteamID(value, EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeChat);
+            }
+        }
+        public uint FriendId
+        {
+            get => AccountId.m_AccountID;
+            set
+            {
+                id = new CSteamID(new AccountID_t(value), EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeChat);
+            }
+        }
+        /// <summary>
+        /// Is this Lobby value a valid value.
+        /// This does not indicate it is a lobby simply that structurally the data is possibly a lobby
+        /// </summary>
+        public bool IsValid
+        {
+            get
+            {
+                if (id == CSteamID.Nil
+                    || id.GetEAccountType() != EAccountType.k_EAccountTypeChat
+                    || id.GetEUniverse() != EUniverse.k_EUniversePublic)
+                    return false;
+                else
+                    return true;
+            }
+        }
         /// <summary>
         /// Get or set the lobby name
         /// </summary>
@@ -36,7 +72,9 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <summary>
         /// The member data for this user
         /// </summary>
-        public LobbyMember User => new LobbyMember { lobby = this, user = API.User.Client.Id };
+        public LobbyMember Me => new LobbyMember { lobby = this, user = API.User.Client.Id };
+        [Obsolete("Please use Me instead.")]
+        public LobbyMember User => Me;
         /// <summary>
         /// The collection of all members of this lobby including the owner of the lobby.
         /// </summary>
@@ -216,6 +254,14 @@ namespace HeathenEngineering.SteamworksIntegration
             }
 
             return result;
+        }
+        /// <summary>
+        /// Join this lobby
+        /// </summary>
+        /// <param name="callback">Handler(LobbyEnter_t result, bool IOError)</param>
+        public void Join(Action<LobbyEnter_t, bool> callback)
+        {
+            API.Matchmaking.Client.JoinLobby(this, callback);
         }
         /// <summary>
         /// Leaves the current lobby if any
@@ -403,6 +449,55 @@ namespace HeathenEngineering.SteamworksIntegration
         {
             return API.Matchmaking.Client.GetLobbyMemberData(id, member.user, key);
         }
+        public static Lobby Get(string accountId)
+        {
+            if (uint.TryParse(accountId, out uint result))
+                return Get(result);
+            else
+                return CSteamID.Nil;
+        }
+        /// <summary>
+        /// Get the lobby represented by this account ID
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static Lobby Get(uint accountId) => new CSteamID(new AccountID_t(accountId), EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeChat);
+        /// <summary>
+        /// Get the lobby represented by this account ID
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static Lobby Get(AccountID_t accountId) => new CSteamID(accountId, EUniverse.k_EUniversePublic, EAccountType.k_EAccountTypeChat);
+        /// <summary>
+        /// Get the lobby represented by this CSteamID value
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public static Lobby Get(ulong id) => new Lobby { id = new CSteamID(id) };
+        /// <summary>
+        /// Get the lobby represented by this CSteamID
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public static Lobby Get(CSteamID id) => new Lobby { id = id };
+        /// <summary>
+        /// Join the lobby represented by this account Id
+        /// </summary>
+        /// <param name="accountId">Must be a valid uint as a string</param>
+        /// <param name="callback">Invoked when the process is complete, handler(LobbyEnter_t result, bool IOError)</param>
+        public static void Join(string accountId, Action<LobbyEnter_t, bool> callback) => API.Matchmaking.Client.JoinLobby(Get(accountId), callback);
+        /// <summary>
+        /// Join the lobby
+        /// </summary>
+        /// <param name="lobby">The lobby to join</param>
+        /// <param name="callback">Invoked when the process is complete, handler(LobbyEnter_t result, bool IOError)</param>
+        public static void Join(Lobby lobby, Action<LobbyEnter_t, bool> callback) => API.Matchmaking.Client.JoinLobby(lobby, callback);
+        /// <summary>
+        /// Join the lobby represented by this account Id
+        /// </summary>
+        /// <param name="accountId">Must be a valid uint as a string</param>
+        /// <param name="callback">Invoked when the process is complete, handler(LobbyEnter_t result, bool IOError)</param>
+        public static void Join(AccountID_t accountId, Action<LobbyEnter_t, bool> callback) => API.Matchmaking.Client.JoinLobby(Get(accountId), callback);
 
 #region Constants
         /// <summary>

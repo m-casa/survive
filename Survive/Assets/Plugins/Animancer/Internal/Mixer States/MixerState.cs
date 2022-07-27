@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -29,7 +29,7 @@ namespace Animancer
         #region Properties
         /************************************************************************************************************************/
 
-        /// <summary>Mixers should keep child playables connected to the graph at all times.</summary>
+        /// <summary>Returns true because mixers should always keep child playables connected to the graph.</summary>
         public override bool KeepChildrenConnected => true;
 
         /// <summary>A <see cref="MixerState"/> has no <see cref="AnimationClip"/>.</summary>
@@ -555,16 +555,15 @@ namespace Animancer
         /// </summary>
         public bool RecalculateWeights()
         {
-            if (WeightsAreDirty)
-            {
-                ForceRecalculateWeights();
+            if (!WeightsAreDirty)
+                return false;
 
-                Debug.Assert(!WeightsAreDirty,
-                    $"{nameof(MixerState)}.{nameof(WeightsAreDirty)} was not set to false by {nameof(ForceRecalculateWeights)}().");
+            ForceRecalculateWeights();
 
-                return true;
-            }
-            else return false;
+            Debug.Assert(!WeightsAreDirty,
+                $"{nameof(MixerState)}.{nameof(WeightsAreDirty)} was not set to false by {nameof(ForceRecalculateWeights)}().");
+
+            return true;
         }
 
         /************************************************************************************************************************/
@@ -869,11 +868,14 @@ namespace Animancer
 
 #if UNITY_ASSERTIONS
             if (!(totalWeight >= 0) || totalWeight == float.PositiveInfinity)// Reversed comparison includes NaN.
-                throw new ArgumentOutOfRangeException(nameof(totalWeight), totalWeight, "Total weight must be a finite positive value");
+                throw new ArgumentOutOfRangeException(nameof(totalWeight), totalWeight,
+                    $"Total weight {Strings.MustBeFinite} and must be positive");
             if (!weightedNormalizedTime.IsFinite())
-                throw new ArgumentOutOfRangeException(nameof(weightedNormalizedTime), weightedNormalizedTime, "Time must be finite");
+                throw new ArgumentOutOfRangeException(nameof(weightedNormalizedTime), weightedNormalizedTime,
+                    $"Time {Strings.MustBeFinite}");
             if (!weightedNormalizedSpeed.IsFinite())
-                throw new ArgumentOutOfRangeException(nameof(weightedNormalizedSpeed), weightedNormalizedSpeed, "Speed must be finite");
+                throw new ArgumentOutOfRangeException(nameof(weightedNormalizedSpeed), weightedNormalizedSpeed,
+                    $"Speed {Strings.MustBeFinite}");
 #endif
 
             // If the total weight is too small, pretend they are all at Weight = 1.

@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -35,9 +35,6 @@ namespace HeathenEngineering.SteamworksIntegration.API
             }
 
             public static bool Initialized => initialized;
-            [Obsolete("Corrected spelling error please use Initialized")]
-            [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-            public static bool Initalized => Initialized;
 
             private static bool initialized = false;
             private static Dictionary<string, InputActionSetHandle_t> m_inputActionSetHandles = new Dictionary<string, InputActionSetHandle_t>();

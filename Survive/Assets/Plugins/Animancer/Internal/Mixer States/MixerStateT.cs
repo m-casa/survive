@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Text;
@@ -33,16 +33,29 @@ namespace Animancer
         /// Setting this value takes effect immediately (during the next animation update) without any
         /// <see href="https://kybernetik.com.au/animancer/docs/manual/blending/mixers#smoothing">Smoothing</see>.
         /// </remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The value is NaN or Infinity.</exception>
         public TParameter Parameter
         {
             get => _Parameter;
             set
             {
+#if UNITY_ASSERTIONS
+                var error = GetParameterError(value);
+                if (error != null)
+                    throw new ArgumentOutOfRangeException(nameof(value), error);
+#endif
+
                 _Parameter = value;
                 WeightsAreDirty = true;
                 RequireUpdate();
             }
         }
+
+        /// <summary>
+        /// Returns an error message if the given `parameter` value can't be assigned to the <see cref="Parameter"/>.
+        /// Otherwise returns null.
+        /// </summary>
+        public abstract string GetParameterError(TParameter parameter);
 
         /************************************************************************************************************************/
         #endregion

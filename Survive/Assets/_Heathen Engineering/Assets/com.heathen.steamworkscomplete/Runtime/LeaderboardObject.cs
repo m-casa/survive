@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -76,7 +76,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </summary>
         /// <param name="users">The users to get results for</param>
         /// <param name="callback">The deligate to invoke when the process is complete</param>
-        public void GetEntries(UserData[] users, Action<LeaderboardEntry[], bool> callback) => API.Leaderboards.Client.DownloadEntries(leaderboardId, Array.ConvertAll<UserData, CSteamID>(users, p => p.cSteamId), maxDetailEntries, callback);
+        public void GetEntries(UserData[] users, Action<LeaderboardEntry[], bool> callback) => API.Leaderboards.Client.DownloadEntries(leaderboardId, Array.ConvertAll<UserData, CSteamID>(users, p => p.id), maxDetailEntries, callback);
         /// <summary>
         /// Invokes the callback with the query results 
         /// </summary>

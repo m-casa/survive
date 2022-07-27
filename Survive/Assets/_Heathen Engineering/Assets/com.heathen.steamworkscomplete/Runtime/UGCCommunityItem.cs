@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using System;
 using System.Collections.Generic;
 using Steamworks;
@@ -51,6 +51,8 @@ namespace HeathenEngineering.SteamworksIntegration
         public string previewImageLocation;
         public SteamUGCDetails_t SourceItemDetails => itemDetails;
         private SteamUGCDetails_t itemDetails;
+        public string metadata;
+        public StringKeyValuePair[] keyValueTags;
 
         public UnityEvent previewImageUpdated = new UnityEvent();
 
@@ -147,7 +149,7 @@ namespace HeathenEngineering.SteamworksIntegration
                 {
                     byte[] imageBuffer = new byte[param.m_nSizeInBytes];
                     var count = SteamRemoteStorage.UGCRead(param.m_hFile, imageBuffer, param.m_nSizeInBytes, 0, EUGCReadAction.k_EUGCRead_ContinueReadingUntilFinished);
-                    //Initalize the image, the LoadImage call will resize as required
+                    //Initialize the image, the LoadImage call will resize as required
                     previewImage = new Texture2D(2, 2);
                     previewImage.LoadImage(imageBuffer);
                     previewImageLocation = param.m_pchFileName;

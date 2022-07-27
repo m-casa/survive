@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections;
@@ -186,28 +186,26 @@ namespace HeathenEngineering.SteamworksIntegration.API
                     var request = uploadQueue.Peek();
 
                     //If the request is still valid
-                    if (request.callback != null)
+
+                    //Initiate the request with Valve
+                    var handle = SteamUserStats.UploadLeaderboardScore(request.leaderboard, request.method, request.score, request.details, request.details == null ? 0 : request.details.Length);
+
+                    waiting = true;
+                    timeout = Time.realtimeSinceStartup + RequestTimeout;
+
+                    m_LeaderboardScoreUploaded_t.Set(handle, (r, e) =>
                     {
-                        //Initiate the request with Valve
-                        var handle = SteamUserStats.UploadLeaderboardScore(request.leaderboard, request.method, request.score, request.details, request.details == null ? 0 : request.details.Length);
+                        request.callback?.Invoke(r, e);
+                        waiting = false;
+                    });
 
-                        waiting = true;
-                        timeout = Time.realtimeSinceStartup + RequestTimeout;
+                    //Wait untill we get a result or untill we timeout
+                    yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
 
-                        m_LeaderboardScoreUploaded_t.Set(handle, (r,e) =>
-                        {
-                            request.callback?.Invoke(r, e);
-                            waiting = false;
-                        });
-
-                        //Wait untill we get a result or untill we timeout
-                        yield return new WaitWhile(() => waiting && timeout > Time.realtimeSinceStartup);
-
-                        if (waiting)
-                        {
-                            request.callback?.Invoke(default, true);
-                            Debug.LogWarning("Leaderboard upload request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
-                        }
+                    if (waiting)
+                    {
+                        request.callback?.Invoke(default, true);
+                        Debug.LogWarning("Leaderboard upload request exceeded the timeout of " + RequestTimeout + ", the callback will be called as a failure and next request serviced. The request may still come in at a later time.");
                     }
 
                     uploadQueue.Dequeue();
@@ -452,7 +450,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (downloadQueue.Count == 1)
                     SteamSettings.behaviour.StartCoroutine(ExecuteDownloadRequest());
             }
-            public static void DownloadEntries(SteamLeaderboard_t leaderboard, UserData[] users, int maxDetailsPerEntry, Action<LeaderboardEntry[], bool> callback) => DownloadEntries(leaderboard, Array.ConvertAll(users, (i) => i.cSteamId), maxDetailsPerEntry, callback);
+            public static void DownloadEntries(SteamLeaderboard_t leaderboard, UserData[] users, int maxDetailsPerEntry, Action<LeaderboardEntry[], bool> callback) => DownloadEntries(leaderboard, Array.ConvertAll(users, (i) => i.id), maxDetailsPerEntry, callback);
             /// <summary>
             /// Gets a leaderboard by name.
             /// </summary>

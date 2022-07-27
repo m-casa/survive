@@ -1,4 +1,4 @@
-#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+#if HE_SYSCORE && STEAMWORKS_NET
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -26,7 +26,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
         public Texture2D avatarPlaceholderImage;
 
-        private Label initalizationField;
+        private Label initializationField;
         private Label listedAppId;
         private Label reportedAppId;
         private Label steamAppId;
@@ -68,7 +68,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
         public static void ShowExample()
         {
             instance = GetWindow<SteamInspector_Code>();
-            instance.titleContent = new GUIContent("Steamworks v2.17.2", instance.icon);
+            instance.titleContent = new GUIContent("Steamworks v2.18.3", instance.icon);
         }
 
         public void CreateGUI()
@@ -80,7 +80,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             VisualElement labelFromUXML = headerTree.CloneTree();
             root.Add(labelFromUXML);
 
-            initalizationField = root.Q<Label>(name = "lblInit");
+            initializationField = root.Q<Label>(name = "lblInit");
             listedAppId = root.Q<Label>(name = "lblListedAppId");
             reportedAppId = root.Q<Label>(name = "lblRptAppId");
             
@@ -428,6 +428,9 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
         private void OnGUI()
         {
+            if (initializationField == null)
+                return;
+
             if (steamAppId == null)
             {
                 VisualElement root = rootVisualElement;
@@ -460,7 +463,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             {
                 if (HeathenEngineering.SteamworksIntegration.SteamSettings.Initialized)
                 {
-                    initalizationField.text = "Initialized";
+                    initializationField.text = "Initialized";
                     listedAppId.text = HeathenEngineering.SteamworksIntegration.SteamSettings.ApplicationId.m_AppId.ToString();
                     reportedAppId.text = API.App.Client.Id.m_AppId.ToString();
                     csteamId.text = API.User.Client.Id.ToString();
@@ -488,7 +491,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 }
                 else if (HeathenEngineering.SteamworksIntegration.SteamSettings.HasInitalizationError)
                 {
-                    initalizationField.text = "Erred";
+                    initializationField.text = "Erred";
                     csteamId.text = "0";
                     userName.text = "unknown";
                     userLevel.text = "1";
@@ -496,7 +499,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 }
                 else
                 {
-                    initalizationField.text = "Pending";
+                    initializationField.text = "Pending";
                     csteamId.text = "0";
                     userName.text = "unknown";
                     userLevel.text = "1";
@@ -522,7 +525,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             }
             else
             {
-                initalizationField.text = "Idle";
+                initializationField.text = "Idle";
                 listedAppId.text = "unknown";
                 reportedAppId.text = "unknown";
 

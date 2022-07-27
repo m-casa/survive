@@ -1,6 +1,23 @@
 Easy Character Movement 2
 -------------------------
 
+VERSION 1.2.1
+
+	Character Movement (v1.0.6):
+	----------------------------
+
+	- Added CharacterMovement State data. This is the data needed to sync across the network ensuring proper simulation continuity.
+
+	- Added networking examples for Major Unity networking libraries like Photon Fusion, FishNet, Mirror, etc.
+	  Both, the Photon Fusion and FishNet examples implement server authoritative movement with client side prediction and reconciliation.
+
+	- Minor bug fixes.
+	
+	
+	NOTE: The full ECM2 networking update (i.e: Character(s) based development) is still in develepoment as it requires additional data sync and further tests.
+
+
+
 VERSION 1.2.0
 
 

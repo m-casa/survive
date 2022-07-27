@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -31,12 +31,14 @@ namespace HeathenEngineering.SteamworksIntegration.API
         /// <summary>
         /// Sessions this player has started
         /// </summary>
-        public static List<AuthenticationSession> ActiveSessions;
+        public static List<AuthenticationSession> ActiveSessions; 
 
+#pragma warning disable IDE0052 // Remove unread private members
         private static Callback<GetAuthSessionTicketResponse_t> m_GetAuthSessionTicketResponce;
         private static Callback<GetAuthSessionTicketResponse_t> m_GetAuthSessionTicketResponceServer;
         private static Callback<ValidateAuthTicketResponse_t> m_ValidateAuthSessionTicketResponce;
         private static Callback<ValidateAuthTicketResponse_t> m_ValidateAuthSessionTicketResponceServer;
+#pragma warning restore IDE0052 // Remove unread private members
 
         /// <summary>
         /// Determins if the provided ticket handle is valid

@@ -1,6 +1,7 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -997,16 +998,54 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// <returns></returns>
             public static uint GetSubscribedItems(PublishedFileId_t[] fileIDs, uint maxEntries) => SteamUGC.GetSubscribedItems(fileIDs, maxEntries);
 
+            /// <summary>
+            /// Returns the IDs of the files this user is subscribed to
+            /// </summary>
+            /// <returns></returns>
             public static PublishedFileId_t[] GetSubscribedItems()
             {
                 var count = GetNumSubscribedItems();
-                var fileIds = new PublishedFileId_t[count];
-                if (GetSubscribedItems(fileIds, count) > 0)
+                if (count > 0)
                 {
-                    return fileIds;
+                    var fileIds = new PublishedFileId_t[count];
+                    if (GetSubscribedItems(fileIds, count) > 0)
+                    {
+                        return fileIds;
+                    }
+                    else
+                        return new PublishedFileId_t[0];
                 }
                 else
-                    return new PublishedFileId_t[0];
+                    return null;
+            }
+
+            /// <summary>
+            /// Invokes a callback after querying the files and details of the items this user is subscribed to
+            /// </summary>
+            /// <param name="callback"></param>
+            public static void GetSubscribedItems(Action<List<UGCCommunityItem>> callback)
+            {
+                if (callback != null)
+                    SteamSettings.behaviour.StartCoroutine(InternalGetSubscribedItems(callback));
+            }
+
+            private static IEnumerator InternalGetSubscribedItems(Action<List<UGCCommunityItem>> callback)
+            {
+                yield return null;
+
+                List<UGCCommunityItem> results = new List<UGCCommunityItem>();
+                var query = UgcQuery.Create(GetSubscribedItems());
+
+                bool waiting = true;
+                query.Execute((r =>
+                {
+                    waiting = false;
+                }));
+
+                yield return new WaitWhile(() => waiting);
+                
+                callback?.Invoke(query.ResultsList);
+                query.Dispose();
             }
 
             /// <summary>
@@ -1351,8 +1390,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// Start playtime tracking
             /// </summary>
             /// <param name="fileIds"></param>
-            /// <param name="count"></param>
-            public static void StartPlaytimeTracking(PublishedFileId_t[] fileIds, uint count, Action<StartPlaytimeTrackingResult_t, bool> callback)
+            public static void StartPlaytimeTracking(PublishedFileId_t[] fileIds, Action<StartPlaytimeTrackingResult_t, bool> callback)
             {
                 if (callback == null)
                     return;
@@ -1360,7 +1398,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_StartPlaytimeTrackingResult == null)
                     m_StartPlaytimeTrackingResult = CallResult<StartPlaytimeTrackingResult_t>.Create();
 
-                var call = SteamUGC.StartPlaytimeTracking(fileIds, count);
+                var call = SteamUGC.StartPlaytimeTracking(fileIds, (uint)fileIds.Length);
                 m_StartPlaytimeTrackingResult.Set(call, callback.Invoke);
             }
 
@@ -1368,8 +1406,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// Stop playtime tracking
             /// </summary>
             /// <param name="fileIds"></param>
-            /// <param name="count"></param>
-            public static void StopPlaytimeTracking(PublishedFileId_t[] fileIds, uint count, Action<StopPlaytimeTrackingResult_t, bool> callback)
+            public static void StopPlaytimeTracking(PublishedFileId_t[] fileIds, Action<StopPlaytimeTrackingResult_t, bool> callback)
             {
                 if (callback == null)
                     return;
@@ -1377,7 +1414,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_StopPlaytimeTrackingResult == null)
                     m_StopPlaytimeTrackingResult = CallResult<StopPlaytimeTrackingResult_t>.Create();
 
-                var call = SteamUGC.StopPlaytimeTracking(fileIds, count);
+                var call = SteamUGC.StopPlaytimeTracking(fileIds, (uint)fileIds.Length);
                 m_StopPlaytimeTrackingResult.Set(call, callback.Invoke);
             }
 

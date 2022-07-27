@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Collections;
@@ -48,7 +48,8 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>Creates and assigns the <see cref="AnimationMixerPlayable"/> managed by this layer.</summary>
-        protected override void CreatePlayable(out Playable playable) => playable = AnimationMixerPlayable.Create(Root._Graph);
+        protected override void CreatePlayable(out Playable playable)
+            => playable = AnimationMixerPlayable.Create(Root._Graph);
 
         /************************************************************************************************************************/
 
@@ -71,7 +72,7 @@ namespace Animancer
         private AnimancerState _CurrentState;
 
         /// <summary>The state of the animation currently being played.</summary>
-		/// <remarks>
+        /// <remarks>
         /// Specifically, this is the state that was most recently started using any of the Play or CrossFade methods
         /// on this layer. States controlled individually via methods in the <see cref="AnimancerState"/> itself will
         /// not register in this property.
@@ -497,9 +498,9 @@ namespace Animancer
                 return Play(state);
             }
 
-            EvaluateFadeMode(mode, ref state, ref fadeDuration);
+            EvaluateFadeMode(mode, ref state, ref fadeDuration, out var layerFadeDuration);
 
-            StartFade(1, fadeDuration);
+            StartFade(1, layerFadeDuration);
             if (Weight == 0)
                 return Play(state);
 
@@ -604,12 +605,15 @@ namespace Animancer
         /// The <see cref="AnimancerState.Clip"/> is null when using <see cref="FadeMode.FromStart"/> or
         /// <see cref="FadeMode.NormalizedFromStart"/>.
         /// </exception>
-        private void EvaluateFadeMode(FadeMode mode, ref AnimancerState state, ref float fadeDuration)
+        private void EvaluateFadeMode(FadeMode mode, ref AnimancerState state, ref float fadeDuration, out float layerFadeDuration)
         {
+            layerFadeDuration = fadeDuration;
+
             switch (mode)
             {
                 case FadeMode.FixedSpeed:
                     fadeDuration *= Math.Abs(1 - state.Weight);
+                    layerFadeDuration *= Math.Abs(1 - Weight);
                     break;
 
                 case FadeMode.FixedDuration:
@@ -627,27 +631,40 @@ namespace Animancer
                     break;
 
                 case FadeMode.NormalizedSpeed:
-                    fadeDuration *= Math.Abs(1 - state.Weight) * state.Length;
+                    {
+                        var length = state.Length;
+                        fadeDuration *= Math.Abs(1 - state.Weight) * length;
+                        layerFadeDuration *= Math.Abs(1 - Weight) * length;
+                    }
                     break;
 
                 case FadeMode.NormalizedDuration:
-                    fadeDuration *= state.Length;
+                    {
+                        var length = state.Length;
+                        fadeDuration *= length;
+                        layerFadeDuration *= length;
+                    }
                     break;
 
                 case FadeMode.NormalizedFromStart:
+                    {
 #if UNITY_ASSERTIONS
-                    if (!(state is ClipState))
-                        throw new ArgumentException(
-                            $"{nameof(FadeMode)}.{nameof(FadeMode.NormalizedFromStart)} can only be used on {nameof(ClipState)}s." +
-                            $" State = {state}");
+                        if (!(state is ClipState))
+                            throw new ArgumentException(
+                                $"{nameof(FadeMode)}.{nameof(FadeMode.NormalizedFromStart)} can only be used on {nameof(ClipState)}s." +
+                                $" State = {state}");
 #endif
 
-                    state = GetOrCreateWeightlessState(state);
-                    fadeDuration *= state.Length;
+                        state = GetOrCreateWeightlessState(state);
+
+                        var length = state.Length;
+                        fadeDuration *= length;
+                        layerFadeDuration *= length;
+                    }
                     break;
 
                 default:
-                    throw new ArgumentException($"Invalid {nameof(FadeMode)}: {mode}", nameof(mode));
+                    throw AnimancerUtilities.CreateUnsupportedArgumentException(mode);
             }
         }
 
@@ -658,6 +675,7 @@ namespace Animancer
         /// The maximum number of duplicate states that can be created by <see cref="GetOrCreateWeightlessState"/> for
         /// a single clip before it will start giving usage warnings. Default = 5.
         /// </summary>
+        /// <remarks>This value can be set by <see cref="SetMaxStateDepth"/>.</remarks>
         public static int MaxStateDepth { get; private set; } = 5;
 #endif
 
@@ -671,24 +689,32 @@ namespace Animancer
 #endif
         }
 
+        /************************************************************************************************************************/
+
         /// <summary>
-        /// If the `state` is not currently at 0 <see cref="AnimancerNode.Weight"/>, this method finds a copy of it
-        /// which is at 0 or creates a new one.
+        /// The maximum <see cref="AnimancerNode.Weight"/> that <see cref="GetOrCreateWeightlessState"/> will treat as
+        /// being weightless. Default = 0.01.
         /// </summary>
+        /// <remarks>This allows states with very small weights to be reused instead of needing to create new ones.</remarks>
+        public static float WeightlessThreshold { get; set; } = 0.01f;
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// If the `state` is not currently at low <see cref="AnimancerNode.Weight"/>, this method finds a copy of it
+        /// which is at low or creates a new one.
+        /// </summary>
+        /// <remarks>"Low" weight is defined as less than or equal to the <see cref="WeightlessThreshold"/>.</remarks>
         /// <exception cref="InvalidOperationException">The <see cref="AnimancerState.Clip"/> is null.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// More states have been created for this <see cref="AnimancerState.Clip"/> than the
-        /// <see cref="MaxStateDepth"/> allows.
-        /// </exception>
         public AnimancerState GetOrCreateWeightlessState(AnimancerState state)
         {
-            if (state.Weight != 0)
+            if (state.Weight > WeightlessThreshold)
             {
                 var clip = state.Clip;
                 if (clip == null)
                 {
-                    // We could probably support any state type by giving them a Clone method, but that would take a
-                    // lot of work for something that might never get used.
+                    // We could probably support any state type by giving them a Clone method, but cloning mixers and
+                    // other state types would be expensive and you'd need to control the parameters of all clones.
                     throw new InvalidOperationException(
                         $"{nameof(GetOrCreateWeightlessState)} can only be used on {nameof(ClipState)}s. State = " + state);
                 }
@@ -702,7 +728,7 @@ namespace Animancer
                     {
                         break;
                     }
-                    else if (keyState.Weight == 0)
+                    else if (keyState.Weight <= WeightlessThreshold)
                     {
                         state = keyState;
                         goto GotWeightlessState;
@@ -713,8 +739,8 @@ namespace Animancer
                 int depth = 0;
 #endif
 
-                // If that state is not at 0 weight, get or create another state registered using the previous state as a key.
-                // Keep going through states in this manner until you find one at 0 weight.
+                // If that state is not at low weight, get or create another state registered using the previous state as a key.
+                // Keep going through states in this manner until you find one at low weight.
                 do
                 {
                     // Explicitly cast the state to an object to avoid the overload that warns about using a state as a key.
@@ -723,23 +749,27 @@ namespace Animancer
 #if UNITY_ASSERTIONS
                     if (++depth == MaxStateDepth)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(depth),
+                        OptionalWarning.MaxStateDepth.Log(
                             $"{nameof(AnimancerLayer)}.{nameof(GetOrCreateWeightlessState)}" +
                             $" has created {MaxStateDepth} states for a single clip." +
-                            $" This is most likely a result of calling the method repeatedly on consecutive frames." +
-                            $" This can be avoided by using a different {nameof(FadeMode)} or calling" +
-                            $" {nameof(AnimancerLayer)}.{nameof(SetMaxStateDepth)} to increase the threshold for this warning.");
+                            $" This is most likely a result of repeated calls on consecutive frames." +
+                            $" This can be avoided by using a different {nameof(FadeMode)}," +
+                            $" having the Start Time toggle disabled on a Transition," +
+                            $" or by calling {nameof(AnimancerLayer)}.{nameof(SetMaxStateDepth)}" +
+                            $" to increase the threshold for this warning.",
+                            Root?.Component);
                     }
 #endif
                 }
-                while (state.Weight != 0);
+                while (state.Weight > WeightlessThreshold);
             }
 
             GotWeightlessState:
 
-            // Make sure it is on this layer and at time 0.
+            // Make sure it's on this layer and at time 0.
             AddChild(state);
             state.Time = 0;
+            state.Weight = 0;
 
             return state;
         }

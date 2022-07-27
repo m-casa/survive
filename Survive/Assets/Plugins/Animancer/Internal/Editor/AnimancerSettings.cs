@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -20,13 +20,13 @@ namespace Animancer.Editor
     /// The default location is <em>Assets/Plugins/Animancer/Editor</em>, but you can freely move it (and the whole
     /// Animancer folder) anywhere in your project.
     /// <para></para>
-    /// These settings can also be accessed in <see cref="AnimancerToolsWindow.Settings"/> panel in the
-    /// <see cref="Animancer.Editor.AnimancerToolsWindow"/> (<c>Window/Animation/Animancer Tools</c>).
+    /// These settings can also be accessed via the Settings in the <see cref="Tools.AnimancerToolsWindow"/>
+    /// (<c>Window/Animation/Animancer Tools</c>).
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer.Editor/AnimancerSettings
     /// 
     [HelpURL(Strings.DocsURLs.APIDocumentation + "." + nameof(Editor) + "/" + nameof(AnimancerSettings))]
-    public sealed class AnimancerSettings : ScriptableObject
+    public class AnimancerSettings : ScriptableObject
     {
         /************************************************************************************************************************/
 
@@ -125,7 +125,8 @@ namespace Animancer.Editor
 
         /************************************************************************************************************************/
 
-        private void OnEnable()
+        /// <summary>Initializes the serialized fields.</summary>
+        protected virtual void OnEnable()
         {
             if (_TransitionPreviewWindow == null)
                 _TransitionPreviewWindow = new TransitionPreviewWindow.Settings();
@@ -178,7 +179,7 @@ namespace Animancer.Editor
 
         /// <summary>A custom Inspector for <see cref="AnimancerSettings"/>.</summary>
         [CustomEditor(typeof(AnimancerSettings), true), CanEditMultipleObjects]
-        public sealed class Editor : UnityEditor.Editor
+        public class Editor : UnityEditor.Editor
         {
             /************************************************************************************************************************/
 

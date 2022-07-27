@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -156,17 +156,17 @@ namespace Animancer.Editor
 
                 case SpacingMode.After:
                     rect = GUILayoutUtility.GetRect(0, LineHeight + StandardSpacing);
-                    rect.yMax -= StandardSpacing;
+                    rect.height -= StandardSpacing;
                     return rect;
 
                 case SpacingMode.BeforeAndAfter:
                     rect = GUILayoutUtility.GetRect(0, LineHeight + StandardSpacing * 2);
                     rect.yMin += StandardSpacing;
-                    rect.yMax -= StandardSpacing;
+                    rect.height -= StandardSpacing;
                     return rect;
 
                 default:
-                    throw new ArgumentException($"Unknown {nameof(StandardSpacing)}: " + spacing, nameof(spacing));
+                    throw new ArgumentException($"Unsupported {nameof(StandardSpacing)}: " + spacing, nameof(spacing));
             }
         }
 

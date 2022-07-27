@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -386,8 +386,8 @@ namespace Animancer.Editor
                         () => events.Remove(index));
                 }
 
-                AddEventFunctions(menu, "End Event", events.endEvent,
-                    () => events.endEvent = new AnimancerEvent(float.NaN, null), null);
+                AddEventFunctions(menu, "End Event", events.EndEvent,
+                    () => events.EndEvent = new AnimancerEvent(float.NaN, null), null);
             }
         }
 

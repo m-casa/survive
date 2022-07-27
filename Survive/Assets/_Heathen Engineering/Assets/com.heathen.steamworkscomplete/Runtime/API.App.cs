@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections;
@@ -379,7 +379,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                         while (!co.isDone)
                             yield return null;
 
-                        if (!www.isHttpError && !www.isNetworkError)
+                        if (www.result == UnityWebRequest.Result.Success)
                         {
                             try
                             {
@@ -515,7 +515,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 while (!co.isDone)
                     yield return null;
 
-                if (!www.isHttpError && !www.isNetworkError)
+                if (www.result == UnityWebRequest.Result.Success)
                 {
                     try
                     {

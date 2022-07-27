@@ -1,6 +1,16 @@
 Character Movement
 ------------------
 
+VERSION 1.0.6
+
+	- Added CharacterMovement State data. This is the data needed to sync across the network ensuring proper simulation continuity.
+
+	- Added networking examples for Major Unity networking libraries like Photon Fusion, FishNet, Mirror, etc. Where both, the Photon Fusion and FishNet examples implement server authoritative movement with client side prediction and reconciliation.
+
+	- Minor bug fixes.
+
+
+
 VERSION 1.0.5
 
 	- Greatly improved the 'Collide and Slide' algorithm. This is capable of correctly detecting and resolving overlaps found during the movement loop.

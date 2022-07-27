@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Text;
@@ -34,6 +34,12 @@ namespace Animancer
             get => Parameter.y;
             set => Parameter = new Vector2(Parameter.x, value);
         }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override string GetParameterError(Vector2 value)
+            => value.IsFinite() ? null : $"value.x and value.y {Strings.MustBeFinite}";
 
         /************************************************************************************************************************/
 

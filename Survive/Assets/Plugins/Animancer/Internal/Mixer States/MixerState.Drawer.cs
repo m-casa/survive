@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -44,9 +44,7 @@ namespace Animancer
         {
             /************************************************************************************************************************/
 
-            /// <summary>
-            /// Creates a new <see cref="Drawer{T}"/> to manage the Inspector GUI for the `state`.
-            /// </summary>
+            /// <summary>Creates a new <see cref="Drawer{T}"/> to manage the Inspector GUI for the `state`.</summary>
             public Drawer(T state) : base(state) { }
 
             /************************************************************************************************************************/

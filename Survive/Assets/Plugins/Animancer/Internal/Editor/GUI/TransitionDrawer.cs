@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -494,7 +494,7 @@ namespace Animancer.Editor
         /// <summary>Details of an <see cref="ITransition"/>.</summary>
         /// https://kybernetik.com.au/animancer/api/Animancer.Editor/DrawerContext
         /// 
-        public sealed class DrawerContext : IDisposable
+        public class DrawerContext : IDisposable
         {
             /************************************************************************************************************************/
 

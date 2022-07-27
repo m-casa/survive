@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -67,7 +67,7 @@ namespace Animancer
 
             if (node.Root == null)
                 throw new InvalidOperationException(
-                    $"{nameof(AnimancerNode)}.{nameof(AnimancerNode.Root)} hasn't been set so it's" +
+                    $"{nameof(AnimancerNode)}.{nameof(AnimancerNode.Root)} hasn't been set so its" +
                     $" {nameof(Playable)} hasn't been created. It can be set by playing the state" +
                     $" or calling {nameof(AnimancerState.SetRoot)} on it directly." +
                     $" {nameof(AnimancerState.SetParent)} would also work if the parent has a {nameof(AnimancerNode.Root)}." +

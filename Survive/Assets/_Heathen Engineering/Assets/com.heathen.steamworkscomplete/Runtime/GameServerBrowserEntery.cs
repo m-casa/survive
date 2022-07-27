@@ -1,7 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET && HE_STEAMCOMPLETE && !HE_STEAMFOUNDATION && !DISABLESTEAMWORKS 
-#if MIRROR
-using Mirror;
-#endif
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -155,46 +152,6 @@ namespace HeathenEngineering.SteamworksIntegration
 
             evtDataUpdated.Invoke();
         }
-
-#if MIRROR
-        /// <summary>
-        /// Join the indicated server if we are not already part of a server
-        /// </summary>
-        /// <returns></returns>
-        public bool JoinServer()
-        {
-            if (!NetworkManager.singleton.isNetworkActive)
-            {
-                NetworkManager.singleton.networkAddress = SteamId.ToString();
-                NetworkManager.singleton.StartClient();
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Leave the current server e.g. Stop Client Networking
-        /// </summary>
-        public void LeaveServer()
-        {
-            NetworkManager.singleton.StopClient();
-        }
-
-        /// <summary>
-        /// Switch to the indicated server i.e. leave the current server if any and join the indicated one
-        /// </summary>
-        public void SwitchServer()
-        {
-            if (NetworkManager.singleton.isNetworkActive)
-                NetworkManager.singleton.StopClient();
-
-            NetworkManager.singleton.networkAddress = SteamId.ToString();
-            NetworkManager.singleton.StartClient();
-        }
-#endif
     }
 }
 #endif

@@ -40,30 +40,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
                     while (!removeProc.IsCompleted)
                         yield return null;
-
-#if HE_STEAMFOUNDATION
-                    string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-                    var newDefines = currentDefines.Replace("HE_STEAMFOUNDATION;", "").Replace("HE_STEAMFOUNDATION", "");
-                    if (newDefines != currentDefines)
-                    {
-                        PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, newDefines);
-                    }
-#endif
                 }
-            }
-            else
-            {
-#if HE_STEAMFOUNDATION
-                if (EditorUtility.DisplayDialog("Heathen Installer", "The HE_STEAMFOUNDATION script define is present. You must fully uninstall Steamworks Foundation before installing this package. If you have already uninstalled Steamworks Foundaiton we can remove the script define for you, otherwise you should fully remove all Steamworks assets (Foundaiton and Compelte) and cleanly reinstall Steamworks Complete.\n\nWould you like us to remove the HE_STEAMFOUNDATION script define for you?", "Yes", "No"))
-                {
-                    string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-                    var newDefines = currentDefines.Replace("HE_STEAMFOUNDATION;", "").Replace("HE_STEAMFOUNDATION", "");
-                    if (newDefines != currentDefines)
-                    {
-                        PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, newDefines);
-                    }
-                }
-#endif
             }
 
 #if !STEAMWORKS_NET && !HE_SYSCORE
@@ -191,28 +168,10 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
 
                 SessionState.SetBool("SysCoreInstall", false);
             }
-#elif !HE_STEAMFOUNDATION
-            string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-            HashSet<string> defines = new HashSet<string>(currentDefines.Split(';'))
-            {
-                "HE_STEAMCOMPLETE"
-            };
-
-            string newDefines = string.Join(";", defines);
-            if (newDefines != currentDefines)
-            {
-                PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, newDefines);
-            }
 #endif
         }
 
-        [MenuItem("Help/Heathen/GitHub Supporter", priority = 0)]
-        public static void Supporter()
-        {
-            Application.OpenURL("https://github.com/sponsors/heathen-engineering");
-        }
-
-        [MenuItem("Help/Heathen/Steamworks/Update All Requirements (Package Manager)", priority = 1)]
+        [MenuItem("Help/Heathen/Steamworks/Update All Requirements (Package Manager)", priority = 0)]
         public static void InstallRequirements()
         {
             if (!SessionState.GetBool("SysCoreInstall", false)
@@ -222,7 +181,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             }
         }
 
-        [MenuItem("Help/Heathen/Steamworks/Update System Core (Package Manager)", priority = 2)]
+        [MenuItem("Help/Heathen/Steamworks/Update System Core (Package Manager)", priority = 1)]
         public static void InstallSysCoreMenuItem()
         {
             if (!SessionState.GetBool("SysCoreInstall", false))
@@ -231,7 +190,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             }
         }
 
-        [MenuItem("Help/Heathen/Steamworks/Update Steamworks.NET (Package Manager)", priority = 3)]
+        [MenuItem("Help/Heathen/Steamworks/Update Steamworks.NET (Package Manager)", priority = 2)]
         public static void InstallSteamworksMenuItem()
         {
             if (!SessionState.GetBool("SteamInstall", false))
@@ -240,13 +199,13 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             }
         }
 
-        [MenuItem("Help/Heathen/Steamworks/Documentation", priority = 4)]
+        [MenuItem("Help/Heathen/Steamworks/Documentation", priority = 3)]
         public static void Documentation()
         {
             Application.OpenURL("https://kb.heathenengineering.com/assets/steamworks");
         }
 
-        [MenuItem("Help/Heathen/Steamworks/Support", priority = 5)]
+        [MenuItem("Help/Heathen/Steamworks/Support", priority = 4)]
         public static void Support()
         {
             Application.OpenURL("https://discord.gg/RMGtDXV");
@@ -377,27 +336,27 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             SessionState.SetBool("SteamInstall", false);
         }
 
-        private static List<IEnumerator> cooroutines;
+        private static List<IEnumerator> coroutines;
 
         private static void StartCoroutine(IEnumerator handle)
         {
-            if (cooroutines == null)
+            if (coroutines == null)
             {
                 EditorApplication.update -= EditorUpdate;
                 EditorApplication.update += EditorUpdate;
-                cooroutines = new List<IEnumerator>();
+                coroutines = new List<IEnumerator>();
             }
 
-            cooroutines.Add(handle);
+            coroutines.Add(handle);
         }
 
         private static void EditorUpdate()
         {
             List<IEnumerator> done = new List<IEnumerator>();
 
-            if (cooroutines != null)
+            if (coroutines != null)
             {
-                foreach (var e in cooroutines)
+                foreach (var e in coroutines)
                 {
                     if (!e.MoveNext())
                         done.Add(e);
@@ -410,7 +369,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             }
 
             foreach (var d in done)
-                cooroutines.Remove(d);
+                coroutines.Remove(d);
         }
     }
 }

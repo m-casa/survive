@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2021 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -506,7 +506,7 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         /// <summary>[Editor-Only] An <see cref="IAnimancerComponent"/> which is not actually a <see cref="Component"/>.</summary>
-        public sealed class DummyAnimancerComponent : IAnimancerComponent
+        public class DummyAnimancerComponent : IAnimancerComponent
         {
             /************************************************************************************************************************/
 
