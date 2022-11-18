@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections;
@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace HeathenEngineering.SteamworksIntegration.API
 {
+#if STEAMWORKSNET
     public static class Leaderboards
     {
         private struct AttachUGCRequest
@@ -581,7 +582,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                             details = new int[maxDetailEntries];
                             SteamUserStats.GetDownloadedLeaderboardEntry(param.m_hSteamLeaderboardEntries, i, out buffer, details, maxDetailEntries);
                         }
-
+                        
                         LeaderboardEntry record = new LeaderboardEntry();
                         record.entry = buffer;
                         record.details = details;
@@ -597,6 +598,156 @@ namespace HeathenEngineering.SteamworksIntegration.API
 
         }
     }
+#elif FACEPUNCH
+    public static class Leaderboards
+    {
+        public enum ELeaderboardDataRequest
+        {
+            Global = 0,
+            GlobalAroundUser = 1,
+            Friends = 2,
+            Users = 3
+        }
+
+        public static class Client
+        {
+            /// <summary>
+            /// Fetches a series of leaderboard entries for a specified leaderboard.
+            /// </summary>
+            /// <param name="leaderboard">A leaderboard handle obtained from FindLeaderboard or FindOrCreateLeaderboard.</param>
+            /// <param name="request">The type of data request to make.</param>
+            /// <param name="start">The index to start downloading entries relative to eLeaderboardDataRequest.</param>
+            /// <param name="end">The last index to retrieve entries for relative to eLeaderboardDataRequest.</param>
+            public static void DownloadEntries(Steamworks.Data.Leaderboard leaderboard, ELeaderboardDataRequest request, int start, int end, Action<Steamworks.Data.LeaderboardEntry[]> callback)
+            {
+                if (callback == null)
+                    return;
+
+                switch(request)
+                {
+                    case ELeaderboardDataRequest.Global:
+                        SteamSettings.behaviour.StartCoroutine(FacepunchGlobalEntries(leaderboard, start, end, callback));
+                        break;
+                    case ELeaderboardDataRequest.GlobalAroundUser:
+                        SteamSettings.behaviour.StartCoroutine(FacepunchGlobalAroundUserEntries(leaderboard, start, end, callback));
+                        break;
+                    case ELeaderboardDataRequest.Friends:
+                        SteamSettings.behaviour.StartCoroutine(FacepunchFriendsEntries(leaderboard, callback));
+                        break;
+                }
+            }
+
+            private static IEnumerator FacepunchGlobalEntries(Steamworks.Data.Leaderboard board, int start, int end, Action<Steamworks.Data.LeaderboardEntry[]> callback)
+            {
+                var task = board.GetScoresAsync(end - start, start);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+
+            private static IEnumerator FacepunchGlobalAroundUserEntries(Steamworks.Data.Leaderboard board, int start, int end, Action<Steamworks.Data.LeaderboardEntry[]> callback)
+            {
+                var task = board.GetScoresAroundUserAsync(start, end);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+
+            private static IEnumerator FacepunchFriendsEntries(Steamworks.Data.Leaderboard board, Action<Steamworks.Data.LeaderboardEntry[]> callback)
+            {
+                var task = board.GetScoresFromFriendsAsync();
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+
+            /// <summary>
+            /// Gets a leaderboard by name.
+            /// </summary>
+            /// <param name="name">The name of the leaderboard to find. Must not be longer than <see cref="Constants.k_cchLeaderboardNameMax"/>.</param>
+            /// <param name="callback"></param>
+            public static void Find(string name, Action<Steamworks.Data.Leaderboard?> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchFindBoard(name, callback));
+            }
+            private static IEnumerator FacepunchFindBoard(string name, Action<Steamworks.Data.Leaderboard?> callback)
+            {
+                var task = SteamUserStats.FindLeaderboardAsync(name);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+            /// <summary>
+            /// Gets a leaderboard by name, it will create it if it's not yet created.
+            /// </summary>
+            /// <remarks>
+            /// Leaderboards created with this function will not automatically show up in the Steam Community. You must manually set the Community Name field in the App Admin panel of the Steamworks website. As such it's generally recommended to prefer creating the leaderboards in the App Admin panel on the Steamworks website and using FindLeaderboard unless you're expected to have a large amount of dynamically created leaderboards.
+            /// </remarks>
+            /// <param name="leaderboardName">The name of the leaderboard to find. Must not be longer than <see cref="Constants.k_cchLeaderboardNameMax"/>.</param>
+            /// <param name="sortingMethod">The sort order of the new leaderboard if it's created.</param>
+            /// <param name="displayType">The display type (used by the Steam Community web site) of the new leaderboard if it's created.</param>
+            /// <param name="callback"></param>
+            public static void FindOrCreate(string name, Steamworks.Data.LeaderboardSort sortingMethod, Steamworks.Data.LeaderboardDisplay displayType, Action<Steamworks.Data.Leaderboard?> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchFindOrCreateBoard(name, sortingMethod, displayType, callback));
+            }
+            private static IEnumerator FacepunchFindOrCreateBoard(string name, Steamworks.Data.LeaderboardSort sortingMethod, Steamworks.Data.LeaderboardDisplay displayType, Action<Steamworks.Data.Leaderboard?> callback)
+            {
+                var task = SteamUserStats.FindOrCreateLeaderboardAsync(name, sortingMethod, displayType);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+            /// <summary>
+            /// Returns the total number of entries in a leaderboard.
+            /// </summary>
+            /// <param name="leaderboard"></param>
+            /// <returns></returns>
+            public static int GetEntryCount(Steamworks.Data.Leaderboard leaderboard) => leaderboard.EntryCount;
+            /// <summary>
+            /// Returns the name of a leaderboard handle.
+            /// </summary>
+            /// <param name="leaderboard"></param>
+            /// <returns></returns>
+            public static string GetName(Steamworks.Data.Leaderboard leaderboard) => leaderboard.Name;
+            /// <summary>
+            /// Returns the sort order of a leaderboard handle.
+            /// </summary>
+            /// <param name="leaderboard"></param>
+            /// <returns></returns>
+            public static Steamworks.Data.LeaderboardSort GetSortMethod(Steamworks.Data.Leaderboard leaderboard) => leaderboard.Sort;
+            public static Steamworks.Data.LeaderboardDisplay GetDisplayMethod(Steamworks.Data.Leaderboard leaderboard) => leaderboard.Display;
+            public static void UploadScore(Steamworks.Data.Leaderboard leaderboard, int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback = null)
+            {
+                SteamSettings.behaviour.StartCoroutine(FacepunchUploadScore(leaderboard, score, details, callback));
+            }
+            private static IEnumerator FacepunchUploadScore(Steamworks.Data.Leaderboard leaderboard, int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback)
+            {
+                var task = leaderboard.SubmitScoreAsync(score, details);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+            public static void ReplaceScore(Steamworks.Data.Leaderboard leaderboard, int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback = null)
+            {
+                SteamSettings.behaviour.StartCoroutine(FacepunchReplaceScore(leaderboard, score, details, callback));
+            }
+            private static IEnumerator FacepunchReplaceScore(Steamworks.Data.Leaderboard leaderboard, int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback)
+            {
+                var task = leaderboard.ReplaceScore(score, details);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+        }
+    }
+#endif
 
 }
 #endif

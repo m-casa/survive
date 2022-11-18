@@ -1,9 +1,10 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
+#if STEAMWORKSNET
     [Serializable]
     public struct InventoryResult
     {
@@ -11,5 +12,6 @@ namespace HeathenEngineering.SteamworksIntegration
         public EResult result;
         public DateTime timestamp;
     }
+#endif
 }
 #endif

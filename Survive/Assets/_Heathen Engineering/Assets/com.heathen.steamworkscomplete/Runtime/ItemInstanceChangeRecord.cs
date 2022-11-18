@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 
@@ -11,8 +11,8 @@ namespace HeathenEngineering.SteamworksIntegration
         public bool added;
         public bool removed;
         public bool changed;
-        public ushort quantityBefore;
-        public ushort quantityAfter;
+        public int quantityBefore;
+        public int quantityAfter;
         public int QuantityChange => quantityAfter - quantityBefore;
     }
 }

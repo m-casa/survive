@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,7 @@ namespace HeathenEngineering.SteamworksIntegration
     /// </summary>
     [HelpURL("https://kb.heathenengineering.com/assets/steamworks/leaderboard-object")]
     [CreateAssetMenu(menuName = "Steamworks/Leaderboard Object")]
+#if STEAMWORKSNET
     public class LeaderboardObject : ScriptableObject
     {
         /// <summary>
@@ -167,5 +168,132 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <param name="callback">{ LeaderbaordUGCSet_t result, bool error } optional callback that will pass the results to you, if error is true it indicates a failure from Valve.</param>
         public void AttachUGC(string fileName, object jsonObject, System.Text.Encoding encoding, Action<LeaderboardUGCSet_t, bool> callback = null) => API.Leaderboards.Client.AttachUGC(leaderboardId, fileName, jsonObject, encoding, callback);
     }
+#elif FACEPUNCH
+    public class LeaderboardObject : ScriptableObject
+    {
+        /// <summary>
+        /// Should the board be created if missing on the target app
+        /// </summary>
+        [HideInInspector]
+        public bool createIfMissing;
+        /// <summary>
+        /// If creating a board what sort method should be applied
+        /// </summary>
+        public Steamworks.Data.LeaderboardSort sortMethod = Steamworks.Data.LeaderboardSort.Ascending;
+        /// <summary>
+        /// If creating a board what display type is it
+        /// </summary>
+        public Steamworks.Data.LeaderboardDisplay displayType = Steamworks.Data.LeaderboardDisplay.Numeric;
+        /// <summary>
+        /// What is the name of the board ... if this is not to be created at run time then this must match the name as it appears in Steamworks
+        /// </summary>
+        [HideInInspector]
+        public string leaderboardName;
+        /// <summary>
+        /// How many detail entries should be allowed on entries from this board
+        /// </summary>
+        [HideInInspector]
+        public int maxDetailEntries = 0;
+        /// <summary>
+        /// What is the leaderboard ID ... this is nullable if null then no leaderboard has been connected
+        /// </summary>
+        [HideInInspector]
+        [NonSerialized]
+        public Steamworks.Data.Leaderboard leaderboardId;
+        [Obsolete("Facepunch decided to hid the leaderboard ID ... apparently that is to much for you to handle, so we cant tell if the ID is valid or not")]
+        public bool Valid => true;
+        public int EntryCount => API.Leaderboards.Client.GetEntryCount(leaderboardId);
+
+        /// <summary>
+        /// Returns the user entry for the local user
+        /// </summary>
+        /// <param name="callback">The deligate to invoke when the process is complete</param>
+        public void GetUserEntry(Action<Steamworks.Data.LeaderboardEntry?> callback)
+        {
+            API.Leaderboards.Client.DownloadEntries(leaderboardId, API.Leaderboards.ELeaderboardDataRequest.GlobalAroundUser, 0, 1, (results) =>
+            {
+                if(results.Length > 0)
+                {
+                    foreach (var entry in results)
+                        if (entry.User.Id == UserData.Me.id)
+                        {
+                            callback?.Invoke(entry);
+                            return;
+                        }
+                }
+                callback?.Invoke(null);
+            });
+        }
+        /// <summary>
+        /// Invokes the callback with the query results
+        /// </summary>
+        /// <param name="request">The type of range to get from the board</param>
+        /// <param name="start">The index to start downloading at</param>
+        /// <param name="end">The index to end downloading at</param>
+        /// <param name="callback">The deligate to invoke when the process is complete</param>
+        public void GetEntries(API.Leaderboards.ELeaderboardDataRequest request, int start, int end, Action<Steamworks.Data.LeaderboardEntry[]> callback) => API.Leaderboards.Client.DownloadEntries(leaderboardId, request, start, end, callback);
+        /// <summary>
+        /// Registers the board on Steamworks creating if configured to do so or locating if not.
+        /// </summary>
+        public void Register()
+        {
+            if (createIfMissing)
+                FindOrCreateLeaderboard();
+            else
+                FindLeaderboard();
+        }
+
+        private void FindOrCreateLeaderboard()
+        {
+            API.Leaderboards.Client.FindOrCreate(leaderboardName, sortMethod, displayType, (r) =>
+            {
+                if (!r.HasValue)
+                {
+                    Debug.LogError("Failed to find or create leaderboard", this);
+                    return;
+                }
+
+                if (r.HasValue)
+                {
+                    leaderboardId = r.Value;
+                }
+            });
+        }
+
+        private void FindLeaderboard()
+        {
+            API.Leaderboards.Client.Find(leaderboardName, (r) =>
+            {
+                if (!r.HasValue)
+                {
+                    Debug.LogError("Failed to find leaderboard", this);
+                    return;
+                }
+
+                if (r.HasValue)
+                {
+                    leaderboardId = r.Value;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Uploads a score for the player to this board
+        /// </summary>
+        /// <param name="score"></param>
+        /// <param name="method"></param>
+        /// <param name="callback">{ LeaderboardScoreUploaded_t result, bool error } optional callback that will pass the results to you, if error is true it indicates a failure.</param>
+        public void UploadScore(int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback = null) => API.Leaderboards.Client.UploadScore(leaderboardId, score, details, callback);
+
+        /// <summary>
+        /// Uploads a score for the player to this board
+        /// </summary>
+        /// <param name="score"></param>
+        /// <param name="method"></param>
+        /// <param name="callback">{ LeaderboardScoreUploaded_t result, bool error } optional callback that will pass the results to you, if error is true it indicates a failure.</param>
+        public void ReplaceScore(int score, int[] details, Action<Steamworks.Data.LeaderboardUpdate?> callback = null) => API.Leaderboards.Client.ReplaceScore(leaderboardId, score, details, callback);
+    }
+#endif
+
 }
 #endif

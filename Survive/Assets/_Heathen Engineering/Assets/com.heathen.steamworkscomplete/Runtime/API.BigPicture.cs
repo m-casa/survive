@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using HeathenEngineering.Events;
 using Steamworks;
 using UnityEngine;
@@ -8,20 +8,32 @@ namespace HeathenEngineering.SteamworksIntegration.API
 {
     public static class BigPicture
     {
+#if STEAMWORKSNET
         public static class Client
         {
             [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
             static void Init()
             {
                 m_GamepadTextInputDismissed_t = null;
-                
-                eventGamepadTextIputDismissed = null;
+
+                eventGamepadTextIputDismissed = new UnityStringEvent();
+                eventGamepadTextInputShown = new UnityEvent();
             }
 
             /// <summary>
             /// Invoked when Show Text Input is successfuly called.
             /// </summary>
-            public static UnityEvent EventGamepadTextInputShown => eventGamepadTextInputShown;
+            public static UnityEvent EventGamepadTextInputShown
+            {
+                get
+                {
+                    if (eventGamepadTextInputShown == null)
+                        eventGamepadTextInputShown = new UnityEvent();
+
+                    return eventGamepadTextInputShown;
+                }
+            }
+
             /// <summary>
             /// Invoked when the gamepad text input is dismissed and returns the resulting input string.
             /// </summary>
@@ -29,14 +41,24 @@ namespace HeathenEngineering.SteamworksIntegration.API
             {
                 get
                 {
+                    if (eventGamepadTextIputDismissed == null)
+                        eventGamepadTextIputDismissed = new UnityStringEvent();
+
                     if (m_GamepadTextInputDismissed_t == null)
-                        m_GamepadTextInputDismissed_t = Callback<GamepadTextInputDismissed_t>.Create((r) =>
-                        {
-                            SteamUtils.GetEnteredGamepadTextInput(out string textValue, SteamUtils.GetEnteredGamepadTextLength());
-                            eventGamepadTextIputDismissed.Invoke(textValue);
-                        });
+                        m_GamepadTextInputDismissed_t = Callback<GamepadTextInputDismissed_t>.Create(HandleGameTextInputDismissed);
 
                     return eventGamepadTextIputDismissed;
+                }
+            }
+
+            private static void HandleGameTextInputDismissed(GamepadTextInputDismissed_t result)
+            {
+                if (result.m_bSubmitted)
+                {
+                    if (SteamUtils.GetEnteredGamepadTextInput(out string textValue, result.m_unSubmittedText))
+                    {
+                        eventGamepadTextIputDismissed.Invoke(textValue);
+                    }
                 }
             }
 
@@ -90,6 +112,70 @@ namespace HeathenEngineering.SteamworksIntegration.API
                     return false;
             }
         }
+#elif FACEPUNCH
+        public static class Client
+        {
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            static void Init()
+            {
+                SteamUtils.OnGamepadTextInputDismissed -= HandleTextInputDismissed;
+
+                eventGamepadTextIputDismissed = new UnityStringEvent();
+                eventGamepadTextInputShown = new UnityEvent();
+            }
+
+            /// <summary>
+            /// Invoked when Show Text Input is successfuly called.
+            /// </summary>
+            public static UnityEvent EventGamepadTextInputShown => eventGamepadTextInputShown;
+            /// <summary>
+            /// Invoked when the gamepad text input is dismissed and returns the resulting input string.
+            /// </summary>
+            public static UnityStringEvent EventGamepadTextIputDismissed
+            {
+                get
+                {
+                    SteamUtils.OnGamepadTextInputDismissed -= HandleTextInputDismissed;
+                    SteamUtils.OnGamepadTextInputDismissed += HandleTextInputDismissed;
+
+                    return eventGamepadTextIputDismissed;
+                }
+            }
+
+            private static void HandleTextInputDismissed(bool value)
+            {
+                var textValue = SteamUtils.GetEnteredGamepadText();
+                eventGamepadTextIputDismissed.Invoke(textValue);
+            }
+
+            private static UnityStringEvent eventGamepadTextIputDismissed = new UnityStringEvent();
+            private static UnityEvent eventGamepadTextInputShown = new UnityEvent();
+
+            public static bool InBigPicture => SteamUtils.IsSteamInBigPictureMode;
+            [System.Obsolete("Facepunch does not support this check, if you require this please use Steamworks.NET as your API wrapper as opposed to Facepunch")]
+            public static bool RunningOnDeck => false;
+
+            /// <summary>
+            /// Activates the Big Picture text input dialog which only supports gamepad input.
+            /// </summary>
+            /// <param name="inputMode">Selects the input mode to use, either Normal or Password (hidden text)</param>
+            /// <param name="lineMode">Controls whether to use single or multi line input.</param>
+            /// <param name="description">Sets the description that should inform the user what the input dialog is for.</param>
+            /// <param name="maxLength">The maximum number of characters that the user can input.</param>
+            /// <param name="currentText">Sets the preexisting text which the user can edit.</param>
+            /// <returns>True if the big picture overlay is running; otherwise, false.</returns>
+            public static bool ShowTextInput(GamepadTextInputMode inputMode, GamepadTextInputLineMode lineMode, string description, int maxLength, string currentText)
+            {
+                if (SteamUtils.ShowGamepadTextInput(inputMode, lineMode, description, maxLength, currentText))
+                {
+                    eventGamepadTextInputShown.Invoke();
+                    return true;
+                }
+                else
+                    return false;
+            }
+        }
+#endif
     }
 }
 #endif

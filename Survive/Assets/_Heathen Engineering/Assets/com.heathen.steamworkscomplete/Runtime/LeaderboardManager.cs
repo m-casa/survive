@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +50,8 @@ namespace HeathenEngineering.SteamworksIntegration
 
                     evtQueryCompleted.Invoke(r);
                 }
+                else
+                    evtQueryError?.Invoke();
             });
         }
 
@@ -65,6 +67,8 @@ namespace HeathenEngineering.SteamworksIntegration
 
                     evtQueryCompleted.Invoke(r);
                 }
+                else
+                    evtQueryError?.Invoke();
             });
         }
 
@@ -80,6 +84,8 @@ namespace HeathenEngineering.SteamworksIntegration
 
                     evtQueryCompleted.Invoke(r);
                 }
+                else
+                    evtQueryError?.Invoke();
             });
         }
 
@@ -95,6 +101,8 @@ namespace HeathenEngineering.SteamworksIntegration
 
                     evtQueryCompleted.Invoke(r);
                 }
+                else
+                    evtQueryError?.Invoke();
             });
         }
 

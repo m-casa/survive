@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -110,7 +110,37 @@ namespace HeathenEngineering.SteamworksIntegration
 
             return nQuery;
         }
-
+        /// <summary>
+        /// Adds a excluded tag to a pending UGC Query. This will only return UGC without the specified tag.
+        /// </summary>
+        /// <param name="tagName"></param>
+        /// <returns></returns>
+        public bool AddExcludedTag(string tagName) => API.UserGeneratedContent.Client.AddExcludedTag(handle, tagName);
+        /// <summary>
+        /// Adds a required key-value tag to a pending UGC Query. This will only return workshop items that have a key = pKey and a value = pValue.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public bool AddRequiredKeyValueTag(string key, string value) => API.UserGeneratedContent.Client.AddRequiredKeyValueTag(handle, key, value);
+        /// <summary>
+        /// Adds a required tag to a pending UGC Query. This will only return UGC with the specified tag.
+        /// </summary>
+        /// <param name="tagName"></param>
+        /// <returns></returns>
+        public bool AddRequiredTag(string tagName) => API.UserGeneratedContent.Client.AddRequiredTag(handle, tagName);
+        /// <summary>
+        /// Set allow cached responce
+        /// </summary>
+        /// <param name="maxAgeSeconds"></param>
+        /// <returns></returns>
+        public bool SetAllowCachedResponse(uint maxAgeSeconds) => API.UserGeneratedContent.Client.SetAllowCachedResponse(handle, maxAgeSeconds);
+        /// <summary>
+        /// Set cloud file name filter
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        public bool SetCloudFileNameFilter(string fileName) => API.UserGeneratedContent.Client.SetCloudFileNameFilter(handle, fileName);
         /// <summary>
         /// Set item langauge
         /// </summary>

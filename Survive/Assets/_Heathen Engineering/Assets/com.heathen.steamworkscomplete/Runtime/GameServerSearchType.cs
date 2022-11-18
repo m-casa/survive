@@ -1,7 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
-#if MIRROR
-#endif
-
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 
 namespace HeathenEngineering.SteamworksIntegration
 {

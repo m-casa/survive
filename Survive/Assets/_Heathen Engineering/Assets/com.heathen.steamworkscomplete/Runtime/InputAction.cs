@@ -1,10 +1,10 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
-    public class InputAction : Events.GameEvent<InputActionData>
+    public class InputAction : Events.GameEvent<InputActionUpdate>
     {
         public InputActionType Type
         {
@@ -61,18 +61,29 @@ namespace HeathenEngineering.SteamworksIntegration
                     {
                         var rawData = API.Input.Client.GetAnalogActionData(controller, analogHandle);
 
+                        var update = new InputActionUpdate
+                        {
+                            controller = controller,
+                            mode = current.mode,
+                            type = current.type,
+                            wasActive = current.active,
+                            wasState = current.state,
+                            wasX = current.x,
+                            wasY = current.y,
+                            isActive = rawData.bActive != 0,
+                            isState = rawData.x != 0 || rawData.y != 0,
+                            isX = rawData.x,
+                            isY = rawData.y,
+                        };
+
                         var change = current.x != rawData.x || current.y != rawData.y;
 
-                        current.active = rawData.bActive != 0;
-                        current.mode = rawData.eMode;
-                        current.state = rawData.x != 0 || rawData.y != 0;
-                        current.x = rawData.x;
-                        current.y = rawData.y;
+                        current = update.Data;
 
                         controllerMapping[controller] = current;
                         if (change)
                         {
-                            Raise(this, current);
+                            Raise(this, update);
                         }
                     }
                 }
@@ -85,18 +96,29 @@ namespace HeathenEngineering.SteamworksIntegration
                     {
                         var rawData = API.Input.Client.GetDigitalActionData(controller, digitalHandle);
 
-                        var change = rawData.bState != 0;
+                        var update = new InputActionUpdate
+                        {
+                            controller = controller,
+                            mode = Steamworks.EInputSourceMode.k_EInputSourceMode_None,
+                            type = current.type,
+                            wasActive = current.active,
+                            wasState = current.state,
+                            wasX = current.x,
+                            wasY = current.y,
+                            isActive = rawData.bActive != 0,
+                            isState = rawData.bState != 0,
+                            isX = rawData.bState,
+                            isY = rawData.bState,
+                        };
 
-                        current.active = rawData.bActive != 0;
-                        current.mode = Steamworks.EInputSourceMode.k_EInputSourceMode_None;
-                        current.state = rawData.bState != 0;
-                        current.x = current.state ? 1 : 0;
-                        current.y = current.state ? 1 : 0;
+                        var change = rawData.bState != 0 != current.state;
+
+                        current = update.Data;
 
                         controllerMapping[controller] = current;
                         if (change)
                         {
-                            Raise(this, current);
+                            Raise(this, update);
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-﻿#if HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System.Collections.Generic;
 using System.IO;
@@ -231,8 +231,12 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
                 try
                 {
                     var nip = API.Utilities.IPStringToUint(nAddress);
-                    Undo.RecordObject(target, "editor");
-                    settings.server.ip = nip;
+                    if (nip != settings.server.ip)
+                    {
+                        Undo.RecordObject(target, "editor");
+                        settings.server.ip = nip;
+                        EditorUtility.SetDirty(target);
+                    }
                 }
                 catch { }
             }
@@ -248,6 +252,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             {
                 Undo.RecordObject(target, "editor");
                 settings.server.gamePort = nPort;
+                EditorUtility.SetDirty(target);
             }
 
             port = EditorGUILayout.TextField(new GUIContent("Query", "The port that will manage server browser related duties and info pings from clients.\nIf you pass MASTERSERVERUPDATERPORT_USEGAMESOCKETSHARE (65535) for QueryPort, then it will use 'GameSocketShare' mode, which means that the game is responsible for sending and receiving UDP packets for the master server updater. See references to GameSocketShare in isteamgameserver.hn"), settings.server.queryPort.ToString());
@@ -256,6 +261,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             {
                 Undo.RecordObject(target, "editor");
                 settings.server.queryPort = nPort;
+                EditorUtility.SetDirty(target);
             }
 
             port = EditorGUILayout.TextField("Spectator", settings.server.spectatorPort.ToString());
@@ -264,6 +270,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
             {
                 Undo.RecordObject(target, "editor");
                 settings.server.spectatorPort = nPort;
+                EditorUtility.SetDirty(target);
             }
         }
 

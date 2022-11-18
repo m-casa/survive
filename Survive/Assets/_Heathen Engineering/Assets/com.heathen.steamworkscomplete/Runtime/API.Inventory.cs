@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
     /// </summary>
     public static class Inventory
     {
+#if STEAMWORKSNET
         public static class Client
         {
             private class SerializationPointer
@@ -25,6 +26,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             {
                 eventSteamInventoryDefinitionUpdate = new SteamInventoryDefinitionUpdateEvent();
                 eventSteamInventoryResultReady = new SteamInventoryResultReadyEvent();
+                eventSteamMTXAuthResponce = new SteamMicroTransactionAuthorizationResponce();
                 resultHandles = new Dictionary<SteamInventoryResult_t, Action<InventoryResult>>();
                 serializationResults = new Dictionary<SteamInventoryResult_t, Action<byte[]>>();
                 deserializationResults = new Dictionary<SteamInventoryResult_t, SerializationPointer>();
@@ -33,6 +35,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 m_SteamInventoryRequestPricesResult_t = null;
                 m_SteamInventoryDefinitionUpdate_t = null;
                 m_SteamInventoryResultReady_t = null;
+                m_MicroTxnAuthorizationResponse_t = null;
             }
 
             /// <summary>
@@ -58,9 +61,20 @@ namespace HeathenEngineering.SteamworksIntegration.API
                     return eventSteamInventoryResultReady;
                 }
             }
+            public static SteamMicroTransactionAuthorizationResponce EventSteamMicroTransactionAuthorizationResponce
+            {
+                get
+                {
+                    if (m_MicroTxnAuthorizationResponse_t == null)
+                        m_MicroTxnAuthorizationResponse_t = Callback<MicroTxnAuthorizationResponse_t>.Create((r) => { eventSteamMTXAuthResponce.Invoke(new AppId_t(r.m_unAppID), r.m_ulOrderID, r.m_bAuthorized == 1); });
+
+                    return eventSteamMTXAuthResponce;
+                }
+            }
 
             private static SteamInventoryDefinitionUpdateEvent eventSteamInventoryDefinitionUpdate = new SteamInventoryDefinitionUpdateEvent();
             private static SteamInventoryResultReadyEvent eventSteamInventoryResultReady = new SteamInventoryResultReadyEvent();
+            private static SteamMicroTransactionAuthorizationResponce eventSteamMTXAuthResponce = new SteamMicroTransactionAuthorizationResponce();
 
             private static Dictionary<SteamInventoryResult_t, Action<InventoryResult>> resultHandles = new Dictionary<SteamInventoryResult_t, Action<InventoryResult>>();
             private static Dictionary<SteamInventoryResult_t, Action<byte[]>> serializationResults = new Dictionary<SteamInventoryResult_t, Action<byte[]>>();
@@ -72,6 +86,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
 
             private static Callback<SteamInventoryDefinitionUpdate_t> m_SteamInventoryDefinitionUpdate_t;
             private static Callback<SteamInventoryResultReady_t> m_SteamInventoryResultReady_t;
+            private static Callback<MicroTxnAuthorizationResponse_t> m_MicroTxnAuthorizationResponse_t;
 
             /// <summary>
             /// Grant a specific one-time promotional item to the current user.
@@ -294,9 +309,9 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// <summary>
             /// Returns the list of items eligible for Add Promo calls for the indicated user
             /// </summary>
-            /// <param name="userId">The user to test for</param>
+            /// <param name="user">The user to test for</param>
             /// <param name="callback"></param>
-            public static void GetEligiblePromoItemDefinitionIDs(CSteamID userId, Action<SteamItemDef_t[], bool> callback)
+            public static void GetEligiblePromoItemDefinitionIDs(UserData user, Action<EResult, SteamItemDef_t[], bool> callback)
             {
                 if (callback == null)
                     return;
@@ -304,22 +319,65 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 if (m_SteamInventoryEligiblePromoItemDefIDs_t == null)
                     m_SteamInventoryEligiblePromoItemDefIDs_t = CallResult<SteamInventoryEligiblePromoItemDefIDs_t>.Create();
 
-                var handle = SteamInventory.RequestEligiblePromoItemDefinitionsIDs(userId);
+                var handle = SteamInventory.RequestEligiblePromoItemDefinitionsIDs(user);
                 m_SteamInventoryEligiblePromoItemDefIDs_t.Set(handle, (result, e) =>
                 {
-                    if (e)
+                    if (e || result.m_result != EResult.k_EResultOK)
                     {
-                        callback?.Invoke(new SteamItemDef_t[0], e);
+                        callback?.Invoke(result.m_result, new SteamItemDef_t[0], e);
                     }
                     else
                     {
                         var buffer = new SteamItemDef_t[result.m_numEligiblePromoItemDefs];
                         uint count = (uint)result.m_numEligiblePromoItemDefs;
-                        SteamInventory.GetEligiblePromoItemDefinitionIDs(userId, buffer, ref count);
-                        callback?.Invoke(buffer, e);
+                        if (SteamInventory.GetEligiblePromoItemDefinitionIDs(user, buffer, ref count))
+                            callback?.Invoke(result.m_result, buffer, e);
+                        else
+                            callback.Invoke(EResult.k_EResultFail, default, e);
                     }
                 });
             }
+
+            /// <summary>
+            /// Returns the list of items eligible for Add Promo calls for the indicated user
+            /// </summary>
+            /// <param name="user">The user to test for</param>
+            /// <param name="callback"></param>
+            public static void GetEligiblePromoItems(UserData user, Action<EResult, ItemDefinition[], bool> callback)
+            {
+                if (callback == null)
+                    return;
+
+                if (m_SteamInventoryEligiblePromoItemDefIDs_t == null)
+                    m_SteamInventoryEligiblePromoItemDefIDs_t = CallResult<SteamInventoryEligiblePromoItemDefIDs_t>.Create();
+
+                var handle = SteamInventory.RequestEligiblePromoItemDefinitionsIDs(user);
+                m_SteamInventoryEligiblePromoItemDefIDs_t.Set(handle, (result, e) =>
+                {
+
+                    if (e || result.m_result != EResult.k_EResultOK)
+                    {
+                        callback?.Invoke(result.m_result, default, e);
+                    }
+                    else
+                    {
+                        var buffer = new SteamItemDef_t[result.m_numEligiblePromoItemDefs];
+                        uint count = (uint)result.m_numEligiblePromoItemDefs;
+                        if (SteamInventory.GetEligiblePromoItemDefinitionIDs(user, buffer, ref count))
+                        {
+                            ItemDefinition[] items = new ItemDefinition[buffer.Length];
+                            for (int i = 0; i < count; i++)
+                            {
+                                items[i] = SteamSettings.Client.inventory.items.FirstOrDefault(p => p.Id == buffer[i]);
+                            }
+                            callback.Invoke(result.m_result, items, e);
+                        }
+                        else
+                            callback.Invoke(EResult.k_EResultFail, default, e);
+                    }
+                });
+            }
+
             /// <summary>
             /// Returns the set of all item definition IDs which are defined in the App Admin panel of the Steamworks website.
             /// </summary>
@@ -797,6 +855,403 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 }
             }
         }
+#elif FACEPUNCH
+        public static class Client
+        {
+            private class SerializationPointer
+            {
+                public UserData expectedUser;
+                public Action<InventoryResult> callback;
+            }
+
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            static void Init()
+            {
+                eventSteamInventoryDefinitionUpdate = new SteamInventoryDefinitionUpdateEvent();
+                eventSteamInventoryResultReady = new SteamInventoryResultReadyEvent();
+            }
+
+            /// <summary>
+            /// This callback is triggered whenever item definitions have been updated, which could be in response to LoadItemDefinitions or any time new item definitions are available (eg, from the dynamic addition of new item types while players are still in-game).
+            /// </summary>
+            public static SteamInventoryDefinitionUpdateEvent EventSteamInventoryDefinitionUpdate
+            {
+                get
+                {
+                    SteamInventory.OnDefinitionsUpdated -= eventSteamInventoryDefinitionUpdate.Invoke;
+                    SteamInventory.OnDefinitionsUpdated += eventSteamInventoryDefinitionUpdate.Invoke;
+
+                    return eventSteamInventoryDefinitionUpdate;
+                }
+            }
+            /// <summary>
+            /// This is fired whenever an inventory result transitions from k_EResultPending to any other completed state, see GetResultStatus for the complete list of states. There will always be exactly one callback per handle.
+            /// </summary>
+            public static SteamInventoryResultReadyEvent EventSteamInventoryResultReady
+            {
+                get
+                {
+                    return eventSteamInventoryResultReady;
+                }
+            }
+            public static SteamMicroTransactionAuthorizationResponce EventSteamMicroTransactionAuthorizationResponce
+            {
+                get
+                {
+                    SteamUser.OnMicroTxnAuthorizationResponse -= eventSteamMTXAuthResponce.Invoke;
+                    SteamUser.OnMicroTxnAuthorizationResponse += eventSteamMTXAuthResponce.Invoke;
+
+                    return eventSteamMTXAuthResponce;
+                }
+            }
+
+            private static SteamInventoryDefinitionUpdateEvent eventSteamInventoryDefinitionUpdate = new SteamInventoryDefinitionUpdateEvent();
+            private static SteamInventoryResultReadyEvent eventSteamInventoryResultReady = new SteamInventoryResultReadyEvent();
+            private static SteamMicroTransactionAuthorizationResponce eventSteamMTXAuthResponce = new SteamMicroTransactionAuthorizationResponce();
+            
+            /// <summary>
+            /// Grant a specific one-time promotional item to the current user.
+            /// <para>
+            /// This can be safely called from the client because the items it can grant can be locked down via policies in the itemdefs. One of the primary scenarios for this call is to grant an item to users who also own a specific other game. This can be useful if your game has custom UI for showing a specific promo item to the user otherwise if you want to grant multiple promotional items then use AddPromoItems or GrantPromoItems.
+            /// </para>
+            /// <para>
+            /// Any items that can be granted MUST have a "promo" attribute in their itemdef. That promo item list a set of APPIDs that the user must own to be granted this given item. This version will grant all items that have promo attributes specified for them in the configured item definitions. This allows adding additional promotional items without having to update the game client. For example the following will allow the item to be granted if the user owns either TF2 or SpaceWar.
+            /// </para>
+            /// </summary>
+            /// <param name="resultHandle"></param>
+            /// <param name="itemDef"></param>
+            /// <returns></returns>
+            public static void AddPromoItem(Steamworks.Data.InventoryDefId itemDef, Action<InventoryResult?> callback)
+            {
+                SteamSettings.behaviour.StartCoroutine(FacepunchAddPromoItem(itemDef, callback));
+            }
+            public static void AddPromoItem(ItemDefinition item, Action<InventoryResult?> callback) => AddPromoItem(item.Id, callback);
+
+            private static System.Collections.IEnumerator FacepunchAddPromoItem(Steamworks.Data.InventoryDefId item, Action<InventoryResult?> callback)
+            {
+                var task = SteamInventory.AddPromoItemAsync(item);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                callback?.Invoke(task.Result);
+            }
+            /// <summary>
+            /// Checks whether an inventory result handle belongs to the specified Steam ID.
+            /// </summary>
+            /// <remarks>
+            /// This is important when using DeserializeResult, to verify that a remote player is not pretending to have a different user's inventory.
+            /// </remarks>
+            /// <param name="resultHandle">The inventory result handle to check the Steam ID on.</param>
+            /// <param name="steamIDExpected">The Steam ID to verify.</param>
+            /// <returns></returns>
+            [System.Obsolete("You are useing Facepunch which does not support CheckResult features, if you require this feature then remove Facepunch and install Steamworks.NET")]
+            public static bool CheckResultSteamID(InventoryResult resultHandle, SteamId steamIDExpected) => false;
+            /// <summary>
+            /// Consumes items from a user's inventory. If the quantity of the given item goes to zero, it is permanently removed.
+            /// </summary>
+            /// <param name="resultHandle">Returns a new inventory result handle.</param>
+            /// <param name="itemConsume">The item instance id to consume.</param>
+            /// <param name="quantity">The number of items in that stack to consume.</param>
+            /// <returns></returns>
+            public static void ConsumeItem(InventoryItem itemConsume, int quantity, Action<InventoryItem[]> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchConsumeItem(itemConsume, quantity, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchConsumeItem(InventoryItem itemConsume, int quantity, Action<InventoryItem[]> callback)
+            {
+                var task = itemConsume.ConsumeAsync(quantity);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if(task.Result.HasValue)
+                {
+                    var items = task.Result.Value.GetItems(true);
+                    eventSteamInventoryResultReady.Invoke(items);
+                    callback?.Invoke(items);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+
+            /// <summary>
+            /// Deserializes a result set and verifies the signature bytes.
+            /// </summary>
+            /// <remarks>
+            /// This call has a potential soft-failure mode where the handle status is set to k_EResultExpired. GetResultItems will still succeed in this mode. The "expired" result could indicate that the data may be out of date - not just due to timed expiration (one hour), but also because one of the items in the result set may have been traded or consumed since the result set was generated. You could compare the timestamp from GetResultTimestamp to ISteamUtils::GetServerRealTime to determine how old the data is. You could simply ignore the "expired" result code and continue as normal, or you could request the player with expired data to send an updated result set.
+            /// </remarks>
+            /// <param name="resultHandle">Returns a new inventory result handle.</param>
+            /// <param name="buffer">The buffer to deserialize.</param>
+            /// <returns></returns>
+            [System.Obsolete("Facepunch doesn't do this correctly and doesn't account for the expected user or expired result set. You should use Steamworks.NET *not* Facepunch if you need this feature")]
+            public static void DeserializeResult(UserData expectedUser, byte[] buffer, Action<InventoryItem[]> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchDeserializeResult(expectedUser, buffer, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchDeserializeResult(UserData expectedUser, byte[] buffer, Action<InventoryItem[]> callback)
+            {
+                var task = SteamInventory.DeserializeAsync(buffer);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Result.HasValue)
+                {
+                    var items = task.Result.Value.GetItems(true);
+                    callback?.Invoke(items);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+            /// <summary>
+            /// Grant one item in exchange for a set of other items.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This can be used to implement crafting recipes or transmutations, or items which unpack themselves into other items (e.g., a chest).
+            /// </para>
+            /// <para>
+            /// The caller of this API passes in the requested item and an array of existing items and quantities to exchange for it. The API currently takes an array of items to generate but at this time the size of that array must be 1 and the quantity of the new item must be 1.
+            /// </para>
+            /// <para>
+            /// Any items that can be granted MUST have an exchange attribute in their itemdef. The exchange attribute specifies a set of recipes that are valid exchanges for this item. Exchange recipes are evaluated atomically by the Inventory Service; if the supplied components do not match the recipe, or do not contain sufficient quantity, the exchange will fail.
+            /// </para>
+            /// </remarks>
+            /// <returns></returns>
+            public static void ExchangeItems(InventoryItem.Amount[] items, Steamworks.Data.InventoryDefId target, Action<InventoryItem[]> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchCraftItem(items, target, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchCraftItem(InventoryItem.Amount[] items, Steamworks.Data.InventoryDefId target, Action<InventoryItem[]> callback)
+            {
+                var task = SteamInventory.CraftItemAsync(items, new InventoryDef(target));
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Result.HasValue)
+                {
+                    var result = task.Result.Value.GetItems(true);
+                    eventSteamInventoryResultReady.Invoke(result);
+                    callback?.Invoke(result);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+            /// <summary>
+            /// Grants specific items to the current user, for developers only.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// This API is only intended for prototyping - it is only usable by Steam accounts that belong to the publisher group for your game.
+            /// </para>
+            /// <para>
+            /// You can pass in an array of items, identified by their SteamItemDef_t and optionally a second array of corresponding quantities for each item. The length of these arrays MUST match!
+            /// </para>
+            /// </remarks>
+            /// <param name="resultHandle">Returns a new inventory result handle.</param>
+            /// <param name="itemDefs">The list of items to grant the user.</param>
+            /// <param name="quantity">The quantity of each item in pArrayItemDefs to grant. This is optional, pass in NULL to specify 1 of each item.</param>
+            public static void GenerateItems(Steamworks.Data.InventoryDefId[] targets, int[] quantity, Action<InventoryItem[]> callback)
+            {
+                if (callback == null
+                    || targets.Length != quantity.Length)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchGenerateItems(targets, quantity, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchGenerateItems(Steamworks.Data.InventoryDefId[] targets, int[] quantity, Action<InventoryItem[]> callback)
+            {
+                List<InventoryItem> items = new List<InventoryItem>();
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    var def = new InventoryDef(targets[i]);
+                    var task = SteamInventory.GenerateItemAsync(def, quantity[i]);
+
+                    yield return new WaitUntil(() => task.IsCompleted);
+
+                    if (task.Result.HasValue)
+                    {
+                        var result = task.Result.Value.GetItems(true);
+                        eventSteamInventoryResultReady.Invoke(result);
+                        items.AddRange(result);
+                    }
+                }
+
+                callback(items.ToArray());
+            }
+            /// <summary>
+            /// Start retrieving all items in the current users inventory.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// NOTE: Calls to this function are subject to rate limits and may return cached results if called too frequently. It is suggested that you call this function only when you are about to display the user's full inventory, or if you expect that the inventory may have changed.
+            /// </para>
+            /// </remarks>
+            /// <param name="resultHandle"></param>
+            public static void GetAllItems(Action<InventoryItem[]> callback = null)
+            {
+                SteamSettings.behaviour.StartCoroutine(FacepunchAllItems(callback));
+            }
+            private static System.Collections.IEnumerator FacepunchAllItems(Action<InventoryItem[]> callback)
+            {
+                var task = SteamInventory.GetAllItemsAsync();
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Result.HasValue)
+                {
+                    var result = task.Result.Value.GetItems(true);
+                    eventSteamInventoryResultReady.Invoke(result);
+                    callback?.Invoke(result);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+            /// <summary>
+            /// Returns the list of items eligible for Add Promo calls for the indicated user
+            /// </summary>
+            /// <param name="userId">The user to test for</param>
+            /// <param name="callback"></param>
+            [System.Obsolete("You are useing Facepunch which does not support checking for eligible promo item features, if you require this feature then remove Facepunch and install Steamworks.NET")]
+            public static void GetEligiblePromoItemDefinitionIDs(UserData userId, Action<Steamworks.Data.InventoryDefId[], bool> callback)
+            {
+            }
+            
+            /// <summary>
+            /// Gets a property value for a specific item definition.
+            /// </summary>
+            /// <remarks>
+            /// Note that some properties (for example, "name") may be localized and will depend on the current Steam language settings (see ISteamApps::GetCurrentGameLanguage). Property names are always ASCII alphanumeric and underscores.
+            /// </remarks>
+            /// <param name="item">The item definition to get the properties for.</param>
+            /// <param name="propertyName">The property name to get the value for</param>
+            /// <returns></returns>
+            public static string GetItemDefinitionProperty(Steamworks.Data.InventoryDefId item, string propertyName)
+            {
+                return new InventoryDef(item).GetProperty(propertyName);
+            }
+            /// <summary>
+            /// Returns a list of the avilable properties on a given item
+            /// </summary>
+            /// <param name="item"></param>
+            /// <returns></returns>
+            public static string[] GetItemDefinitionProperties(Steamworks.Data.InventoryDefId item)
+            {
+                List<string> keys = new List<string>();
+                var def = new InventoryDef(item);  
+                foreach(var pair in def.Properties)
+                {
+                    keys.Add(pair.Key);
+                }
+                return keys.ToArray();
+            }
+            /// <summary>
+            /// After a successful call to RequestPrices, you can call this method to get the pricing for a specific item definition.
+            /// </summary>
+            /// <param name="item"></param>
+            /// <param name="currentPrice"></param>
+            /// <param name="basePrice"></param>
+            /// <returns></returns>
+            public static bool GetItemPrice(Steamworks.Data.InventoryDefId item, out int currentPrice, out int basePrice)
+            {
+                var itemDef = new InventoryDef(item);
+                currentPrice = itemDef.LocalPrice;
+                basePrice = itemDef.LocalBasePrice;
+                return true;
+            }
+            /// <summary>
+            /// Triggers an asynchronous load and refresh of item definitions.
+            /// </summary>
+            /// <remarks>
+            /// Triggers a SteamInventoryDefinitionUpdate_t callback.
+            /// </remarks>
+            public static void LoadItemDefinitions() => SteamInventory.LoadItemDefinitions();
+            
+            /// <summary>
+            /// Starts the purchase process for the user, given a "shopping cart" of item definitions that the user would like to buy. The user will be prompted in the Steam Overlay to complete the purchase in their local currency, funding their Steam Wallet if necessary, etc.
+            /// </summary>
+            /// <remarks>
+            /// <para>
+            /// If the purchase process was started successfully, then m_ulOrderID and m_ulTransID will be valid in the SteamInventoryStartPurchaseResult_t call result.
+            /// </para>
+            /// <para>
+            /// If the user authorizes the transaction and completes the purchase, then the callback SteamInventoryResultReady_t will be triggered and you can then retrieve what new items the user has acquired. NOTE: You must call DestroyResult on the inventory result for when you are done with it.
+            /// </para>
+            /// </remarks>
+            /// <param name="items">The array of item definition ids that the user wants to purchase.</param>
+            /// <param name="quantities">The array of quantities of each item definition that the user wants to purchase.</param>
+            /// <param name="callback"></param>
+            public static void StartPurchase(Steamworks.Data.InventoryDefId[] items, uint[] quantities, Action<Steamworks.Data.InventoryPurchaseResult?> callback)
+            {
+                if (callback == null
+                    || items.Length != quantities.Length)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchStartPurchase(items, quantities, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchStartPurchase(Steamworks.Data.InventoryDefId[] items, uint[] quantities, Action<Steamworks.Data.InventoryPurchaseResult?> callback)
+            {
+                List<InventoryDef> targets = new List<InventoryDef>();
+                for (int i = 0; i < items.Length; i++)
+                {
+                    for (int j = 0; j < quantities.Length; j++)
+                    {
+                        targets.Add(new InventoryDef(items[i]));
+                    }
+                }
+
+                var task = SteamInventory.StartPurchaseAsync(targets.ToArray());
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Result.HasValue)
+                {
+                    callback?.Invoke(task.Result);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+            /// <summary>
+            /// Trigger an item drop if the user has played a long enough period of time.
+            /// </summary>
+            /// <param name="item">This must refer to an itemdefid of the type "playtimegenerator". See the inventory schema for more details.</param>
+            /// <param name="callback"></param>
+            public static void TriggerItemDrop(Steamworks.Data.InventoryDefId item, Action<InventoryItem[]> callback)
+            {
+                if (callback == null)
+                    return;
+
+                SteamSettings.behaviour.StartCoroutine(FacepunchTriggerItemDrop(item, callback));
+            }
+            private static System.Collections.IEnumerator FacepunchTriggerItemDrop(Steamworks.Data.InventoryDefId item, Action<InventoryItem[]> callback)
+            {
+                var task = SteamInventory.TriggerItemDropAsync(item);
+                yield return new WaitUntil(() => task.IsCompleted);
+
+                if (task.Result.HasValue)
+                {
+                    var result = task.Result.Value.GetItems(true);
+                    eventSteamInventoryResultReady.Invoke(result);
+                    callback?.Invoke(result);
+                }
+                else
+                {
+                    callback?.Invoke(null);
+                }
+            }
+        }
+#endif
     }
 }
 #endif

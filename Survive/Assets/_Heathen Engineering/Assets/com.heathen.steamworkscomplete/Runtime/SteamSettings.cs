@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using HeathenEngineering.Events;
 using Steamworks;
 using System;
@@ -67,7 +67,6 @@ namespace HeathenEngineering.SteamworksIntegration
 
             public bool autoInitialize = false;
             public bool autoLogon = false;
-            //public bool enableMirror = true;
 
             public uint ip = 0;
             public ushort queryPort = 27016;
@@ -257,7 +256,7 @@ namespace HeathenEngineering.SteamworksIntegration
         {
             internal void Init()
             {
-#if !UNITY_EDITOR //|| true
+#if !UNITY_EDITOR // || true
                 try
                 {
                     // If Steamworks is not running or the game wasn't started through Steamworks, SteamAPI_RestartAppIfNecessary starts the

@@ -1,9 +1,10 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
+#if STEAMWORKSNET
     /// <summary>
     /// Clan Chat Room aka Group Chat Room
     /// </summary>
@@ -43,7 +44,7 @@ namespace HeathenEngineering.SteamworksIntegration
         
         public void Leave() => API.Clans.Client.LeaveChatRoom(id);
 
-#region Boilerplate
+    #region Boilerplate
         public bool Equals(ChatRoom other)
         {
             return clan == other.clan && id == other.id;
@@ -62,7 +63,14 @@ namespace HeathenEngineering.SteamworksIntegration
 
         public static bool operator ==(ChatRoom l, ChatRoom r) => l.Equals(r);
         public static bool operator !=(ChatRoom l, ChatRoom r) => !l.Equals(r);
-#endregion
+    #endregion
     }
+#elif FACEPUNCH
+
+    [System.Obsolete("You are useing Facepunch which does not support Clan chat, if you require this feature then remove Facepunch and install Steamworks.NET")]
+    public struct ChatRoom
+    {
+    }
+#endif
 }
 #endif

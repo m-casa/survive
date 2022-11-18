@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Net;
@@ -162,6 +162,19 @@ namespace HeathenEngineering.SteamworksIntegration.API
             public static bool ShowVirtualKeyboard(EFloatingGamepadTextInputMode mode, int2 fieldPosition, int2 fieldSize)
             {
                 if (SteamUtils.ShowFloatingGamepadTextInput(mode, fieldPosition.x, fieldPosition.y, fieldSize.x, fieldSize.y))
+                {
+                    eventKeyboardShown.Invoke();
+                    return true;
+                }
+                else
+                    return false;
+            }
+
+            public static bool ShowVirtualKeyboard(EFloatingGamepadTextInputMode mode, RectTransform fieldTransform, Canvas canvas)
+            {
+                var rect = RectTransformUtility.PixelAdjustRect(fieldTransform, canvas);
+
+                if (SteamUtils.ShowFloatingGamepadTextInput(mode, (int)rect.x, (int)rect.y, (int)rect.size.x, (int)rect.size.y))
                 {
                     eventKeyboardShown.Invoke();
                     return true;

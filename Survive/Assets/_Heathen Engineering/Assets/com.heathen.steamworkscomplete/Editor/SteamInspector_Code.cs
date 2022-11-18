@@ -1,4 +1,4 @@
-#if HE_SYSCORE && STEAMWORKS_NET
+#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -68,7 +68,7 @@ namespace HeathenEngineering.SteamworksIntegration.Editors
         public static void ShowExample()
         {
             instance = GetWindow<SteamInspector_Code>();
-            instance.titleContent = new GUIContent("Steamworks v2.18.3", instance.icon);
+            instance.titleContent = new GUIContent("Steamworks v2.20.6", instance.icon);
         }
 
         public void CreateGUI()

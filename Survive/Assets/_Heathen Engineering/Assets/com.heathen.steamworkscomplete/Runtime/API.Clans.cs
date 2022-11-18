@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
     /// </summary>
     public static class Clans
     {
+#if STEAMWORKSNET
         public static class Client
         {
             [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -520,6 +521,13 @@ namespace HeathenEngineering.SteamworksIntegration.API
                 m_DownloadClanActivityCountsResult_t.Set(handle, callback.Invoke);
             }
         }
+#elif FACEPUNCH
+        [System.Obsolete("You are useing Facepunch which does not support Clan features, if you require this feature then remove Facepunch and install Steamworks.NET")]
+        public static class Client
+        {
+            
+        }
+#endif
     }
 }
 #endif

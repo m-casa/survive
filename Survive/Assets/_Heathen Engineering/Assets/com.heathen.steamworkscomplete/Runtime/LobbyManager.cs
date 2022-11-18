@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,7 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <summary>
         /// Occurs when the local user tried but failed to create a lobby
         /// </summary>
-        public UnityEvent evtCreateFailed;
+        public EResultEvent evtCreateFailed;
         /// <summary>
         /// Occurs when the local user attempts to quick match but fails to find a match or resolve the quick match
         /// </summary>
@@ -321,26 +321,33 @@ namespace HeathenEngineering.SteamworksIntegration
         /// </summary>
         public void Create()
         {
-            API.Matchmaking.Client.CreateLobby(createArguments.type, createArguments.slots, (r, e) =>
+            API.Matchmaking.Client.CreateLobby(createArguments.type, createArguments.slots, (result, lobby, ioError) =>
             {
-                if (!e)
+                if (!ioError)
                 {
-                    if (SteamSettings.current.isDebugging)
-                        Debug.Log("New lobby created.");
+                    if (result == EResult.k_EResultOK)
+                    {
+                        if (SteamSettings.current.isDebugging)
+                            Debug.Log("New lobby created.");
 
-                    Lobby = r.id.m_SteamID;
+                        Lobby = lobby;
 
-                    var lobby = Lobby;
                     lobby[Lobby.DataName] = createArguments.name;
-                    foreach (var data in createArguments.metadata)
-                        lobby[data.key] = data.value;
+                        foreach (var data in createArguments.metadata)
+                            lobby[data.key] = data.value;
 
-                    evtCreated?.Invoke(lobby);
+                        evtCreated?.Invoke(lobby);
+                    }
+                    else
+                    {
+                        Debug.Log($"No lobby created Steam API responce code: {result}");
+                        evtCreateFailed?.Invoke(result);
+                    }
                 }
                 else
                 {
                     Debug.LogError("Lobby creation failed with message: IOFailure\nSteam API responded with a general IO Failure.");
-                    evtCreateFailed?.Invoke();
+                    evtCreateFailed?.Invoke(EResult.k_EResultIOFailure);
                 }
             });
         }

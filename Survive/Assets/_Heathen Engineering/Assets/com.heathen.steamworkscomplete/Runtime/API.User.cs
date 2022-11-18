@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using UnityEngine;
@@ -28,7 +28,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
             }
 
             private static CallResult<StoreAuthURLResponse_t> m_StoreAuthURLResponse_t;
-
+            
             /// <summary>
             /// Gets the Steam ID of the account currently logged into the Steam client. This is commonly called the 'current user', or 'local user'.
             /// </summary>

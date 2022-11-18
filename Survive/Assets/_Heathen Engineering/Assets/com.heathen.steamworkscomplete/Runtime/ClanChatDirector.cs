@@ -1,9 +1,10 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using UnityEngine;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
+#if STEAMWORKSNET
     public class ClanChatDirector : MonoBehaviour
     {
         [Header("Events")]
@@ -106,5 +107,12 @@ namespace HeathenEngineering.SteamworksIntegration
                 evtRecieved.Invoke(arg0);
         }
     }
+#elif FACEPUNCH
+    [System.Obsolete("You are useing Facepunch which does not support Clan chat, if you require this feature then remove Facepunch and install Steamworks.NET")]
+    public class ClanChatDirector : MonoBehaviour
+    {
+        
+    }
+#endif
 }
 #endif

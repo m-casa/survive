@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using HeathenEngineering.Events;
 using System;
 using UnityEngine;
@@ -25,13 +25,13 @@ namespace HeathenEngineering.SteamworksIntegration
                 action.RemoveListener(HandleEvent);
         }
 
-        private void HandleEvent(EventData<InputActionData> arg0)
+        private void HandleEvent(EventData<InputActionUpdate> arg0)
         {
             changed.Invoke(arg0.value);
         }
 
         [Serializable]
-        public class ActionDataEvent : UnityEvent<InputActionData>
+        public class ActionDataEvent : UnityEvent<InputActionUpdate>
         { }
     }
 }

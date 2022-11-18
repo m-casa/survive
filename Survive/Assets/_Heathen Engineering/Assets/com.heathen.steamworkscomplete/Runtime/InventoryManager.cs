@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,15 +12,18 @@ namespace HeathenEngineering.SteamworksIntegration
         public List<ItemDefinition> Items => SteamSettings.Client.inventory.items;
 
         public InventoryChangedEvent evtChanged;
+        public SteamMicroTransactionAuthorizationResponce evtTransactionResponce;
 
         private void OnEnable()
         {
             SteamSettings.Client.inventory.EventChanged.AddListener(evtChanged.Invoke);
+            API.Inventory.Client.EventSteamMicroTransactionAuthorizationResponce.AddListener(evtTransactionResponce.Invoke);
         }
 
         private void OnDisable()
         {
             SteamSettings.Client.inventory.EventChanged.RemoveListener(evtChanged.Invoke);
+            API.Inventory.Client.EventSteamMicroTransactionAuthorizationResponce.RemoveListener(evtTransactionResponce.Invoke);
         }
 
         /// <summary>

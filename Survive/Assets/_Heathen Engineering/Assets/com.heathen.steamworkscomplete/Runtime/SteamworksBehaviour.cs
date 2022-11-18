@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using HeathenEngineering.Events;
 using Steamworks;
 using System;
@@ -48,12 +48,10 @@ namespace HeathenEngineering.SteamworksIntegration
         /// An event raised when an error has occred while intializing the Steamworks API
         /// </summary>
         public UnityStringEvent evtSteamInitializationError = new UnityStringEvent();
-
-        private void OnDestroy()
-        {
-            settings.evtSteamInitialized.RemoveListener(evtSteamInitialized.Invoke);
-            settings.evtSteamInitializationError.RemoveListener(evtSteamInitializationError.Invoke);
-        }
+        /// <summary>
+        /// This is invoked on initalization of the Steam API if
+        /// </summary>
+        public LobbyDataEvent evtLobbyInviteArgumentDetected = new LobbyDataEvent();
         #endregion
 
 
@@ -88,7 +86,7 @@ namespace HeathenEngineering.SteamworksIntegration
                 return;
             }
 
-            settings.evtSteamInitialized.AddListener(evtSteamInitialized.Invoke);
+            settings.evtSteamInitialized.AddListener(HandleInitalization);
             settings.evtSteamInitializationError.AddListener(evtSteamInitializationError.Invoke);
 
             SteamSettings.behaviour = this;
@@ -166,6 +164,12 @@ namespace HeathenEngineering.SteamworksIntegration
 #endif
         }
 
+        private void OnDestroy()
+        {
+            settings.evtSteamInitialized.RemoveListener(evtSteamInitialized.Invoke);
+            settings.evtSteamInitializationError.RemoveListener(evtSteamInitializationError.Invoke);
+        }
+
         /// <summary>
         /// Checks if the Steam API is initialized and if not it will create a new Steamworks Behaviour object configure it with the settings and initialize
         /// </summary>
@@ -237,6 +241,14 @@ namespace HeathenEngineering.SteamworksIntegration
             }
         }
 
+        private void HandleInitalization()
+        {
+            evtSteamInitialized.Invoke();
+
+            Lobby targetLobby = CommandLine.GetSteamLobbyInvite();
+            if(targetLobby.IsValid)
+                evtLobbyInviteArgumentDetected.Invoke(targetLobby);
+        }
 
         #region Server Only Logic
         /// <summary>

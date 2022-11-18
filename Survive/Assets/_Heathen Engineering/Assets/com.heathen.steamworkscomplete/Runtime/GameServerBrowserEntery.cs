@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -70,6 +70,8 @@ namespace HeathenEngineering.SteamworksIntegration
         /// <summary>
         /// The discription listed on the server
         /// </summary>
+        public string Description { get => GetGameDescription(); set => SetGameDescription(value); }
+        [Obsolete("Use Description instead")]
         public string Discription { get => GetGameDescription(); set => SetGameDescription(value); }
         /// <summary>
         /// The tags listed on the server

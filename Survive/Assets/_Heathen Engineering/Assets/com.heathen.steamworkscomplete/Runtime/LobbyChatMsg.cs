@@ -1,9 +1,10 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
+#if STEAMWORKSNET
     [Serializable]
     public struct LobbyChatMsg
     {
@@ -20,6 +21,15 @@ namespace HeathenEngineering.SteamworksIntegration
 
         public T FromJson<T>() => UnityEngine.JsonUtility.FromJson<T>(ToString());
     }
-
+#elif FACEPUNCH
+    [Serializable]
+    public struct LobbyChatMsg
+    {
+        public Lobby lobby;
+        public UserData sender;
+        public DateTime recievedTime;
+        public string message;
+    }
+#endif
 }
 #endif

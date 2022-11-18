@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using Steamworks;
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,7 @@ namespace HeathenEngineering.SteamworksIntegration.API
     /// </remarks>
     public static class Input
     {
+#if STEAMWORKSNET
         public static class Client
         {
             [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -475,6 +476,11 @@ namespace HeathenEngineering.SteamworksIntegration.API
             /// <returns></returns>
             public static uint GetRemotePlaySessionID(InputHandle_t controllerHandle) => SteamInput.GetRemotePlaySessionID(controllerHandle);
         }
+#elif FACEPUNCH
+        [System.Obsolete("You are useing Facepunch which does not support Input features, if you require this feature then remove Facepunch and install Steamworks.NET")]
+        public static class Client
+        { }
+#endif
     }
 }
 #endif

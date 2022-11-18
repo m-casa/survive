@@ -1,4 +1,4 @@
-﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && STEAMWORKS_NET
+﻿#if !DISABLESTEAMWORKS && HE_SYSCORE && (STEAMWORKSNET || FACEPUNCH)
 using HeathenEngineering.Events;
 using Steamworks;
 using System;
@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace HeathenEngineering.SteamworksIntegration
 {
+#if STEAMWORKSNET
     public class LeaderboardEntry
     {
         public LeaderboardEntry_t entry;
@@ -131,5 +132,7 @@ namespace HeathenEngineering.SteamworksIntegration
             }
         }
     }
+#elif FACEPUNCH
+#endif
 }
 #endif
