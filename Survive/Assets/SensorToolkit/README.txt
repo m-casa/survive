@@ -1,101 +1,33 @@
-Thank you for purchasing Sensor Toolkit!
+Thank you for purchasing SensorToolkit 2!
 
-The documentation is available online at: http://www.micosmo.com/sensortoolkit
-And there is an example scene under the Examples directory.
+The documentation is available online at: http://www.micosmo.com/sensortoolkit2
+There are some example scenes inside Examples/ directory. I recommend first viewing the 'Fundamentals' scene.
 
 If you have any questions, feature requests or if you have found a bug then please send me an email at micosmogames@gmail.com
 
-ChangeLog
 
-1.1.3:
-- Greatly reduced garbage generated.
-- Sensor DetectedObjects and DetectedObjectsOrderedByDistance changed to IEnumerable types, so they can be enumerated without allocations.
-
-1.2.0
-- Sensors can now be configured with tag filters.
-- Added 'GetVisibleTransforms' and 'GetVisiblePositions' methods to trigger/range sensors, to query the raycast targets on a detected object that are in line of sight.
-- range/trigger sensors can be configured to only detect objects with LOSTargets components.
-- Added new PlayMaker actions.
-
-1.2.1
-- Fixed SensorGetVisibleRaycastTargets playmaker action so that visible Transforms are returned correctly.
-- Removed duplicate TagSelectorPropertyDrawer.cs editor file which was causing builds to fail.
-
-1.2.2
-- Small bug fix for tag filters
-
-1.2.3
-- Fixed issue where RangeSensor wasn't firing DetectionLost events
-
-1.3.0
-- Added SteeringRig and SteeringRig2D, along with a few example steering prefabs
-- Added 3 new example scenes: Action, Stealth and Space
-- Minor bug fixes
-
-1.3.1
-- Added LOSTargets to Stealth example
-- Minor fix to Physics layers in examples
-- Made steering rig gizmos bigger
-
-1.3.2
-- FOVCollider and FOVCollider2D now expose their mesh through the FOVMesh property so it can be rendered.
-- Added RenderFOVCollider and RenderFOVCollider2D for easily rendering fov colliders
-- Fix for occasional error occuring with trigger sensor when gameobjects are rapidly activated and deactivated
-
-1.3.3
-- TriggerSensor2D must have a rigid body with sleep mode never sleep.
-- New playmaker actions for controlling steering rig.
-
-1.3.4
-- Fix bug causing null reference exception
-
-1.3.5
-- Added a copy of SpaceDemo with 10x scale to demonstrate how to configure its sensors at a larger scale.
-- Fixed a bug causing detection events to not fire when LOS testing was enabled.
-- A fix to several SensorGetDetected actions with a bug ocurring when 'Store Component' field is used.
-
-1.3.6
-- Fixed a bug involving the SteeringRig2D Playmaker actions
-
-1.4.0
-- RaySensor and RaySensor2D now have a radius parameter, for casting lines with thickness
-- A new playmaker action for setting the IgnoreList of a sensor
-- A new playmaker action for testing if a gameobject is detected by a sensor
-
-1.5.0
-- Minimum Unity version now 5.3.8f2
-- Ray sensors and Range Sensor now use non-allocating versions of physics functions
-- New attributes on ray and range sensors for configuring initial buffer sizes
-- Hunted down all remaining lines of code which allocate garbage. Sensor toolkit should no longer generate any garbage
-- Various bugfixes and improvements
-
-1.5.1
-- Bugfixes
-
-1.6.0
-- Sensor events now pass the sensor instance which caused the event to the handler function.
-- Fixed a bug causing RaySensor events not to fire.
-
-1.6.1
-- Fixed a bug causing LostDetection events to fire late on the TriggerSensor
-- Fixed a bug where an exception is thrown when accessing DetectedObjects from a Sensor Event on the TriggerSensor
-
-1.6.2
-- Removed GUI layers from cameras in demo scenes, as theyre deprecated in newer versions of Unity.
-- Fixed a bug affecting FOV colliders when an Undo is performed.
-
-1.6.3
-- Fix bug where ray sensors wouldnt reset when tested in edit mode
-
-1.6.4
-- Fix a code issue causing 'Code Stripping' to fail
-
-1.6.5
-- Fix for TriggerSensors repeatedly detecting the same objects when fixedTimeStep set above a certain value.
-
-1.6.6
-- Update minimum version of Unity to 2018.4
-- Fix Line-Of-Sight testpoint generation for scaled gameobjects.
-
-1.6.7
-- Small fix for Unity 2021.2
+[CHANGELOG]
+2.3.4 - Added a new component 'SignalProxy' for cases where you want to detect objects composed of many Rigidbodies. Such as a ragdoll character.
+2.3.3 - Remove compiler warnings
+2.3.2 - New LOSColliderOwner component can instruct LOSSensor which colliders to ignore when testing an object for LOS
+2.3.1 - Replaced FOVCollider.BaseSize with 'NearDistance'. Made widget colours configurable. Fix a bug where RaySensor.Clear() won't reset 'isObstructed'.
+2.3.0 - Added integration for Game Creator 2
+2.2.11 - Removed shaders causing compilation errors for some users
+2.2.10 - Sensor has new events 'OnSomeDetection' and 'OnNoDetection'
+2.2.9 - Sensor can be Cleared. Sensor.PulseAll will also pulse any input sensors.
+2.2.8 - Simplified and improved the built-in locomotion used by the Steering Sensor.
+2.2.7 - Small fix to previous update.
+2.2.6 - PlayMaker actions will take either a GameObject owner or specific Sensor to target.
+2.2.5 -  New 'Sensor' type in PlayMaker variable-type dropdown. PlayMaker actions all take 'BasePulsableSensor'.
+2.2.4 - Small improvement to Observable<T> class.
+2.2.3 - Small tweaks to filtering functions. Slightly improved performance.
+2.2.2 - LOSSensor has new prop 'PointGenerationMethod', which can be 'fast' or 'quality'. The 'quality' mode will restrict the test points to the fov, 'fast' will not.
+2.2.1 - Small fix for LOSSensor. It should detect a signal when it's inside its bounds.
+2.2.0 - Big improvements to LOSSensor. It will now generate test points within its defined angle constraints.
+2.1.3 - Sensor pulses can now optionally be run in FixedUpdate. Fixed issue causing sensor pulses not to be staggered.
+2.1.2 - Small bugfix. Signal.Bounds no longer throws NRE when Signal.Object is null.
+2.1.1 - Small bugfixes for Playmaker actions.
+2.1.0 - Added integration for Behavior Designer.
+2.0.3 - Bugfix for LOSSensor so it will generate proper test points on rotated objects.
+2.0.2 - Removed a List.AddRange which had slipped through and caused GC.
+2.0.1 - No functional changes. Improved formatting and comments of all the sensors code.

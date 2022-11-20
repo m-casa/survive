@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-namespace SensorToolkit
+namespace Micosmo.SensorToolkit
 {
     /*
      * A paramemtric shape for creating field of view cones that work with the trigger sensor. Requires a MeshCollider
@@ -10,13 +10,12 @@ namespace SensorToolkit
      */
     [RequireComponent(typeof(MeshCollider))]
     [ExecuteInEditMode]
-    public class FOVCollider : MonoBehaviour 
-    {
+    public class FOVCollider : MonoBehaviour {
         [Tooltip("The length of the field of view cone in world units.")]
         public float Length = 5f;
 
-        [Tooltip("The size of the field of view cones base in world units.")]
-        public float BaseSize = 0.5f;
+        [Tooltip("The distance to the near plane of the frustum.")]
+        public float NearDistance = 0.1f;
 
         [Range(1f, 180f), Tooltip("The arc angle of the fov cone.")]
         public float FOVAngle = 90f;
@@ -28,31 +27,27 @@ namespace SensorToolkit
         public int Resolution = 0;
 
         // Returns the generated collider mesh so that it can be rendered.
-        public Mesh FOVMesh { get { return mesh; } }
+        public Mesh FOVMesh => mesh;
 
         Mesh mesh;
         MeshCollider mc;
         Vector3[] pts;
         int[] triangles;
 
-        void Awake()
-        {
+        void Awake() {
             mc = GetComponent<MeshCollider>();
             CreateCollider();
         }
 
-        void OnValidate()
-        {
+        void OnValidate() {
             Length = Mathf.Max(0f, Length);
-            BaseSize = Mathf.Max(0f, BaseSize);
-            if (mc != null) 
-            {
+            NearDistance = Mathf.Clamp(NearDistance, 0f, Length);
+            if (mc != null)  {
                 CreateCollider();
             }
         }
 
-        public void CreateCollider()
-        {
+        public void CreateCollider() {
             pts = new Vector3[4 + (2+Resolution)*(2+Resolution)];
             // There are 2 triangles on the base
             var baseTriangleIndices = 2 * 3;
@@ -63,24 +58,21 @@ namespace SensorToolkit
             triangles = new int[baseTriangleIndices + arcTriangleIndices + sideTriangleIndices*4];
 
             // Base points
-            pts[0] = new Vector3(-BaseSize / 2f, -BaseSize / 2f, 0f); // Bottom Left
-            pts[1] = new Vector3(BaseSize / 2f, -BaseSize / 2f, 0f);  // Bottom Right
-            pts[2] = new Vector3(BaseSize / 2f, BaseSize / 2f, 0f);   // Top Right
-            pts[3] = new Vector3(-BaseSize / 2f, BaseSize / 2f, 0f);  // Top Left
+            pts[0] = Quaternion.Euler(-ElevationAngle / 2f, -FOVAngle / 2f, 0f) * Vector3.forward * NearDistance; // Bottom Left
+            pts[1] = Quaternion.Euler(ElevationAngle / 2f, -FOVAngle / 2f, 0f) * Vector3.forward * NearDistance; // Bottom Right
+            pts[2] = Quaternion.Euler(ElevationAngle / 2f, FOVAngle / 2f, 0f) * Vector3.forward * NearDistance; // Top Right
+            pts[3] = Quaternion.Euler(-ElevationAngle / 2f, FOVAngle / 2f, 0f) * Vector3.forward * NearDistance; // Top Left
             triangles[0] = 2; triangles[1] = 1; triangles[2] = 0; triangles[3] = 3; triangles[4] = 2; triangles[5] = 0;
 
-            for (int y = 0; y < 2+Resolution; y++)
-            {
-                for (int x = 0; x < 2+Resolution; x++)
-                {
+            for (int y = 0; y < 2+Resolution; y++) {
+                for (int x = 0; x < 2+Resolution; x++) {
                     int i = 4 + y * (2 + Resolution) + x;
                     float ay = Mathf.Lerp(-FOVAngle / 2f, FOVAngle / 2f, (float)x / (float)(Resolution + 1));
                     float ax = Mathf.Lerp(-ElevationAngle / 2f, ElevationAngle / 2f, (float)y / (float)(Resolution + 1));
                     Vector3 p = Quaternion.Euler(ax, ay, 0f) * Vector3.forward * Length;
                     pts[i] = p;
 
-                    if (x < (1+Resolution) && y < (1+Resolution))
-                    {
+                    if (x < (1+Resolution) && y < (1+Resolution)) {
                         var ti = baseTriangleIndices + (y * (Resolution + 1) + x) * 3 * 2;
                         triangles[ti] = i + 1 + (2 + Resolution); // top right
                         triangles[ti + 1] = i + 1; // bottom right
@@ -93,15 +85,13 @@ namespace SensorToolkit
             }
 
             // Top and bottom side triangles
-            for (int x = 0; x < 2+Resolution; x++)
-            {
+            for (int x = 0; x < 2+Resolution; x++) {
                 var iTop = 4 + x;
                 var iBottom = 4 + (1 + Resolution) * (2 + Resolution) + x;
 
                 var tiTop = baseTriangleIndices + arcTriangleIndices + x*3;
                 var tiBottom = tiTop + sideTriangleIndices;
-                if (x == 0)
-                {
+                if (x == 0) {
                     triangles[tiTop] = 2;
                     triangles[tiTop+1] = 3;
                     triangles[tiTop + 2] = iTop;
@@ -109,9 +99,7 @@ namespace SensorToolkit
                     triangles[tiBottom] = 0;
                     triangles[tiBottom + 1] = 1;
                     triangles[tiBottom + 2] = iBottom;
-                }
-                else
-                {
+                } else {
                     triangles[tiTop] = iTop;
                     triangles[tiTop + 1] = 2;
                     triangles[tiTop + 2] = iTop-1;
@@ -124,15 +112,13 @@ namespace SensorToolkit
 
             // Left and right side triangles
             var yIncr = 2 + Resolution;
-            for (int y = 0; y < 2 + Resolution; y++)
-            {
+            for (int y = 0; y < 2 + Resolution; y++) {
                 var iLeft = 4 + y*(2+Resolution);
                 var iRight = iLeft + (1+Resolution);
 
                 var tiLeft = baseTriangleIndices + arcTriangleIndices + sideTriangleIndices*2 + y*3;
                 var tiRight = tiLeft + sideTriangleIndices;
-                if (y == 0)
-                {
+                if (y == 0) {
                     triangles[tiLeft] = 3;
                     triangles[tiLeft + 1] = 0;
                     triangles[tiLeft + 2] = iLeft;
@@ -140,9 +126,7 @@ namespace SensorToolkit
                     triangles[tiRight] = 1;
                     triangles[tiRight + 1] = 2;
                     triangles[tiRight + 2] = iRight;
-                }
-                else
-                {
+                } else {
                     triangles[tiLeft] = 0;
                     triangles[tiLeft + 1] = iLeft;
                     triangles[tiLeft + 2] = iLeft - yIncr;
@@ -163,20 +147,16 @@ namespace SensorToolkit
             mc.isTrigger = true;
         }
 
-        void releaseMesh()
-        {
-            if (mc.sharedMesh != null && mc.sharedMesh == mesh)
-            {
+        void releaseMesh() {
+            if (mc.sharedMesh != null && mc.sharedMesh == mesh) {
                 DestroyImmediate(mc.sharedMesh, true);
             }
         }
 
-        void OnDrawGizmosSelected()
-        {
+        void OnDrawGizmosSelected() {
             Gizmos.color = Color.green;
-            foreach(Vector3 p in pts)
-            {
-                Gizmos.DrawSphere(transform.TransformPoint(p), 0.1f);
+            foreach(Vector3 p in pts) {
+                Gizmos.DrawSphere(transform.TransformPoint(p), 0.02f);
             }
         }
     }

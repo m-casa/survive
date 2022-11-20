@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-namespace SensorToolkit
+namespace Micosmo.SensorToolkit
 {
     /*
      * Add this component to a gameobject which has a FOVCollider and it will add a mesh renderer and assign the fovs mesh to it.

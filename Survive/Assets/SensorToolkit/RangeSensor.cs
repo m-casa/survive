@@ -3,181 +3,184 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-namespace SensorToolkit
-{
+namespace Micosmo.SensorToolkit {
+
     /*
-     * A sensor that detects colliders within a specified range using Physics.OverlapSphere. Detects colliders or rigid
-     * bodies on the chosen physics layers. Can be configured to pulse automatically at fixed intervals or manually. Has
-     * optional support for line of sight testing.
+     * The Range Sensor detects objects that are inside its detection volume. It uses the family of Overlap functions inside Physics or Physics2D. 
+     * A detected object will have one or more Collider that overlaps the detection volume.
      */
-    [ExecuteInEditMode]
-    public class RangeSensor : BaseVolumeSensor
-    {
-        // Should the sensor be pulsed automatically at fixed intervals or should it be pulsed manually.
-        public enum UpdateMode { FixedInterval, Manual }
+    [AddComponentMenu("Sensors/Range Sensor")]
+    public class RangeSensor : BaseVolumeSensor, IPulseRoutine {
 
-        [Tooltip("The radius in world units that the sensor detects colliders in.")]
-        public float SensorRange = 10f;
+        #region Configurations
+        public enum Shapes { Sphere, Box, Capsule }
 
-        [Tooltip("The physics layer mask that the sensor detects colliders on.")]
+        // Determines which shape of Physics.Overlap[...] function to use
+        public Shapes Shape;
+
+        // Configurations for Sphere shape.
+        public SphereShape Sphere = new SphereShape(1f);
+        // Configurations for Box shape.
+        public BoxShape Box = new BoxShape(Vector3.one * .5f);
+        // Configurations for Capsule shape.
+        public CapsuleShape Capsule = new CapsuleShape(.5f, 1f);
+
+        [Tooltip("A layer mask specifying which physics layers objects will be detected on.")]
         public LayerMask DetectsOnLayers;
 
-        [Tooltip("Automatic or manually pulsing mode.")]
-        public UpdateMode SensorUpdateMode;
+        [Tooltip("The sensor will not detect trigger colliders when this is set to true.")]
+        public bool IgnoreTriggerColliders;
 
-        [Tooltip("If the chosen update mode is automatic then this is the interval in seconds between each automatic pulse.")]
-        public float CheckInterval = 1f;
+        [SerializeField]
+        PulseRoutine pulseRoutine;
+        #endregion
 
-        [Tooltip("The initial size of the buffer used when calling Physics.OverlapSphereNoAlloc.")]
-        public int InitialBufferSize = 20;
+        #region Events
+        public override event Action OnPulsed;
+        #endregion
 
-        [Tooltip("When set true the buffer used with Physics.OverlapSphereNoAlloc is expanded if its not sufficiently large.")]
-        public bool DynamicallyIncreaseBufferSize = true;
+        #region Public
+        // Change the pulse mode at runtime
+        public PulseRoutine.Modes PulseMode {
+            get => pulseRoutine.Mode.Value;
+            set => pulseRoutine.Mode.Value = value;
+        }
 
-        public int CurrentBufferSize { get; private set; }
+        // Change the pulse interval at runtime
+        public float PulseInterval {
+            get => pulseRoutine.Interval.Value;
+            set => pulseRoutine.Interval.Value = value;
+        }
 
-        // Event that is called each time the sensor is pulsed. Used by the editor extensions, you shouldn't need to listen to it.
-        public delegate void SensorUpdateHandler();
-        public event SensorUpdateHandler OnSensorUpdate;
+        // The array size allocated for storing results from Physics.RaycastNonAlloc. Will automatically
+        // be doubled in size when more space is needed.
+        public int CurrentBufferSize => physics != null ? physics.Buffer.Length : 0;
 
         // Pulses the sensor to update its list of detected objects
-        public override void Pulse()
-        {
-            if (isActiveAndEnabled) testSensor();
-            
-        }
+        public override void Pulse() {
 
-        HashSet<GameObject> previousDetectedObjects = new HashSet<GameObject>();
-        Collider[] collidersBuffer;
-        float timer = 0f;
-
-        protected override void Awake() 
-        {
-            base.Awake();
-
-            CurrentBufferSize = 0;
-        }
-
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-            previousDetectedObjects.Clear();
-        }
-
-        void Update() 
-        {
-            if (!Application.isPlaying) 
-            {
+            if (!isActiveAndEnabled) {
                 return;
             }
 
-            if (SensorUpdateMode == UpdateMode.FixedInterval)
-            {
-                timer += Time.deltaTime;
-                if (timer >= CheckInterval)
-                {
-                    testSensor();
-                    timer = 0f;
+            if (physics == null) {
+                physics = new PhysicsNonAlloc<Collider>();
+            }
+
+            int numberDetected = physics.PerformTest(this, physicsTest);
+
+            ClearColliders();
+
+            for (var i = 0; i < numberDetected; i++) {
+                AddCollider(physics.Buffer[i], false);
+            }
+
+            UpdateAllSignals();
+            OnPulsed?.Invoke();
+        }
+
+        public override void PulseAll() => Pulse();
+        #endregion
+
+        #region Internals
+        static OverlapSphereTest SphereTestInstance = new OverlapSphereTest();
+        static OverlapBoxTest BoxTestInstance = new OverlapBoxTest();
+        static OverlapCapsuleTest CapsuleTestInstance = new OverlapCapsuleTest();
+
+        ITestNonAlloc<RangeSensor, Collider> physicsTest {
+            get {
+                switch (Shape) {
+                    case Shapes.Sphere:
+                        return SphereTestInstance;
+                    case Shapes.Box:
+                        return BoxTestInstance;
+                    case Shapes.Capsule:
+                        return CapsuleTestInstance;
+                    default:
+                        return SphereTestInstance;
                 }
             }
-            else
-            {
-                timer = 0f;
-            }
         }
 
-        List<GameObject> newDetections = new List<GameObject>();
-        void testSensor()
-        {
-            prepareCollidersBuffer();
+        PhysicsNonAlloc<Collider> physics;
 
-            var numberDetected = Physics.OverlapSphereNonAlloc(transform.position, SensorRange, collidersBuffer, DetectsOnLayers);
-            if (numberDetected == CurrentBufferSize)
-            {
-                if (DynamicallyIncreaseBufferSize) 
-                {
-                    CurrentBufferSize *= 2;
-                    testSensor();
-                    return;
-                }
-                else 
-                {
-                    logInsufficientBufferSize();
-                }
+
+        protected override void Awake()  {
+            base.Awake();
+
+            if (pulseRoutine == null) {
+                pulseRoutine = new PulseRoutine();
             }
-
-            clearColliders();
-            newDetections.Clear();
-            for (int i = 0; i < numberDetected; i++)
-            {
-                var newDetection = addCollider(collidersBuffer[i]);
-                if (newDetection != null)
-                {
-                    if (previousDetectedObjects.Contains(newDetection))
-                    {
-                        previousDetectedObjects.Remove(newDetection);
-                    }
-                    else
-                    {
-                        newDetections.Add(newDetection);
-                    }
-                }
-            }
-
-            foreach (var newDetection in newDetections) 
-            {
-                OnDetected.Invoke(newDetection, this);
-            }
-
-            // Any entries still in previousDetectedObjects are no longer detected
-            var previousDetectedEnumerator = previousDetectedObjects.GetEnumerator();
-            while (previousDetectedEnumerator.MoveNext())
-            {
-                var lostDetection = previousDetectedEnumerator.Current;
-                OnLostDetection.Invoke(lostDetection, this);
-            }
-
-            previousDetectedObjects.Clear();
-            var detectedEnumerator = DetectedObjects.GetEnumerator();
-            while (detectedEnumerator.MoveNext())
-            {
-                previousDetectedObjects.Add(detectedEnumerator.Current);
-            }
-
-            if (OnSensorUpdate != null) OnSensorUpdate();
+            pulseRoutine.Awake(this);
         }
 
-        void logInsufficientBufferSize()
-        {
-            Debug.LogWarning("A range sensor on " + name + " has an insufficient buffer size. Some objects may not be detected");
+        protected void OnEnable() {
+            pulseRoutine.OnEnable();
         }
 
-        void prepareCollidersBuffer() 
-        {
-            if (CurrentBufferSize == 0)
-            {
-                InitialBufferSize = Math.Max(1, InitialBufferSize);
-                CurrentBufferSize = InitialBufferSize;
-            }
-            if (collidersBuffer == null || collidersBuffer.Length != CurrentBufferSize)
-            {
-                collidersBuffer = new Collider[CurrentBufferSize];
-            }
+        void OnDisable() {
+            pulseRoutine.OnDisable();
         }
 
-        void reset()
-        {
-            clearColliders();
-            CurrentBufferSize = 0;
+        void OnValidate() {
+            pulseRoutine?.OnValidate();
         }
 
-        public override void OnDrawGizmosSelected()
-        {
+        protected override void OnDrawGizmosSelected() {
             base.OnDrawGizmosSelected();
-
-            if (!isActiveAndEnabled) return;
-            Gizmos.color = GizmoColor;
-            Gizmos.DrawWireSphere(transform.position, SensorRange);
+            switch(Shape) {
+                case Shapes.Sphere:
+                    DrawSphereGizmo();
+                    break;
+                case Shapes.Box:
+                    DrawBoxGizmo();
+                    break;
+                case Shapes.Capsule:
+                    DrawCapsuleGizmo();
+                    break;
+            }
         }
+
+        class OverlapSphereTest : ITestNonAlloc<RangeSensor, Collider> {
+            public int Test(RangeSensor sensor, Collider[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                return Physics.OverlapSphereNonAlloc(sensor.transform.position, sensor.Sphere.Radius, results, sensor.DetectsOnLayers, queryTriggerInteraction);
+            }
+        }
+        void DrawSphereGizmo() {
+            SensorGizmos.PushColor(STPrefs.RangeColour);
+            SensorGizmos.SphereGizmo(transform.position, Sphere.Radius);
+            SensorGizmos.PopColor();
+        }
+
+        class OverlapBoxTest : ITestNonAlloc<RangeSensor, Collider> {
+            public int Test(RangeSensor sensor, Collider[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                return Physics.OverlapBoxNonAlloc(sensor.transform.position, sensor.Box.HalfExtents, results, sensor.transform.rotation, sensor.DetectsOnLayers, queryTriggerInteraction);
+            }
+        }
+        void DrawBoxGizmo() {
+            Gizmos.color = STPrefs.RangeColour;
+            Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+            Gizmos.DrawWireCube(Vector3.zero, Box.HalfExtents * 2f);
+            Gizmos.matrix = Matrix4x4.identity;
+        }
+
+        class OverlapCapsuleTest : ITestNonAlloc<RangeSensor, Collider> {
+            public int Test(RangeSensor sensor, Collider[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                var pt1 = sensor.transform.position + sensor.transform.up * sensor.Capsule.Height / 2f;
+                var pt2 = sensor.transform.position - sensor.transform.up * sensor.Capsule.Height / 2f;
+                return Physics.OverlapCapsuleNonAlloc(pt1, pt2, sensor.Capsule.Radius, results, sensor.DetectsOnLayers, queryTriggerInteraction);
+            }
+        }
+        void DrawCapsuleGizmo() {
+            SensorGizmos.PushColor(STPrefs.RangeColour);
+            SensorGizmos.PushMatrix(Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one));
+            SensorGizmos.CapsuleGizmo(Vector3.zero, Capsule.Radius, Capsule.Height);
+            SensorGizmos.PopMatrix();
+            SensorGizmos.PopColor();
+        }
+        #endregion
     }
 }

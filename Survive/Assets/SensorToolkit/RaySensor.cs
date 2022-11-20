@@ -1,314 +1,292 @@
 ﻿using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Events;
 using System.Collections;
 using System.Collections.Generic;
 using System;
 
-namespace SensorToolkit
-{
+namespace Micosmo.SensorToolkit {
     /*
-     * Detects GameObjects along a ray, it's defined by it's length, which physics layers it detects Objects on and which physics layers obstructs
-     * its path. The ray sensor can be queried for the RayCastHit objects associated with each object it detects, so that it's possible to get the
-     * point of contact, surface normal etc. As well as this the ray sensor can be queried for the collider that blocked it's path.
-     *
-     * If the DetectsOnLayers layermask is a subset of the ObstructedByLayers layermask then the ray sensor will use the RayCast method as an
-     * optmization. Otherwise it will use the RayCastAll method.
+     * The Ray Sensor detects objects intersected by a ray. It uses the family of raycast functions inside Physics or Physics2D. The sensor detects 
+     * all objects along its path up until it hits an Obstructing Collider. It will not detect objects beyond the obstruction.
      */
-    [ExecuteInEditMode]
-	public class RaySensor : Sensor
-    {
-        // Specified whether the ray sensor will pulse automatically each frame or will be updated manually by having its Pulse() method called when needed.
-        public enum UpdateMode { EachFrame, Manual }
+    [AddComponentMenu("Sensors/Ray Sensor")]
+    public class RaySensor : Sensor, IRayCastingSensor, IPulseRoutine {
+
+        #region Configurations
+
+        public enum CastShapeType { Ray, Sphere, Box, Capsule }
+
+        [Tooltip("The shape of the ray. Determines which Physics.Raycast function is called.")]
+        public CastShapeType Shape;
+
+        // Configurations for the Sphere shape
+        public SphereShape Sphere = new SphereShape(1f);
+        // Configurations for the Box shape
+        public BoxShape Box = new BoxShape(Vector3.one * .5f);
+        // Configurations for the Capsule shape
+        public CapsuleShape Capsule = new CapsuleShape(.5f, 1f);
+
+        [SerializeField]
+        SignalFilter signalFilter = new SignalFilter();
 
         [Tooltip("The detection range in world units.")]
         public float Length = 5f;
 
-        [Tooltip("The radius of the ray, with values above zero the sensor will do a spherecast")]
-        public float Radius = 0f;
-
-        [Tooltip("A layermask for colliders that will block the ray sensors path.")]
-        public LayerMask ObstructedByLayers;
-
-        [Tooltip("A layermask for colliders that are detected by the ray sensor.")]
-        public LayerMask DetectsOnLayers;
-
-        [Tooltip("In Collider mode the sensor detects GameObjects attached to colliders. In RigidBody mode it detects the RigidBody GameObject attached to colliders.")]
-        public SensorMode DetectionMode;
-
-        [Tooltip("What direction does the ray sensor point in.")]
+        [Tooltip("The vector direction that the ray is cast in.")]
         public Vector3 Direction = Vector3.forward;
 
         [Tooltip("Is the Direction parameter in world space or local space.")]
         public bool WorldSpace = false;
 
-        [Tooltip("Should the sensor pulse each frame automatically or will it be pulsed manually.")]
-        public UpdateMode SensorUpdateMode;
+        [Tooltip("A layer mask specifying which physics layers objects will be detected on.")]
+        public LayerMask DetectsOnLayers;
 
-        [Tooltip("The initial size of the buffer used when calling Physics.RaycastNonAlloc or Physics.SphereCastNonAlloc.")]
-        public int InitialBufferSize = 20;
+        [Tooltip("A layer mask specifying which physics layers objects will obstruct the ray on.")]
+        public LayerMask ObstructedByLayers;
 
-        [Tooltip("When set true the buffer used with Physics.RaycastNonAlloc is expanded if its not sufficiently large.")]
-        public bool DynamicallyIncreaseBufferSize = true;
+        [Tooltip("In Collider mode the sensor detects GameObjects attached to colliders. In RigidBody mode it detects the Collider.AttachedRigidbody.")]
+        public DetectionModes DetectionMode;
 
-        public int CurrentBufferSize { get; private set; }
+        [Tooltip("Ignores all trigger colliders. Will not detect them or be obstructed by them.")]
+        public bool IgnoreTriggerColliders;
 
-        // Returns a list of all detected GameObjects in no particular order.
-		public override List<GameObject> DetectedObjects
-        {
-            get
-            {
-                detectedObjects.Clear();
-                var detectedEnumerator = detectedObjectsInternal.GetEnumerator();
-                while (detectedEnumerator.MoveNext()) 
-                {
-                    var go = detectedEnumerator.Current;
-                    if (go != null && go.activeInHierarchy) {
-                        detectedObjects.Add(go);
-                    }
-                }
-                return detectedObjects;
-            }
+        [Range(0f, 90f)]
+        [Tooltip("Calculated slope angle must be greater for the intersection to be a detection or an obstruction.")]
+        public float MinimumSlopeAngle = 0f;
+
+        [Tooltip("Measure slope angle between this direction and the Normal of the RayCastHit. Interpreted in world-space.")]
+        public Vector3 SlopeUpDirection = Vector3.up;
+
+        [SerializeField]
+        PulseRoutine pulseRoutine;
+        #endregion
+
+        #region Events
+        [SerializeField]
+        ObstructionEvent onObstruction;
+        public ObstructionEvent OnObstruction => onObstruction;
+
+        [SerializeField]
+        ObstructionEvent onClear;
+        public ObstructionEvent OnClear => onClear;
+
+        public override event Action OnPulsed;
+        #endregion
+
+        #region Public
+        // Edit the IgnoreList at runtime. Anything in the list will not be detected
+        public List<GameObject> IgnoreList => signalFilter.IgnoreList;
+
+        // Enable/Disable the tag filtering at runtime
+        public bool EnableTagFilter {
+            get => signalFilter.EnableTagFilter;
+            set => signalFilter.EnableTagFilter = value;
         }
 
-        // Returns a list of all detected GameObjects in order of distance from the sensor. This distance is given by the RaycastHit.dist for each GameObject.
-        public override List<GameObject> DetectedObjectsOrderedByDistance { get { return DetectedObjects; } }
+        // Change the allowed tags at runtime
+        public string[] AllowedTags {
+            get => signalFilter.AllowedTags;
+            set => signalFilter.AllowedTags = value;
+        }
 
-        // Returns a list of all RaycastHit objects, each one is associated with a GameObject in the detected objects list.
-        public List<RaycastHit> DetectedObjectRayHits { get { return new List<RaycastHit>(detectedObjectHits.Values); } }
+        // Change the pulse mode at runtime
+        public PulseRoutine.Modes PulseMode {
+            get => pulseRoutine.Mode.Value;
+            set => pulseRoutine.Mode.Value = value;
+        }
 
-        // Returns the Collider that obstructed the ray sensors path, or null if it wasn't obstructed.
-        public Collider ObstructedBy { get { return obstructionRayHit.collider; } }
+        // Change the pulse interval at runtime
+        public float PulseInterval {
+            get => pulseRoutine.Interval.Value;
+            set => pulseRoutine.Interval.Value = value;
+        }
 
-        // Returns the RaycastHit data for the collider that obstructed the rays path.
-		public RaycastHit ObstructionRayHit { get { return obstructionRayHit; } }
+        // The array size allocated for storing results from Physics.RaycastNonAlloc. Will automatically
+        // be doubled in size when more space is needed.
+        public int CurrentBufferSize => physics != null ? physics.Buffer.Length : 0;
 
         // Returns true if the ray sensor is being obstructed and false otherwise
-        public bool IsObstructed { get { return isObstructed && ObstructedBy != null; } }
-
-        // Event fired at the time the sensor is obstructed when before it was unobstructed
-        [SerializeField]
-        public SensorEventHandler OnObstruction;
-
-        // Event fired at the time the sensor is unobstructed when before it was obstructed
-        [SerializeField]
-        public SensorEventHandler OnClear;
-
-        // Event fired each time the sensor is pulsed. This is used by the editor extension and you shouldn't have to subscribe to it yourself.
-        public delegate void SensorUpdateHandler();
-        public event SensorUpdateHandler OnSensorUpdate;
-
-        Vector3 direction { get { return WorldSpace ? Direction.normalized : transform.rotation * Direction.normalized; } }
-        RayDistanceComparer distanceComparer = new RayDistanceComparer();
-
-        bool isObstructed = false;
-		RaycastHit obstructionRayHit;
-		Dictionary<GameObject, RaycastHit> detectedObjectHits = new Dictionary<GameObject, RaycastHit>();
-        HashSet<GameObject> previousDetectedObjects = new HashSet<GameObject>();
-        List<GameObject> detectedObjectsInternal = new List<GameObject>();
-        List<GameObject> detectedObjects = new List<GameObject>();
-        RaycastHit[] hitsBuffer;
-
-        // Returns true if the passed GameObject appears in the sensors list of detected gameobjects
-        public override bool IsDetected(GameObject go)
-		{
-			return detectedObjectHits.ContainsKey(go);
-		}
+        public bool IsObstructed => GetObstructionRayHit().IsObstructing;
 
         // Pulse the ray sensor
-        public override void Pulse()
-        {
-            if (isActiveAndEnabled) testRay();
+        public override void Pulse() {
+
+            if (!isActiveAndEnabled) {
+                return;
+            }
+
+            if (physics == null) {
+                physics = new PhysicsNonAlloc<RaycastHit>();
+            }
+
+            mapToRB.IsRigidBodyMode = DetectionMode == DetectionModes.RigidBodies;
+
+            TestRay();
+
+            UpdateAllSignals(workList);
+            SendObstructionEvents();
+
+            OnPulsed?.Invoke();
         }
 
-        // detectedGameObject should be a GameObject that is detected by the sensor. In this case it will return
-        // the Raycasthit data associated with this object.
-        public RaycastHit GetRayHit(GameObject detectedGameObject)
-		{
-			RaycastHit val;
-            if (!detectedObjectHits.TryGetValue(detectedGameObject, out val))
-            {
-                Debug.LogWarning("Tried to get the RaycastHit for a GameObject that isn't detected by RaySensor.");
-            }
-			return val;
-		}
+        public override void PulseAll() => Pulse();
 
-        protected override void Awake()
-        {
+        public override void Clear() {
+            base.Clear();
+            clearDetectedObjects();
+            SendObstructionEvents();
+        }
+
+        // Returns the RayHit data associated with the detected GameObject
+        public RayHit GetDetectionRayHit(GameObject detectedGameObject) {
+            var result = RayHit.None;
+            goWorkList.Clear();
+            signalPipeline.GetInputObjects(detectedGameObject, goWorkList);
+            foreach (var input in goWorkList) {
+                RaycastHit hit;
+                if (detectedObjectHits.TryGetValue(input, out hit)) {
+                    if (result.Equals(RayHit.None) || result.Distance > hit.distance) {
+                        result = new RayHit() {
+                            IsObstructing = false,
+                            Point = hit.point,
+                            Normal = hit.normal,
+                            Distance = hit.distance,
+                            DistanceFraction = hit.distance / Length,
+                            Collider = hit.collider
+                        };
+                    }
+                }
+            }
+            return result;
+        }
+
+        // Returns the RayHit data associated with the obstructing GameObject
+        public RayHit GetObstructionRayHit() {
+            if (!isObstructed || obstructionRayHit.collider == null) {
+                return RayHit.None;
+            }
+            return new RayHit {
+                IsObstructing = true,
+                Point = obstructionRayHit.point,
+                Normal = obstructionRayHit.normal,
+                Distance = obstructionRayHit.distance,
+                DistanceFraction = obstructionRayHit.distance / Length,
+                Collider = obstructionRayHit.collider
+            };
+        }
+        #endregion
+
+        #region Internals
+        Vector3 direction => WorldSpace ? Direction.normalized : transform.rotation * Direction.normalized;
+
+        QueryTriggerInteraction queryTriggerInteraction => IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+
+        bool isObstructed = false;
+        RaycastHit obstructionRayHit;
+        Dictionary<GameObject, RaycastHit> detectedObjectHits = new Dictionary<GameObject, RaycastHit>();
+        List<Signal> workList = new List<Signal>();
+        List<GameObject> goWorkList = new List<GameObject>();
+        MapToRigidBodyFilter mapToRB = new MapToRigidBodyFilter();
+
+        static SphereCastTest SphereCastTestInstance = new SphereCastTest();
+        static BoxCastTest BoxCastTestInstance = new BoxCastTest();
+        static CapsuleCastTest CapsuleCastTestInstance = new CapsuleCastTest();
+        static RayCastTest RayCastTestInstance = new RayCastTest();
+
+        ITestNonAlloc<RaySensor, RaycastHit> physicsTest {
+            get {
+                if (Shape == CastShapeType.Sphere) {
+                    return SphereCastTestInstance;
+                } else if (Shape == CastShapeType.Box) {
+                    return BoxCastTestInstance;
+                } else if (Shape == CastShapeType.Capsule) {
+                    return CapsuleCastTestInstance;
+                }
+                return RayCastTestInstance;
+            }
+        }
+
+        PhysicsNonAlloc<RaycastHit> physics;
+
+        protected override void InitialiseSignalProcessors() {
+            base.InitialiseSignalProcessors();
+            mapToRB.Sensor = this;
+            SignalProcessors.Add(mapToRB);
+            SignalProcessors.Add(new MapToSignalProxyFilter());
+            signalPipeline.Filter = signalFilter;
+        }
+
+        protected override List<Collider> GetInputColliders(GameObject inputObject, List<Collider> storeIn) {
+            RaycastHit hit;
+            if (detectedObjectHits.TryGetValue(inputObject, out hit)) {
+                storeIn.Add(hit.collider);
+            }
+            return storeIn;
+        }
+
+        protected override void Awake() {
             base.Awake();
 
-            CurrentBufferSize = 0;
-
-            if (OnObstruction == null) 
-            {
-                OnObstruction = new SensorEventHandler();
+            if (onObstruction == null) {
+                onObstruction = new ObstructionEvent();
             }
 
-            if (OnClear == null) 
-            {
-                OnClear = new SensorEventHandler();
+            if (onClear == null) {
+                onClear = new ObstructionEvent();
             }
+
+            if (pulseRoutine == null) {
+                pulseRoutine = new PulseRoutine();
+            }
+            pulseRoutine.Awake(this);
         }
 
-        void OnEnable()
-		{
+        void OnEnable() {
             clearDetectedObjects();
-            previousDetectedObjects.Clear();
+            pulseRoutine.OnEnable();
         }
 
-        void Update()
-        {
-            if (Application.isPlaying && SensorUpdateMode == UpdateMode.EachFrame) testRay();
+        void OnDisable() {
+            pulseRoutine.OnDisable();
         }
 
-        bool layerMaskIsSubsetOf(LayerMask lm, LayerMask subsetOf)
-        {
-            return ((lm | subsetOf) & (~subsetOf)) == 0;
+        void OnValidate() {
+            pulseRoutine?.OnValidate();
         }
 
-		void testRay()
-		{
-            var canDetectMultiple = !layerMaskIsSubsetOf(DetectsOnLayers, ObstructedByLayers) && (IgnoreList == null || IgnoreList.Count == 0);
+        bool isSingleResult() {
+            var layerMaskIsSubsset = ((DetectsOnLayers | ObstructedByLayers) & (~ObstructedByLayers)) == 0;
+            return layerMaskIsSubsset && MinimumSlopeAngle == 0f && signalFilter.IsNull();
+        }
+
+        List<RaycastHit> hits = new List<RaycastHit>();
+        void TestRay() {
             clearDetectedObjects();
-            if (!canDetectMultiple && (IgnoreList == null || IgnoreList.Count == 0))
-            {
-                testRaySingle();
-            }
-            else
-            {
-                testRayMulti();
-            }
 
-            obstructionEvents();
-            detectionEvents();
+            var numberOfHits = physics.PerformTest(this, physicsTest);
 
-            if (OnSensorUpdate != null) OnSensorUpdate();
-		}
-
-        void obstructionEvents()
-        {
-            if (isObstructed && obstructionRayHit.collider == null)
-            {
-                isObstructed = false;
-                OnClear.Invoke(this);
-            }
-            else if (!isObstructed && obstructionRayHit.collider != null)
-            {
-                isObstructed = true;
-                OnObstruction.Invoke(this);
-            }
-        }
-
-        void detectionEvents()
-        {
-            // Any GameObjects still in previousDetectedObjects are no longer detected
-            var lostDetectionEnumerator = previousDetectedObjects.GetEnumerator();
-            while (lostDetectionEnumerator.MoveNext())
-            {
-                OnLostDetection.Invoke(lostDetectionEnumerator.Current, this);
+            hits.Clear();
+            for (int i = 0; i < numberOfHits; i++) {
+                hits.Add(physics.Buffer[i]);
             }
 
-            previousDetectedObjects.Clear();
-            for (int i = 0; i < detectedObjectsInternal.Count; i++)
-            {
-                previousDetectedObjects.Add(detectedObjectsInternal[i]);
-            }
-        }
+            hits.Sort(RaycastHitComparison);
 
-        void testRaySingle()
-        {
-            Ray ray = new Ray(transform.position, direction);
-			RaycastHit hit;
-            if (Radius > 0) 
-            {
-                if (Physics.SphereCast(ray, Radius, out hit, Length, ObstructedByLayers)) 
-                {
-                    if ((1 << hit.collider.gameObject.layer & DetectsOnLayers) != 0) 
-                    {
-                        addRayHit(hit);
-                    }
-                    obstructionRayHit = hit;
-                }
-            } 
-            else
-            {
-                if (Physics.Raycast(ray, out hit, Length, ObstructedByLayers)) 
-                {
-                    if ((1 << hit.collider.gameObject.layer & DetectsOnLayers) != 0) 
-                    {
-                        addRayHit(hit);
-                    }
-                    obstructionRayHit = hit;
-                }
-            }
-        }
-
-		void testRayMulti()
-		{
-			Ray ray = new Ray(transform.position, direction);
-			LayerMask combinedLayers = DetectsOnLayers | ObstructedByLayers;
-            RaycastHit[] hits;
-            int numberOfHits;
-            
-            if (Radius > 0) 
-            {
-                prepareHitsBuffer();
-                hits = hitsBuffer;
-                numberOfHits = Physics.SphereCastNonAlloc(ray, Radius, hits, Length, combinedLayers);
-                if (numberOfHits == CurrentBufferSize)
-                {
-                    if (DynamicallyIncreaseBufferSize)
-                    {
-                        CurrentBufferSize *= 2;
-                        testRayMulti();
-                        return;
-                    }
-                    else
-                    {
-                        logInsufficientBufferSize();
-                    }
-                }
-            }
-            else
-            {
-                prepareHitsBuffer();
-                hits = hitsBuffer;
-                numberOfHits = Physics.RaycastNonAlloc(ray, hits, Length, combinedLayers);
-                if (numberOfHits == CurrentBufferSize)
-                {
-                    if (DynamicallyIncreaseBufferSize)
-                    {
-                        CurrentBufferSize *= 2;
-                        testRayMulti();
-                        return;
-                    } 
-                    else
-                    {
-                        logInsufficientBufferSize();
-                    }
-                }
-            }
-
-            System.Array.Sort(hits, 0, numberOfHits, distanceComparer);
-
-            for (int i = 0; i < numberOfHits; i++)
-            {
-                var hit = hits[i];
-                if ((1 << hit.collider.gameObject.layer & DetectsOnLayers) != 0)
-                {
-                    addRayHit(hit);
-                }
-                if ((1 << hit.collider.gameObject.layer & ObstructedByLayers) != 0)
-                {
-                    // Potentially blocks the ray, just make sure it isn't in the ignore list
-                    if (shouldIgnore(hit.collider.gameObject)
-                        || hit.rigidbody != null
-                        && shouldIgnore(hit.rigidbody.gameObject))
-                    {
-                        // Obstructing collider or its rigid body is in the ignore list
+            foreach (var hit in hits) {
+                if (MinimumSlopeAngle > 0f) {
+                    var slope = Vector3.Angle(SlopeUpDirection, hit.normal);
+                    if (slope < MinimumSlopeAngle) {
                         continue;
                     }
-                    else
-                    {
+                }
+                if ((1 << hit.collider.gameObject.layer & DetectsOnLayers) != 0) {
+                    if (signalFilter.TestCollider(hit.collider)) {
+                        addRayHit(hit);
+                    }
+                }
+                if ((1 << hit.collider.gameObject.layer & ObstructedByLayers) != 0) {
+                    if (signalFilter.TestCollider(hit.collider)) {
                         obstructionRayHit = hit;
                         break;
                     }
@@ -316,135 +294,182 @@ namespace SensorToolkit
             }
         }
 
-        void logInsufficientBufferSize()
-        {
-            Debug.LogWarning("A ray sensor on " + name + " has an insufficient buffer size. Some objects may not be detected");
-        }
-
-        void prepareHitsBuffer()
-        {
-            if (CurrentBufferSize == 0)
-            {
-                InitialBufferSize = Math.Max(1, InitialBufferSize);
-                CurrentBufferSize = InitialBufferSize;
-            }
-            if (hitsBuffer == null || hitsBuffer.Length != CurrentBufferSize)
-            {
-                hitsBuffer = new RaycastHit[CurrentBufferSize];
+        void SendObstructionEvents() {
+            if (isObstructed && obstructionRayHit.collider == null) {
+                isObstructed = false;
+                OnClear.Invoke(this);
+            } else if (!isObstructed && obstructionRayHit.collider != null) {
+                isObstructed = true;
+                OnObstruction.Invoke(this);
             }
         }
 
-		void addRayHit(RaycastHit hit)
-		{
-            GameObject go;
-            if (DetectionMode == SensorMode.RigidBodies)
-            {
-                if (hit.rigidbody == null) return;
-                go = hit.rigidbody.gameObject;
+        void addRayHit(RaycastHit hit) {
+            var go = hit.collider.gameObject;
+            if (!detectedObjectHits.ContainsKey(go)) {
+                detectedObjectHits.Add(go, hit);
+                workList.Add(new Signal() {
+                    Object = go,
+                    Strength = 1f,
+                    Bounds = new Bounds(hit.point, Vector3.zero)
+                });
             }
-            else
-            {
-                go = hit.collider.gameObject;
+        }
+
+        void clearDetectedObjects() {
+            obstructionRayHit = new RaycastHit();
+            detectedObjectHits.Clear();
+            workList.Clear();
+        }
+
+        static Comparison<RaycastHit> RaycastHitComparison = new Comparison<RaycastHit>(CompareRaycastHits);
+
+        static int CompareRaycastHits(RaycastHit x, RaycastHit y) {
+            if (x.distance < y.distance) {
+                return -1;
+            } else if (x.distance > y.distance) {
+                return 1;
             }
-			if (!detectedObjectHits.ContainsKey(go) && !shouldIgnore(go))
-			{
-				detectedObjectHits.Add(go, hit);
-                detectedObjectsInternal.Add(go);
-                if (!previousDetectedObjects.Contains(go))
-                {
-                    OnDetected.Invoke(go, this);
+            return 0;
+        }
+
+        protected override void OnDrawGizmosSelected() {
+            //base.OnDrawGizmosSelected();
+
+            switch (Shape) {
+                case CastShapeType.Ray:
+                    DrawRayGizmo();
+                    break;
+                case CastShapeType.Sphere:
+                    DrawSphereGizmo();
+                    break;
+                case CastShapeType.Box:
+                    DrawBoxGizmo();
+                    break;
+                case CastShapeType.Capsule:
+                    DrawCapsuleGizmo();
+                    break;
+            }
+
+            if (ShowDetectionGizmos) {
+                foreach (var detection in GetDetections()) {
+                    var hit = GetDetectionRayHit(detection);
+                    SensorGizmos.RaycastHitGizmo(hit.Point, hit.Normal, false);
                 }
-                else
-                {
-                    previousDetectedObjects.Remove(go);
+                if (IsObstructed) {
+                    SensorGizmos.RaycastHitGizmo(GetObstructionRayHit().Point, GetObstructionRayHit().Normal, true);
                 }
-			}
-		}
-
-        void clearDetectedObjects()
-		{
-			obstructionRayHit = new RaycastHit();
-			detectedObjectHits.Clear();
-            detectedObjectsInternal.Clear();
-            detectedObjects.Clear();
-        }
-
-        // Called by the RaySensorEditor in a SendMessage
-        void reset() 
-        {
-            clearDetectedObjects();
-            isObstructed = false;
-            CurrentBufferSize = 0;
-        }
-
-        class RayDistanceComparer : IComparer<RaycastHit>
-        {
-            public int Compare(RaycastHit x, RaycastHit y)
-            {
-                if (x.distance < y.distance) { return -1; }
-                else if (x.distance > y.distance) { return 1; }
-                else { return 0; }
             }
         }
 
-        protected static readonly Color GizmoColor = new Color(51 / 255f, 255 / 255f, 255 / 255f);
-		protected static readonly Color GizmoBlockedColor = Color.red;
-        private static Mesh primitiveCylinderCache;
-        private static Mesh primitiveCylinder 
-        {
-            get 
-            {
-                if (primitiveCylinderCache == null) 
-                {
-                    var primitive = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                    primitiveCylinderCache = primitive.GetComponent<MeshFilter>().sharedMesh;
-                    DestroyImmediate(primitive);
-                } 
-                
-                return primitiveCylinderCache;
+        bool IsRunning() {
+            return Application.isPlaying || ShowDetectionGizmos;
+        }
+
+        class RayCastTest : ITestNonAlloc<RaySensor, RaycastHit> {
+            public int Test(RaySensor sensor, RaycastHit[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                Ray ray = new Ray(sensor.transform.position, sensor.direction);
+                LayerMask combinedLayers = sensor.DetectsOnLayers | sensor.ObstructedByLayers;
+                if (sensor.isSingleResult()) {
+                    RaycastHit hit;
+                    if (Physics.Raycast(ray, out hit, sensor.Length, combinedLayers, queryTriggerInteraction)) {
+                        results[0] = hit;
+                        return 1;
+                    }
+                    return 0;
+                } else {
+                    return Physics.RaycastNonAlloc(ray, results, sensor.Length, combinedLayers, queryTriggerInteraction);
+                }
             }
         }
-        public void OnDrawGizmosSelected()
-        {
-            if (!isActiveAndEnabled) return;
-
+        void DrawRayGizmo() {
             Vector3 endPosition;
-            if (IsObstructed)
-            {
-                Gizmos.color = GizmoBlockedColor;
+            if (IsObstructed && IsRunning()) {
+                Gizmos.color = STPrefs.CastingBlockedRayColour;
                 endPosition = transform.position + direction * obstructionRayHit.distance;
-            }
-            else
-            {
-                Gizmos.color = GizmoColor;
+            } else {
+                Gizmos.color = STPrefs.CastingRayColour;
                 endPosition = transform.position + direction * Length;
             }
+            Gizmos.DrawLine(transform.position, endPosition);
+        }
 
-            if (Radius > 0f) 
-            {
-                Gizmos.DrawWireSphere(transform.position, Radius);
-                Gizmos.DrawWireSphere(endPosition, Radius);
-
-                var line = endPosition - transform.position;
-                if (line == Vector3.zero) 
-                {
-                    line = Vector3.forward * Length;
+        class SphereCastTest : ITestNonAlloc<RaySensor, RaycastHit> {
+            public int Test(RaySensor sensor, RaycastHit[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                Ray ray = new Ray(sensor.transform.position, sensor.direction);
+                LayerMask combinedLayers = sensor.DetectsOnLayers | sensor.ObstructedByLayers;
+                if (sensor.isSingleResult()) {
+                    RaycastHit hit;
+                    if (Physics.SphereCast(ray, sensor.Sphere.Radius, out hit, sensor.Length, combinedLayers, queryTriggerInteraction)) {
+                        results[0] = hit;
+                        return 1;
+                    }
+                    return 0;
+                } else {
+                    return Physics.SphereCastNonAlloc(ray, sensor.Sphere.Radius, results, sensor.Length, combinedLayers, queryTriggerInteraction);
                 }
-                var center = transform.position + line / 2f;
-                var length = line.magnitude;
-                var rotation = Quaternion.LookRotation(line.normalized) * Quaternion.Euler(90f, 0f, 0f);
-                Gizmos.DrawWireMesh(primitiveCylinder, center, rotation, new Vector3(Radius * 2f, length / 2f, Radius * 2f));
-            } 
-            else 
-            {
-                Gizmos.DrawLine(transform.position, endPosition);
-            }
-
-            Gizmos.color = GizmoColor;
-            foreach(RaycastHit hit in DetectedObjectRayHits)
-            {
-                Gizmos.DrawIcon(hit.point, "SensorToolkit/eye.png", true);
             }
         }
+        void DrawSphereGizmo() {
+            var showObstruction = (isObstructed && IsRunning());
+            var length = showObstruction ? obstructionRayHit.distance : Length;
+            var direction = WorldSpace ? transform.InverseTransformDirection(Direction) : Direction;
+            SensorGizmos.SpherecastGizmo(new Ray(transform.position, direction), length, transform.rotation, Sphere.Radius, showObstruction);
+        }
+
+        class BoxCastTest : ITestNonAlloc<RaySensor, RaycastHit> {
+            public int Test(RaySensor sensor, RaycastHit[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                LayerMask combinedLayers = sensor.DetectsOnLayers | sensor.ObstructedByLayers;
+                if (sensor.isSingleResult()) {
+                    RaycastHit hit;
+                    if (Physics.BoxCast(sensor.transform.position, sensor.Box.HalfExtents, sensor.direction, out hit, sensor.transform.rotation, sensor.Length, combinedLayers, queryTriggerInteraction)) {
+                        results[0] = hit;
+                        return 1;
+                    }
+                    return 0;
+                } else {
+                    return Physics.BoxCastNonAlloc(sensor.transform.position, sensor.Box.HalfExtents, sensor.direction, results, sensor.transform.rotation, sensor.Length, combinedLayers, queryTriggerInteraction);
+                }
+            }
+        }
+        void DrawBoxGizmo() {
+            var showObstruction = (isObstructed && IsRunning());
+            var length = showObstruction ? obstructionRayHit.distance : Length;
+            var direction = WorldSpace ? transform.InverseTransformDirection(Direction) : Direction;
+            SensorGizmos.BoxcastGizmo(new Ray(transform.position, direction), length, transform.rotation, Box.HalfExtents, showObstruction);
+        }
+
+        class CapsuleCastTest : ITestNonAlloc<RaySensor, RaycastHit> {
+            public int Test(RaySensor sensor, RaycastHit[] results) {
+                var queryTriggerInteraction = sensor.IgnoreTriggerColliders ? QueryTriggerInteraction.Ignore : QueryTriggerInteraction.Collide;
+                LayerMask combinedLayers = sensor.DetectsOnLayers | sensor.ObstructedByLayers;
+
+                var center = sensor.transform.position;
+                var up = sensor.transform.up;
+                var pt1 = center + up * sensor.Capsule.Height / 2f;
+                var pt2 = center - up * sensor.Capsule.Height / 2f;
+
+                if (sensor.isSingleResult()) {
+                    RaycastHit hit;
+                    if (Physics.CapsuleCast(pt1, pt2, sensor.Capsule.Radius, sensor.direction, out hit, sensor.Length, combinedLayers, queryTriggerInteraction)) {
+                        results[0] = hit;
+                        return 1;
+                    }
+                    return 0;
+                } else {
+                    return Physics.CapsuleCastNonAlloc(pt1, pt2, sensor.Capsule.Radius, sensor.direction, results, sensor.Length, combinedLayers, queryTriggerInteraction);
+                }
+            }
+        }
+        void DrawCapsuleGizmo() {
+            var showObstruction = (isObstructed && IsRunning());
+            var length = showObstruction ? obstructionRayHit.distance : Length;
+            var direction = WorldSpace ? transform.InverseTransformDirection(Direction) : Direction;
+            SensorGizmos.CapsulecastGizmo(new Ray(transform.position, direction), length, transform.rotation, Capsule.Radius, Capsule.Height, showObstruction);
+        }
+        #endregion
     }
 }

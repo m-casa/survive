@@ -3,229 +3,159 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-namespace SensorToolkit
+namespace Micosmo.SensorToolkit
 {
     /*
-     * A sensor that detects colliders that cause the sensors OnTriggerEnter function to be called. This means
-     * that the list of detected objects is updated outside of the sensor being pulsed. Pulsing the sensor may
-     * still be required though for refreshing the line of sight tests if they are enabled.
-     *
-     * This sensor guards against cases where a collider causes OnTriggerEnter to be called, but no corresponding
-     * OnTriggerExit event occurs. This can happen if a collider is disabled and then re-enabled outside of the
-     * sensors range. The sensor expects all detected colliders to regularly create OnTriggerStay events, and if they
-     * don't then the collider is timed out and the detection is lost.
+     * The Trigger Sensor detects objects that intersect a Trigger Collider. It works by listening 
+     * for the events OnTriggerEnter and OnTriggerExit. The sensor has a similar role as the 
+     * Range Sensor, with some unique advantages. The downside is that its more difficult to configure. 
+     * There are some subtle complexities to Trigger Colliders in Unity that must be considered when 
+     * using this sensor.
      */
-    public class TriggerSensor2D : BaseAreaSensor
-    {
-        public enum UpdateMode { FixedInterval, Manual }
-        [Tooltip("Should the sensor be pulsed automatically at fixed intervals or should it be pulsed manually. For the trigger sensor this is only relevant to refreshing the line of sight tests as the colliders are detected outside of the pulse method.")]
-        public UpdateMode LineOfSightUpdateMode;
+    [AddComponentMenu("Sensors/2D Trigger Sensor")]
+    public class TriggerSensor2D : BaseAreaSensor {
 
-        [Tooltip("If set to pulse automatically this is the interval in seconds between each automatic pulse.")]
-        public float CheckLineOfSightInterval = 1f;
+        #region Configurations
+        [SerializeField]
+        ObservableBool runInSafeMode;
+        #endregion
 
-        // A callback that is called each time the list of detected objects is changed. This is used by the editor
-        // extensions and you shouldn't need to listen to it.
-        public delegate void SensorUpdateHandler();
-        public event SensorUpdateHandler OnSensorUpdate;
+        #region Events
+#pragma warning disable
+        public override event Action OnPulsed;
+        #endregion
 
-        HashSet<GameObject> previousDetectedObjects = new HashSet<GameObject>();
-        Dictionary<Collider2D, int> isColliderStale = new Dictionary<Collider2D, int>();
-        SensorMode oldDetectionMode;
-        bool oldRequiresLineOfSight;
-        float timer = 0f;
-        List<GameObject> tempGOList = new List<GameObject>();
-        List<Collider2D> tempColliderList = new List<Collider2D>();
-
-        // Pulses the sensor, causing it to refresh its line of sight tests.
-        public override void Pulse()
-        {
-            if (isActiveAndEnabled) testSensor();
+        #region Public
+        // Change RunInSafeMode at runtime
+        public bool RunInSafeMode {
+            get => runInSafeMode.Value;
+            set => runInSafeMode.Value = value;
         }
 
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-            previousDetectedObjects.Clear();
-            isColliderStale.Clear();
-            oldDetectionMode = DetectionMode;
-            oldRequiresLineOfSight = RequiresLineOfSight;
-
-            if (!checkForTriggers())
-            {
-                Debug.LogWarning("Trigger Sensor cannot detect anything if there are no triggers on the same GameObject.", gameObject);
-            }
-            if (GetComponent<Rigidbody2D>() == null)
-            {
-                Debug.LogWarning("In order to detect GameObjects properly the TriggerSensor must itself have a RigidBody. Recommend adding a kinematic RigidBody.");
-            }
-            else if (GetComponent<Rigidbody2D>().sleepMode != RigidbodySleepMode2D.NeverSleep)
-            {
-                Debug.LogWarning("The rigidbody which owns the trigger collider should have its 'Sleeping Mode' parameter set to 'Never Sleep'");
-            }
+        // Not necessary to call Pulse on the TriggerSensor.
+        public override void Pulse() {
+            UpdateAllSignals();
         }
 
-        void OnTriggerEnter2D(Collider2D other) 
-        {
-            addCollider(other);
-        }
+        public override void PulseAll() => Pulse();
 
-        void OnTriggerExit2D(Collider2D other) 
-        {
-            removeCollider(other);
+        public override void Clear() {
+            base.Clear();
+            OnCleared?.Invoke();
         }
+        #endregion
 
-        void FixedUpdate() 
-        {
-            // Mark all detected colliders as stale. Unity runs FixedUpdate before OnTriggerStay so any healthy colliders will overwrite back to 0 before Update called.
-            // Any colliders still marked as 1 are stale: they've been deactivated or destroyed but didnt send an associated OnTriggerExit message.
-            tempColliderList.Clear();
-            foreach (var test in isColliderStale) 
-            {
-                tempColliderList.Add(test.Key);
+        #region Internals
+        event Action OnCleared;
+
+        Safety safety;
+
+        protected override void Awake() {
+            base.Awake();
+
+            if (runInSafeMode == null) {
+                runInSafeMode = new ObservableBool();
             }
-            foreach (var c in tempColliderList) 
-            {
-                isColliderStale[c] = 1; // 1 = stale
+
+            runInSafeMode.OnChanged += RunInSafeModeChangedHandler;
+            RunInSafeModeChangedHandler();
+        }
+
+        void OnDestroy() {
+            runInSafeMode.OnChanged -= RunInSafeModeChangedHandler;
+            if (safety != null) {
+                Destroy(safety);
             }
         }
 
-        void OnTriggerStay2D(Collider2D other) 
-        {
-            if (!isColliderStale.ContainsKey(other)) { addCollider(other); }
-            isColliderStale[other] = 0; // Live detection, 0 = not stale
+        void OnValidate() {
+            if (runInSafeMode != null) {
+                runInSafeMode.OnValidate();
+            }
         }
 
-        void Update()
-        {
-            // If one of these properties is changed at runtime then the list of DetectedObjects will be changed immediately. This code ensures
-            // that the relevant sensor events are fired.
-            if (oldDetectionMode != DetectionMode || oldRequiresLineOfSight != RequiresLineOfSight)
-            {
-                sensorDetectionEvents();
-                oldDetectionMode = DetectionMode;
-                oldRequiresLineOfSight = RequiresLineOfSight;
+        void RunInSafeModeChangedHandler() {
+            if (RunInSafeMode && safety == null) {
+                safety = gameObject.AddComponent<Safety>();
+                safety.TriggerSensor = this;
+            } else if (!RunInSafeMode && safety != null) {
+                Destroy(safety);
+                safety = null;
             }
+        }
 
-            // Remove all stale collider detections.
-            tempColliderList.Clear();
-            foreach (var test in isColliderStale) 
-            {
-                var c = test.Key;
-                int isStale;
-                if (isColliderStale.TryGetValue(c, out isStale) && isStale == 1)
-                {
-                    tempColliderList.Add(c);
+        void OnTriggerEnter2D(Collider2D other) {
+            AddCollider(other, true);
+        }
+
+        void OnTriggerExit2D(Collider2D other) {
+            RemoveCollider(other, true);
+        }
+        #endregion
+
+        #region Safety Implementation
+        public class Safety : MonoBehaviour {
+            TriggerSensor2D triggerSensor;
+            public TriggerSensor2D TriggerSensor {
+                set {
+                    if (!ReferenceEquals(triggerSensor, value)) {
+                        if (triggerSensor != null) {
+                            triggerSensor.OnCleared -= ClearedHandler;
+                        }
+                        triggerSensor = value;
+                        triggerStayTests.Clear();
+                        if (triggerSensor != null) {
+                            foreach (var collider in triggerSensor.GetColliders()) {
+                                triggerStayTests[collider] = 1;
+                            }
+                            triggerSensor.OnCleared += ClearedHandler;
+                        }
+                    }
                 }
-            }
-            foreach (var c in tempColliderList)
-            {
-                removeCollider(c);
-                isColliderStale.Remove(c);
-            }
-
-            if (RequiresLineOfSight && LineOfSightUpdateMode == UpdateMode.FixedInterval) 
-            {
-                timer += Time.deltaTime;
-                if (timer > CheckLineOfSightInterval) 
-                {
-                    testSensor();
-                    timer = 0f;
-                }
-            } 
-            else 
-            {
-                timer = 0f;
-            }
-        }
-
-        new void addCollider(Collider2D other)
-        {
-            var newDetected = base.addCollider(other);
-            isColliderStale[other] = 0;
-            if (newDetected != null)
-            {
-                OnDetected.Invoke(newDetected, this);
-                previousDetectedObjects.Add(newDetected);
-            }
-            if (OnSensorUpdate != null) OnSensorUpdate();
-        }
-
-        new void removeCollider(Collider2D other)
-        {
-            isColliderStale.Remove(other);
-            var detectionLost = base.removeCollider(other);
-            if (detectionLost != null)
-            {
-                OnLostDetection.Invoke(detectionLost, this);
-                previousDetectedObjects.Remove(detectionLost);
-            }
-            if (OnSensorUpdate != null) OnSensorUpdate();
-        }
-
-        void testSensor()
-        {
-            refreshLineOfSight();
-            sensorDetectionEvents();
-            if (OnSensorUpdate != null) OnSensorUpdate();
-        }
-
-        void sensorDetectionEvents()
-        {
-            // User may call 'DetectedObjects' while enumerating, so we want to copy list of detected objects
-            // out first. or we'll get an exception that enumeration is modified.
-            tempGOList.Clear();
-            tempGOList.AddRange(DetectedObjects);
-            var detectedEnumerator = DetectedObjects.GetEnumerator();
-
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (previousDetectedObjects.Contains(go))
-                {
-                    previousDetectedObjects.Remove(go);
-                }
-                else
-                {
-                    // This is a newly detected object
-                    OnDetected.Invoke(go, this);
+                get {
+                    return triggerSensor;
                 }
             }
 
-            // Any object still in previousDetectedObjects is no longer detected
-            var previousDetectedEnumerator = previousDetectedObjects.GetEnumerator();
-            while (previousDetectedEnumerator.MoveNext())
-            {
-                var go = previousDetectedEnumerator.Current;
-                OnLostDetection.Invoke(go, this);
-            }
+            Dictionary<Collider2D, int> triggerStayTests = new Dictionary<Collider2D, int>();
+            List<Collider2D> tempColliderList = new List<Collider2D>();
 
-            previousDetectedObjects.Clear();
-            detectedEnumerator = DetectedObjects.GetEnumerator();
-            while (detectedEnumerator.MoveNext())
-            {
-                previousDetectedObjects.Add(detectedEnumerator.Current);
-            }
-        }
-
-        bool checkForTriggers()
-        {
-            var hasRB = GetComponent<Rigidbody2D>() != null;
-            if (hasRB)
-            {
-                foreach (Collider2D c in GetComponentsInChildren<Collider2D>())
-                {
-                    if (c.enabled && c.isTrigger) return true;
+            void FixedUpdate() {
+                tempColliderList.Clear();
+                foreach (var test in triggerStayTests) {
+                    tempColliderList.Add(test.Key);
+                }
+                foreach (var c in tempColliderList) {
+                    triggerStayTests[c] = 0;
                 }
             }
-            else
-            {
-                foreach (Collider2D c in GetComponents<Collider2D>())
-                {
-                    if (c.enabled && c.isTrigger) return true;
+
+            void OnTriggerStay2D(Collider2D other) {
+                if (!triggerStayTests.ContainsKey(other)) { triggerSensor.AddCollider(other, true); }
+                triggerStayTests[other] = 1;
+            }
+
+            void Update() {
+                tempColliderList.Clear();
+                var colliderStayLagEnumerator = triggerStayTests.GetEnumerator();
+                foreach (var test in triggerStayTests) {
+                    var c = test.Key;
+                    int currentCount;
+                    if (triggerStayTests.TryGetValue(c, out currentCount) && currentCount == 0) {
+                        tempColliderList.Add(c);
+                    }
+                }
+
+                foreach (var c in tempColliderList) {
+                    triggerSensor.RemoveCollider(c, true);
+                    triggerStayTests.Remove(c);
                 }
             }
-            return false;
+
+            void ClearedHandler() {
+                triggerStayTests.Clear();
+            }
         }
+        #endregion
     }
 }

@@ -4,667 +4,441 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace SensorToolkit
-{
+namespace Micosmo.SensorToolkit {
     /*
      *  Sensors can run in two detection modes
      *  - Colliders: The sensor detects the GameObject attached to any collider it intersects.
      *  - RigidBodies: The sensor detects the GameObject owning the attached RigidBody of any collider it intersects.
      */
-    public enum SensorMode { Colliders, RigidBodies }
+    public enum DetectionModes { Colliders, RigidBodies }
 
-    public class TagSelectorAttribute : PropertyAttribute { }
+    #region Concrete Generic Classes
+    [Serializable]
+    public class ObservableSensor : Observable<Sensor> { }
+
+    [Serializable]
+    public class ObservableSensorList : ObservableList<Sensor> { }
+
+    [Serializable]
+    public class SensorEventHandler : UnityEvent<Sensor> { }
+
+    [Serializable]
+    public class SensorDetectionEventHandler : UnityEvent<GameObject, Sensor> { }
+    #endregion
 
     /*
      *  Base class implemented by all sensor types with common functions for querying and filtering
      *  the sensors list of detected objects.
      */
-    public abstract class Sensor : MonoBehaviour
-    {
-        [Tooltip("Any GameObject in this list will not be detected by this sensor, however it may still block line of sight.")]
-        public List<GameObject> IgnoreList;
+    public abstract class Sensor : BasePulsableSensor {
+        
+        // Enumerator over all detected GameObjects. Can be used in foreach without GC allocated
+        public SignalPipeline.ObjectsEnumerable Detections => signalPipeline.OutputObjects;
+        // Enumerator over all detected Signals. Can be used in foreach without GC allocated
+        public SignalPipeline.SignalsEnumerable Signals => signalPipeline.OutputSignals;
 
-        [Tooltip("When set to true the sensor will only detect objects whose tags are in the 'TagFilter' array.")]
-        public bool EnableTagFilter;
+        /**
+         * A list of SignalProcessors will transform the detected Signals into their final representation.
+         * Currently it's used to filter signals by tag or to reduce signals to their common rigid bodies.
+         * It's possible to insert custom processors and really customise the sensor behaviour, although
+         * this is more of an advanced feature. I'll be fleshing it out later.
+         */
+        public List<ISignalProcessor> SignalProcessors => signalPipeline.SignalProcessors;
 
-        [Tooltip("Array of tags that will be detected by the sensor.")]
-        [TagSelector]
-        public string[] AllowedTags;
-
-        // Should return a list of all detected GameObjects, not necessarily in any order.
-        public abstract List<GameObject> DetectedObjects { get; }
-
-        // Should return a list of all detected GameObjects in order of distance from the sensor.
-        public abstract List<GameObject> DetectedObjectsOrderedByDistance { get; }
-
-        [System.Serializable]
-        public class SensorEventHandler : UnityEvent<Sensor> { }
-
-        [System.Serializable]
-        public class SensorDetectionEventHandler : UnityEvent<GameObject, Sensor> { }
-
-        // Event is called for each GameObject at the time it is added to the sensors DetectedObjects list
-        [SerializeField]
+        #region Events
+        // Event is invoked for each detected object
         public SensorDetectionEventHandler OnDetected;
 
-        // Event is called for each GameObject at the time it is removed to the sensors DetectedObjects list
-        [SerializeField]
+        // Event is invoked for each object that has lost detection
         public SensorDetectionEventHandler OnLostDetection;
 
-        protected virtual void Awake()
-        {
-            if (IgnoreList == null)
-            {
-                IgnoreList = new List<GameObject>();
-            }
+        // Event is invoked if an object is detected and previously there were no detections
+        public UnityEvent OnSomeDetection;
 
-            if (OnDetected == null) 
-            {
+        // Event is invoked when the sensor has lost all detections
+        public UnityEvent OnNoDetection;
+
+        // Delegate events can be subscribed to instead of the UnityEvents above.
+        public event Action<Signal, Sensor> OnSignalAdded;
+        public event Action<Signal, Sensor> OnSignalChanged;
+        public event Action<Signal, Sensor> OnSignalLost;
+        #endregion
+
+        #region Public Methods
+        List<Signal> clearList = new List<Signal>();
+        public override void Clear() {
+            signalPipeline.UpdateAllInputSignals(clearList);
+        }
+
+        // Returns the Signal associated with a given GameObject. It is unsafe to call on undetected objects.
+        public Signal GetSignal(GameObject go) => signalPipeline.GetSignal(go);
+        // Safely retrieve the Signal for a given GameObject. Returns true or false whether the object is
+        // detected or not.
+        public bool TryGetSignal(GameObject go, out Signal signal) => signalPipeline.TryGetSignal(go, out signal);
+
+        // Returns true when the GameObject is currently detected by the sensor, false otherwise.
+        public bool IsDetected(GameObject go) => signalPipeline.ContainsSignal(go);
+
+        List<GameObject> golist = new List<GameObject>();
+        // Returns a list of Colliders that were detected on the GameObject.
+        public List<Collider> GetDetectedColliders(GameObject forObject, List<Collider> storeIn) {
+            golist.Clear();
+            var inputObjects = signalPipeline.GetInputObjects(forObject, golist);
+            if (inputObjects.Count == 0) {
+                // There are no mapped input-signals, so assume this is the input-signal
+                return GetInputColliders(forObject, storeIn);
+            }
+            foreach (var inputGo in inputObjects) {
+                GetInputColliders(inputGo, storeIn);
+            }
+            return storeIn;
+        }
+        // Returns a list of Collider2Ds that were detected on the GameObject.
+        public List<Collider2D> GetDetectedColliders(GameObject forObject, List<Collider2D> storeIn) {
+            golist.Clear();
+            var inputObjects = signalPipeline.GetInputObjects(forObject, golist);
+            if (inputObjects.Count == 0) {
+                // There are no mapped input-signals, so assume this is the input-signal
+                return GetInputColliders(forObject, storeIn);
+            }
+            foreach (var inputGo in inputObjects) {
+                GetInputColliders(inputGo, storeIn);
+            }
+            return storeIn;
+        }
+
+        /**
+         * There are many query functions for reading what signals the sensor detects, but they all follow some common forms:
+         * Get[...] -- Returns a list of detected [...]
+         * Get[...] -- Same as above except the list is sorted by distance to the sensor
+         * Get[...]ByDistanceToPoint -- Same as above except the list is sorted by distance to some point
+         * GetNearest[...] -- Returns only the nearest [...] to the sensor.
+         * GetNearest[...]ToPoint -- returns on the nearest [...] to some point.
+         * 
+         * The [...] wil be one of 'Signals', 'Detections', 'DetectedComponents'. Where this specifies what is to be returned.
+         * The 'DetectedComponent' functions are useful as it will filter out signals missing the component and return references
+         * to that component.
+         * 
+         * There are also optional parameters for 'tag' or predicate function to further refine the results returned.
+         * 
+         * For functions that return a List you may optionally provide your own List instance. If you omit this the Sensor will
+         * reuse a single instance of List for each function calls. This makes it very easy to call a function and enumerate over
+         * the results without worrying about GC. But it does mean each function call will override the results of the previous call.
+         * If you need to persist the results of the query then you will need to provide your own list to store the results in.
+         */
+        public List<Signal> GetSignals(List<Signal> storeIn = null) {
+            storeIn = storeIn ?? signalWorkList;
+            storeIn.Clear();
+            foreach (var signal in Signals) {
+                storeIn.Add(signal);
+            }
+            return storeIn;
+        }
+        public List<Signal> GetSignals(string withTag, List<Signal> storeIn = null) {
+            storeIn = storeIn ?? signalWorkList;
+            storeIn.Clear();
+            foreach (var signal in Signals) {
+                if (signal.Object.CompareTag(withTag)) {
+                    storeIn.Add(signal);
+                }
+            }
+            return storeIn;
+        }
+        public List<Signal> GetSignals(Predicate<Signal> predicate, List<Signal> storeIn = null) {
+            storeIn = storeIn ?? signalWorkList;
+            storeIn.Clear();
+            foreach (var signal in Signals) {
+                if (predicate(signal)) {
+                    storeIn.Add(signal);
+                }
+            }
+            return storeIn;
+        }
+        public List<GameObject> GetDetections(List<GameObject> storeIn = null) => SignalsToObjects(GetSignals(), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetections(string withTag, List<GameObject> storeIn = null) => SignalsToObjects(GetSignals(withTag), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetections(Predicate<Signal> predicate, List<GameObject> storeIn = null) => SignalsToObjects(GetSignals(predicate), storeIn ?? objectWorkList);
+        public List<T> GetDetectedComponents<T>(List<T> storeIn) where T : Component => SignalsToComponents(GetSignals(), storeIn);
+        public List<T> GetDetectedComponents<T>(string withTag, List<T> storeIn) where T : Component => SignalsToComponents(GetSignals(withTag), storeIn);
+        public List<Component> GetDetectedComponents(Type t, List<Component> storeIn = null) => SignalsToComponents(GetSignals(), t, storeIn ?? componentWorkList);
+        public List<Component> GetDetectedComponents(Type t, string withTag, List<Component> storeIn = null) => SignalsToComponents(GetSignals(withTag), t, storeIn ?? componentWorkList);
+
+        public List<Signal> GetSignalsByDistance(List<Signal> storeIn = null) => OrderedByDistance(GetSignals(storeIn));
+        public List<Signal> GetSignalsByDistance(string withTag, List<Signal> storeIn = null) => OrderedByDistance(GetSignals(withTag, storeIn));
+        public List<Signal> GetSignalsByDistance(Predicate<Signal> predicate, List<Signal> storeIn = null) => OrderedByDistance(GetSignals(predicate, storeIn));
+        public List<GameObject> GetDetectionsByDistance(List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistance(), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetectionsByDistance(string withTag, List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistance(withTag), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetectionsByDistance(Predicate<Signal> predicate, List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistance(predicate), storeIn ?? objectWorkList);
+        public List<T> GetDetectedComponentsByDistance<T>(List<T> storeIn) where T : Component => SignalsToComponents(GetSignalsByDistance(), storeIn);
+        public List<T> GetDetectedComponentsByDistance<T>(string withTag, List<T> storeIn) where T : Component => SignalsToComponents(GetSignalsByDistance(withTag), storeIn);
+        public List<Component> GetDetectedComponentsByDistance(Type t, List<Component> storeIn = null) => SignalsToComponents(GetSignalsByDistance(), t, storeIn ?? componentWorkList);
+        public List<Component> GetDetectedComponentsByDistance(Type t, string withTag, List<Component> storeIn = null) => SignalsToComponents(GetSignalsByDistance(withTag), t, storeIn ?? componentWorkList);
+
+        public List<Signal> GetSignalsByDistanceToPoint(Vector3 point, List<Signal> storeIn = null) => OrderedByDistanceToPoint(GetSignals(storeIn), point);
+        public List<Signal> GetSignalsByDistanceToPoint(Vector3 point, string withTag, List<Signal> storeIn = null) => OrderedByDistanceToPoint(GetSignals(withTag, storeIn), point);
+        public List<Signal> GetSignalsByDistanceToPoint(Vector3 point, Predicate<Signal> predicate, List<Signal> storeIn = null) => OrderedByDistanceToPoint(GetSignals(predicate, storeIn), point);
+        public List<GameObject> GetDetectionsByDistanceToPoint(Vector3 point, List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistanceToPoint(point), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetectionsByDistanceToPoint(Vector3 point, string withTag, List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistanceToPoint(point, withTag), storeIn ?? objectWorkList);
+        public List<GameObject> GetDetectionsByDistanceToPoint(Vector3 point, Predicate<Signal> predicate, List<GameObject> storeIn = null) => SignalsToObjects(GetSignalsByDistanceToPoint(point, predicate), storeIn ?? objectWorkList);
+        public List<T> GetDetectedComponentsByDistanceToPoint<T>(Vector3 point, List<T> storeIn) => SignalsToComponents(GetSignalsByDistanceToPoint(point), storeIn);
+        public List<T> GetDetectedComponentsByDistanceToPoint<T>(Vector3 point, string withTag, List<T> storeIn) => SignalsToComponents(GetSignalsByDistanceToPoint(point, withTag), storeIn);
+        public List<Component> GetDetectedComponentsByDistanceToPoint(Vector3 point, Type t, List<Component> storeIn = null) => SignalsToComponents(GetSignalsByDistanceToPoint(point), t, storeIn ?? new List<Component>());
+        public List<Component> GetDetectedComponentsByDistanceToPoint(Vector3 point, Type t, string withTag, List<Component> storeIn = null) => SignalsToComponents(GetSignalsByDistanceToPoint(point, withTag), t, storeIn ?? new List<Component>());
+
+        public Signal GetNearestSignal() => FirstOrDefault(GetSignalsByDistance());
+        public Signal GetNearestSignal(string withTag) => FirstOrDefault(GetSignalsByDistance(withTag));
+        public Signal GetNearestSignal(Predicate<Signal> predicate) => FirstOrDefault(GetSignalsByDistance(predicate));
+        public GameObject GetNearestDetection() => FirstOrDefault(GetDetectionsByDistance());
+        public GameObject GetNearestDetection(string withTag) => FirstOrDefault(GetDetectionsByDistance(withTag));
+        public GameObject GetNearestDetection(Predicate<Signal> predicate) => FirstOrDefault(GetDetectionsByDistance(predicate));
+        public T GetNearestComponent<T>() where T : Component {
+            foreach (var go in GetDetectionsByDistance()) {
+                var c = go.GetComponent<T>();
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public T GetNearestComponent<T>(Predicate<T> predicate) where T : Component {
+            foreach (var go in GetDetectionsByDistance()) {
+                var c = go.GetComponent<T>();
+                if (c != null && predicate(c)) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public T GetNearestComponent<T>(string withTag) where T : Component {
+            foreach (var go in GetDetectionsByDistance(withTag)) {
+                var c = go.GetComponent<T>();
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public Component GetNearestComponent(Type t) {
+            foreach (var go in GetDetectionsByDistance()) {
+                var c = go.GetComponent(t);
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public Component GetNearestComponent(Type t, Predicate<Component> predicate) {
+            foreach (var go in GetDetectionsByDistance()) {
+                var c = go.GetComponent(t);
+                if (c != null && predicate(c)) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public Component GetNearestComponent(Type t, string withTag) {
+            foreach (var go in GetDetectionsByDistance(withTag)) {
+                var c = go.GetComponent(t);
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+
+
+        public Signal GetNearestSignalToPoint(Vector3 point) => FirstOrDefault(GetSignalsByDistanceToPoint(point));
+        public Signal GetNearestSignalToPoint(Vector3 point, string withTag) => FirstOrDefault(GetSignalsByDistanceToPoint(point, withTag));
+        public Signal GetNearestSignalToPoint(Vector3 point, Predicate<Signal> predicate) => FirstOrDefault(GetSignalsByDistanceToPoint(point, predicate));
+        public GameObject GetNearestDetectionToPoint(Vector3 point) => FirstOrDefault(GetDetectionsByDistanceToPoint(point));
+        public GameObject GetNearestDetectionToPoint(Vector3 point, string withTag) => FirstOrDefault(GetDetectionsByDistanceToPoint(point, withTag));
+        public GameObject GetNearestDetectionToPoint(Vector3 point, Predicate<Signal> predicate) => FirstOrDefault(GetDetectionsByDistanceToPoint(point, predicate));
+        public T GetNearestComponentToPoint<T>(Vector3 point) where T : Component {
+            foreach (var go in GetDetectionsByDistanceToPoint(point)) {
+                var c = go.GetComponent<T>();
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public T GetNearestComponentToPoint<T>(Vector3 point, string withTag) where T : Component {
+            foreach (var go in GetDetectionsByDistanceToPoint(point, withTag)) {
+                var c = go.GetComponent<T>();
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public Component GetNearestComponentToPoint(Vector3 point, Type t) {
+            foreach (var go in GetDetectionsByDistanceToPoint(point)) {
+                var c = go.GetComponent(t);
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        public Component GetNearestComponentToPoint(Vector3 point, Type t, string withTag) {
+            foreach (var go in GetDetectionsByDistanceToPoint(point, withTag)) {
+                var c = go.GetComponent(t);
+                if (c != null) {
+                    return c;
+                }
+            }
+            return null;
+        }
+        #endregion
+
+        #region Protected
+
+        SignalPipeline _signalPipeline;
+        protected SignalPipeline signalPipeline {
+            get {
+                if (_signalPipeline == null) {
+                    _signalPipeline = new SignalPipeline();
+                    _signalPipeline.OnSignalAdded += delegate (Signal signal) {
+                        OnSignalAdded?.Invoke(signal, this);
+                        OnDetected.Invoke(signal.Object, this);
+                    };
+                    _signalPipeline.OnSignalChanged += delegate (Signal signal) {
+                        OnSignalChanged?.Invoke(signal, this);
+                    };
+                    _signalPipeline.OnSignalRemoved += delegate (Signal signal) {
+                        OnSignalLost?.Invoke(signal, this);
+                        OnLostDetection.Invoke(signal.Object, this);
+                    };
+                    _signalPipeline.OnSomeSignal += delegate {
+                        OnSomeDetection.Invoke();
+                    };
+                    _signalPipeline.OnNoSignal += delegate {
+                        OnNoDetection.Invoke();
+                    };
+                    InitialiseSignalProcessors();
+                }
+                return _signalPipeline;
+            }
+        }
+
+        protected virtual void InitialiseSignalProcessors() { }
+
+        protected virtual List<Collider> GetInputColliders(GameObject inputObject, List<Collider> storeIn) => storeIn;
+        protected virtual List<Collider2D> GetInputColliders(GameObject inputObject, List<Collider2D> storeIn) => storeIn;
+
+        protected virtual void Awake() {
+            if (OnDetected == null) {
                 OnDetected = new SensorDetectionEventHandler();
             }
 
-            if (OnLostDetection == null)
-            {
+            if (OnLostDetection == null) {
                 OnLostDetection = new SensorDetectionEventHandler();
             }
-        }
 
-        // Returns true when the passed GameObject is currently detected by the sensor, false otherwise.
-        public virtual bool IsDetected(GameObject go)
-        {
-            var detectedEnumerator = DetectedObjects.GetEnumerator();
-            while (detectedEnumerator.MoveNext())
-            {
-                if (detectedEnumerator.Current == go) { return true; }
+            if (OnSomeDetection == null) {
+                OnSomeDetection = new UnityEvent();
             }
-            return false;
-        }
 
-        // Returns the visibility between 0-1 of the specified object. A 0 means its not visible at all while
-        // a 1 means it is entirely visible. Generally only used in the context of line of sight testing.
-        public virtual float GetVisibility(GameObject go)
-        {
-            return IsDetected(go) ? 1f : 0f;
-        }
-
-        // Should cause the sensor to perform it's 'sensing' routine, so that its list of detected objects
-        // is up to date at the time of calling. Each sensor can be configured to pulse automatically at
-        // fixed intervals or each timestep, however, if you need more control over when this occurs then
-        // you can call this method manually.
-        public abstract void Pulse();
-
-        /*
-         * These methods return a list of GameObjects ordered by distance from the sensor. You may also
-         * filter detected GameObjects by name, tag, Component or a combination thereof.
-         */
-        public List<GameObject> GetDetected()
-        {
-            return new List<GameObject>(DetectedObjectsOrderedByDistance);
-        }
-
-        public List<T> GetDetectedByComponent<T>() where T : Component
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<T>();
-            while(detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                var c = go.GetComponent<T>();
-                if (c != null) { filtered.Add(c); }
+            if (OnNoDetection == null) {
+                OnNoDetection = new UnityEvent();
             }
-            return filtered;
         }
 
-        public List<Component> GetDetectedByComponent(Type t)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<Component>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                var c = go.GetComponent(t);
-                if (c != null) { filtered.Add(c); }
-            }
-            return filtered;
+        protected void UpdateAllSignals(List<Signal> nextSignals) {
+            signalPipeline.UpdateAllInputSignals(nextSignals);
         }
 
-        public List<GameObject> GetDetectedByName(string name)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<GameObject>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.name == name) { filtered.Add(go); }
-            }
-            return filtered;
+        protected void UpdateSignalImmediate(Signal signal) {
+            signalPipeline.UpdateInputSignal(signal);
         }
 
-        public List<T> GetDetectedByNameAndComponent<T>(string name) where T : Component
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<T>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.name == name)
-                {
-                    var c = go.GetComponent<T>();
-                    if (c != null) { filtered.Add(c); }
+        protected void LostSignalImmediate(GameObject forObject) {
+            signalPipeline.RemoveInputSignal(forObject);
+        }
+
+        protected virtual void OnDrawGizmosSelected() {
+            if (!isActiveAndEnabled) return;
+
+            if (ShowDetectionGizmos) {
+                foreach (Signal signal in Signals) {
+                    SensorGizmos.DetectedObjectGizmo(signal.Bounds);
                 }
             }
-            return filtered;
+        }
+        #endregion
+
+        #region Internals
+        List<Signal> signalWorkList = new List<Signal>();
+        List<GameObject> objectWorkList = new List<GameObject>();
+        List<Component> componentWorkList = new List<Component>();
+
+        List<GameObject> SignalsToObjects(List<Signal> signals, List<GameObject> storeIn) {
+            storeIn.Clear();
+            foreach (var signal in signals) {
+                storeIn.Add(signal.Object);
+            }
+            return storeIn;
         }
 
-        public List<Component> GetDetectedByNameAndComponent(string name, Type t)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<Component>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.name == name)
-                {
-                    var c = go.GetComponent<Component>();
-                    if (c != null) { filtered.Add(c); }
+        List<T> SignalsToComponents<T>(List<Signal> signals, List<T> storeIn) {
+            storeIn.Clear();
+            foreach (var signal in signals) {
+                var c = signal.Object.GetComponent<T>();
+                if (c != null) {
+                    storeIn.Add(c);
                 }
             }
-            return filtered;
+            return storeIn;
         }
 
-        public List<GameObject> GetDetectedByTag(string tag)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<GameObject>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag)) { filtered.Add(go); }
+        T FirstOrDefault<T>(List<T> list) {
+            if (list.Count > 0) {
+                return list[0];
             }
-            return filtered;
+            return default;
         }
 
-        public List<T> GetDetectedByTagAndComponent<T>(string tag) where T : Component
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<T>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag))
-                {
-                    var c = go.GetComponent<T>();
-                    if (c != null) { filtered.Add(c); }
+        List<Component> SignalsToComponents(List<Signal> signals, Type t, List<Component> storeIn) {
+            storeIn.Clear();
+            foreach (var signal in signals) {
+                var c = signal.Object.GetComponent(t);
+                if (c != null) {
+                    storeIn.Add(c);
                 }
             }
-            return filtered;
+            return storeIn;
         }
 
-        public List<Component> GetDetectedByTagAndComponent(string tag, Type t)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<Component>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag))
-                {
-                    var c = go.GetComponent(t);
-                    if (c != null) { filtered.Add(c); }
-                }
+        struct DistanceElement {
+            public float Distance;
+            public Signal Signal;
+        }
+        List<DistanceElement> distanceWorkList = new List<DistanceElement>();
+        List<Signal> OrderedByDistance(List<Signal> signals) {
+            return OrderedByDistanceToPoint(signals, transform.position);
+        }
+        List<Signal> OrderedByDistanceToPoint(List<Signal> signals, Vector3 point) {
+            distanceWorkList.Clear();
+
+            for (int i = 0; i < signals.Count; i++) {
+                distanceWorkList.Add(new DistanceElement() { Distance = signals[i].DistanceTo(point), Signal = signals[i] });
             }
-            return filtered;
-        }
+            distanceWorkList.Sort(DistanceElementComparison);
 
-        public List<GameObject> GetDetectedByNameAndTag(string name, string tag)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<GameObject>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag) && go.name == name) { filtered.Add(go); }
+            for (var i = 0; i < distanceWorkList.Count; i++) {
+                signals[i] = distanceWorkList[i].Signal;
             }
-            return filtered;
-        }
 
-        public List<T> GetDetectedByNameAndTagAndComponent<T>(string name, string tag) where T : Component
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<T>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag) && go.name == name)
-                {
-                    var c = GetComponent<T>();
-                    if (c != null) { filtered.Add(c); }
-                }
+            return signals;
+        }
+        static Comparison<DistanceElement> DistanceElementComparison = new Comparison<DistanceElement>(CompareSignalElements);
+        static int CompareSignalElements(DistanceElement x, DistanceElement y) {
+            if (x.Distance > y.Distance) {
+                return 1;
+            } else if (x.Distance < y.Distance) {
+                return -1;
             }
-            return filtered;
-        }
-
-        public List<Component> GetDetectedByNameAndTagAndComponent(string name, string tag, Type t)
-        {
-            var detectedEnumerator = DetectedObjectsOrderedByDistance.GetEnumerator();
-            var filtered = new List<Component>();
-            while (detectedEnumerator.MoveNext())
-            {
-                var go = detectedEnumerator.Current;
-                if (go.CompareTag(tag) && go.name == name)
-                {
-                    var c = GetComponent(t);
-                    if (c != null) { filtered.Add(c); }
-                }
-            }
-            return filtered;
-        }
-
-        /*
-         * These methods return the detected GameObject that's nearest to the specified world position. 
-         * If no GameObjects are detected then it returns null. You may also filter detected GameObjects 
-         * by name, tag, Component or a combination thereof.
-         */
-        public GameObject GetNearestToPoint(Vector3 p)
-        {
-            return nearestToPoint(DetectedObjects, p);
-        }
-
-        public T GetNearestToPointByComponent<T>(Vector3 p) where T : Component
-        {
-            return nearestToPointWithComponent<T>(DetectedObjects, p);
-        }
-
-        public Component GetNearestToPointByComponent(Vector3 p, Type t)
-        {
-            return nearestToPointWithComponent(DetectedObjects, p, t);
-        }
-
-        public GameObject GetNearestToPointByName(Vector3 p, string name)
-        {
-            return nearestToPointWithName(DetectedObjects, p, name);
-        }
-
-        public T GetNearestToPointByNameAndComponent<T>(Vector3 p, string name) where T : Component
-        {
-            return nearestToPointWithNameAndComponent<T>(DetectedObjects, p, name);
-        }
-
-        public Component GetNearestToPointByNameAndComponent(Vector3 p, string name, Type t)
-        {
-            return nearestToPointWithNameAndComponent(DetectedObjects, p, name, t);
-        }
-
-        public GameObject GetNearestToPointByTag(Vector3 p, string tag)
-        {
-            return nearestToPointWithTag(DetectedObjects, p, tag);
-        }
-
-        public T GetNearestToPointByTagAndComponent<T>(Vector3 p, string tag) where T : Component
-        {
-            return nearestToPointWithTagAndComponent<T>(DetectedObjects, p, tag);
-        }
-
-        public Component GetNearestToPointByTagAndComponent(Vector3 p, string tag, Type t)
-        {
-            return nearestToPointWithTagAndComponent(DetectedObjects, p, tag, t);
-        }
-
-        public GameObject GetNearestToPointByNameAndTag(Vector3 p, string name, string tag)
-        {
-            return nearestToPointWithNameAndTag(DetectedObjects, p, name, tag);
-        }
-
-        public T GetNearestToPointByNameAndTagAndComponent<T>(Vector3 p, string name, string tag) where T : Component
-        {
-            return nearestToPointWithNameAndTagAndComponent<T>(DetectedObjects, p, name, tag);
-        }
-
-        public Component GetNearestToPointByNameAndTagAndComponent(Vector3 p, string name, string tag, Type t)
-        {
-            return nearestToPointWithNameAndTagAndComponent(DetectedObjects, p, name, tag, t);
-        }
-
-        /*
-         * These methods return the detected GameObject that's nearest to the sensor. If no GameObjects are 
-         * detected then it returns null. You may also filter detected GameObjects by name, tag, Component 
-         * or a combination thereof.
-         */
-        public GameObject GetNearest()
-        {
-            return nearestToPoint(DetectedObjects, transform.position);
-        }
-
-        public T GetNearestByComponent<T>() where T : Component
-        {
-            return nearestToPointWithComponent<T>(DetectedObjects, transform.position);
-        }
-
-        public Component GetNearestByComponent(Type t)
-        {
-            return nearestToPointWithComponent(DetectedObjects, transform.position, t);
-        }
-
-        public GameObject GetNearestByName(string name)
-        {
-            return nearestToPointWithName(DetectedObjects, transform.position, name);
-        }
-
-        public T GetNearestByNameAndComponent<T>(string name) where T : Component
-        {
-            return nearestToPointWithNameAndComponent<T>(DetectedObjects, transform.position, name);
-        }
-
-        public Component GetNearestByNameAndComponent(string name, Type t)
-        {
-            return nearestToPointWithNameAndComponent(DetectedObjects, transform.position, name, t);
-        }
-
-        public GameObject GetNearestByTag(string tag)
-        {
-            return nearestToPointWithTag(DetectedObjects, transform.position, tag);
-        }
-
-        public T GetNearestByTagAndComponent<T>(string tag) where T : Component
-        {
-            return nearestToPointWithTagAndComponent<T>(DetectedObjects, transform.position, tag);
-        }
-
-        public Component GetNearestByTagAndComponent(string tag, Type t)
-        {
-            return nearestToPointWithTagAndComponent(DetectedObjects, transform.position, tag, t);
-        }
-
-        public GameObject GetNearestByNameAndTag(string name, string tag)
-        {
-            return nearestToPointWithNameAndTag(DetectedObjects, transform.position, name, tag);
-        }
-
-        public T GetNearestByNameAndTagAndComponent<T>(string name, string tag) where T : Component
-        {
-            return nearestToPointWithNameAndTagAndComponent<T>(DetectedObjects, transform.position, name, tag);
-        }
-
-        public Component GetNearestByNameAndTagAndComponent(string name, string tag, Type t)
-        {
-            return nearestToPointWithNameAndTagAndComponent(DetectedObjects, transform.position, name, tag, t);
-        }
-
-        protected bool shouldIgnore(GameObject go)
-        {
-            if (EnableTagFilter)
-            {
-                var tagFound = false;
-                for (int i = 0; i < AllowedTags.Length; i++)
-                {
-                    if (AllowedTags[i] != "" && go != null && go.CompareTag(AllowedTags[i]))
-                    {
-                        tagFound = true;
-                        break;
-                    }
-                }
-                if (!tagFound) return true;
-            }
-            for (int i = 0; i < IgnoreList.Count; i++)
-            {
-                if (IgnoreList[i] == go) return true;
-            }
-            return false;
-        }
-
-        private GameObject nearestToPoint(List<GameObject> gos, Vector3 point)
-        {
-            GameObject nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = go;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private T nearestToPointWithComponent<T>(List<GameObject> gos, Vector3 point) where T : Component
-        {
-            T nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                var c = go.GetComponent<T>();
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private Component nearestToPointWithComponent(List<GameObject> gos, Vector3 point, Type t)
-        {
-            Component nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                var c = go.GetComponent(t);
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private GameObject nearestToPointWithName(List<GameObject> gos, Vector3 point, string name)
-        {
-            GameObject nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = go;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private T nearestToPointWithNameAndComponent<T>(List<GameObject> gos, Vector3 point, string name) where T : Component
-        {
-            T nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name) { continue; }
-                var c = go.GetComponent<T>();
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private Component nearestToPointWithNameAndComponent(List<GameObject> gos, Vector3 point, string name, Type t)
-        {
-            Component nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name) { continue; }
-                var c = go.GetComponent(t);
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private GameObject nearestToPointWithTag(List<GameObject> gos, Vector3 point, string tag)
-        {
-            GameObject nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (!go.CompareTag(tag)) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = go;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private T nearestToPointWithTagAndComponent<T>(List<GameObject> gos, Vector3 point, string tag) where T : Component
-        {
-            T nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (!go.CompareTag(tag)) { continue; }
-                var c = go.GetComponent<T>();
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private Component nearestToPointWithTagAndComponent(List<GameObject> gos, Vector3 point, string tag, Type t)
-        {
-            Component nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (!go.CompareTag(tag)) { continue; }
-                var c = go.GetComponent(t);
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private GameObject nearestToPointWithNameAndTag(List<GameObject> gos, Vector3 point, string name, string tag)
-        {
-            GameObject nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name || !go.CompareTag(tag)) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = go;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private T nearestToPointWithNameAndTagAndComponent<T>(List<GameObject> gos, Vector3 point, string name, string tag) where T : Component
-        {
-            T nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name || !go.CompareTag(tag)) { continue; }
-                var c = go.GetComponent<T>();
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
-        }
-
-        private Component nearestToPointWithNameAndTagAndComponent(List<GameObject> gos, Vector3 point, string name, string tag, Type t)
-        {
-            Component nearest = null;
-            var nearestDistance = 0f;
-            var gosEnumerator = gos.GetEnumerator();
-            while (gosEnumerator.MoveNext())
-            {
-                var go = gosEnumerator.Current;
-                if (go.name != name || !go.CompareTag(tag)) { continue; }
-                var c = go.GetComponent(t);
-                if (c == null) { continue; }
-                var d = Vector3.SqrMagnitude(go.transform.position - point);
-                if (nearest == null || d < nearestDistance)
-                {
-                    nearest = c;
-                    nearestDistance = d;
-                }
-            }
-            return nearest;
+            return 0;
         }
     }
-
-    public class DistanceFromPointComparer : IComparer<GameObject>
-    {
-        public Vector3 Point;
-
-        public int Compare(GameObject x, GameObject y)
-        {
-            var d1 = Vector3.SqrMagnitude(x.transform.position - Point);
-            var d2 = Vector3.SqrMagnitude(y.transform.position - Point);
-            if (d1 < d2) { return -1; }
-            else if (d1 > d2) { return 1; }
-            else { return 0; }
-        }
-    }
+    #endregion
 }

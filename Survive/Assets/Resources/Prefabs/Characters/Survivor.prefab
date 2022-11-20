@@ -312,7 +312,7 @@ GameObject:
   - component: {fileID: 1365517638943409129}
   - component: {fileID: 8780353081267510912}
   - component: {fileID: 8830105786844066620}
-  - component: {fileID: 2965109050195043447}
+  - component: {fileID: 4288944751601695164}
   m_Layer: 8
   m_Name: Trigger Sensor
   m_TagString: Untagged
@@ -365,7 +365,7 @@ CapsuleCollider:
   m_Height: 1.85
   m_Direction: 1
   m_Center: {x: 0, y: -0.075, z: 0}
---- !u!114 &2965109050195043447
+--- !u!114 &4288944751601695164
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -374,29 +374,29 @@ MonoBehaviour:
   m_GameObject: {fileID: 5462196792602778869}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e841c6eddfb006049bd02ce632bb1417, type: 3}
+  m_Script: {fileID: 11500000, guid: 41f6fec8fb4941a8b51158e83854d6d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IgnoreList: []
-  EnableTagFilter: 1
-  AllowedTags:
-  - Interactable
   OnDetected:
     m_PersistentCalls:
       m_Calls: []
   OnLostDetection:
     m_PersistentCalls:
       m_Calls: []
+  OnSomeDetection:
+    m_PersistentCalls:
+      m_Calls: []
+  OnNoDetection:
+    m_PersistentCalls:
+      m_Calls: []
+  signalFilter:
+    IgnoreList: []
+    EnableTagFilter: 1
+    AllowedTags:
+    - Interactable
   DetectionMode: 0
-  RequiresLineOfSight: 0
-  BlocksLineOfSight:
-    serializedVersion: 2
-    m_Bits: 0
-  TestLOSTargetsOnly: 0
-  NumberOfRays: 1
-  MinimumVisibility: 0.5
-  LineOfSightUpdateMode: 0
-  CheckLineOfSightInterval: 1
+  runInSafeMode:
+    value: 0
 --- !u!1 &7084941711892829429
 GameObject:
   m_ObjectHideFlags: 0
@@ -642,7 +642,7 @@ MonoBehaviour:
   _quickTurnSpeed: 380
   animancer: {fileID: 4375679363743700105}
   networkAnimations: {fileID: 8855897954236545695}
-  triggerSensor: {fileID: 2965109050195043447}
+  triggerSensor: {fileID: 4288944751601695164}
   characterMesh: {fileID: 5396945184391876075}
   transparentMaterial: {fileID: 2100000, guid: 1fe323e81e679654e8f9ff7925c999ac, type: 2}
   blobShadow: {fileID: 4792959850907436428}

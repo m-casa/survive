@@ -1,7 +1,7 @@
 using Animancer;
 using EasyCharacterMovement;
+using Micosmo.SensorToolkit;
 using Mirror;
-using SensorToolkit;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,7 +33,7 @@ public class ClassicCharacter : Character
     [SerializeField]
     private NamedAnimancerComponent animancer;
 
-    [Tooltip("The script for networkking animations.")]
+    [Tooltip("The script for networking animations.")]
     [SerializeField]
     private NetworkAnimations networkAnimations;
 
@@ -271,7 +271,7 @@ public class ClassicCharacter : Character
     }
 
     /// <summary>
-    /// Overrides OnStartAuthority.
+    /// Overrides OnStartLocalPlayer.
     /// Setup the local player's authority.
     /// </summary>
 
@@ -714,9 +714,10 @@ public class ClassicCharacter : Character
     {
         _interactButtonPressed = true;
 
-        if (triggerSensor.DetectedObjects.Count != 0)
+        if (triggerSensor.GetDetections().Count != 0)
         {
-            GameObject nearestGameObject = triggerSensor.DetectedObjectsOrderedByDistance[0];
+            List<GameObject> detections = triggerSensor.GetDetectionsByDistance();
+            GameObject nearestGameObject = detections[0];
             IInteractable<GameObject> interactable = nearestGameObject.GetComponent<IInteractable<GameObject>>();
             
             if (interactable != null)
