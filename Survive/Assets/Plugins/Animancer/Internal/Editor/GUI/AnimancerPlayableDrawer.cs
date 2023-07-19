@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -61,7 +61,8 @@ namespace Animancer.Editor
                 AnimancerLayerDrawer.GatherLayerEditors(playable, LayerInfos, out _LayerCount);
             }
 
-            DoRootGUI(playable);
+            AnimancerGraphControls.DoGraphGUI(playable, out var area);
+            CheckContextMenu(area, playable);
 
             for (int i = 0; i < _LayerCount; i++)
                 LayerInfos[i].DoGUI();
@@ -100,7 +101,8 @@ namespace Animancer.Editor
             var label = AnimancerGUI.GetNarrowText("Native Animator Controller");
 
             EditorGUI.BeginChangeCheck();
-            controller = (RuntimeAnimatorController)EditorGUILayout.ObjectField(label, controller, typeof(RuntimeAnimatorController), true);
+            controller = EditorGUILayout.ObjectField(
+                label, controller, typeof(RuntimeAnimatorController), true) as RuntimeAnimatorController;
             if (EditorGUI.EndChangeCheck())
                 animator.runtimeAnimatorController = controller;
 
@@ -162,44 +164,6 @@ namespace Animancer.Editor
             }
 
             return null;
-        }
-
-        /************************************************************************************************************************/
-
-        private void DoRootGUI(AnimancerPlayable playable)
-        {
-            var labelWidth = EditorGUIUtility.labelWidth;
-            AnimancerGUI.BeginVerticalBox(GUI.skin.box);
-
-            using (ObjectPool.Disposable.AcquireContent(out var label, "Is Graph Playing"))
-            {
-                const string SpeedLabel = "Speed";
-
-                var isPlayingWidth = AnimancerGUI.CalculateLabelWidth(label.text);
-                var speedWidth = AnimancerGUI.CalculateLabelWidth(SpeedLabel);
-
-                var area = AnimancerGUI.LayoutSingleLineRect();
-                var isPlayingArea = area;
-                var speedArea = area;
-                isPlayingArea.width = isPlayingWidth + AnimancerGUI.ToggleWidth;
-                speedArea.xMin = isPlayingArea.xMax;
-
-                EditorGUIUtility.labelWidth = isPlayingWidth;
-                playable.IsGraphPlaying = EditorGUI.Toggle(isPlayingArea, label, playable.IsGraphPlaying);
-
-                EditorGUIUtility.labelWidth = speedWidth;
-                EditorGUI.BeginChangeCheck();
-                var speed = EditorGUI.FloatField(speedArea, SpeedLabel, playable.Speed);
-                if (EditorGUI.EndChangeCheck())
-                    playable.Speed = speed;
-                if (AnimancerGUI.TryUseClickEvent(speedArea, 2))
-                    playable.Speed = playable.Speed != 1 ? 1 : 0;
-            }
-
-            AnimancerGUI.EndVerticalBox(GUI.skin.box);
-            EditorGUIUtility.labelWidth = labelWidth;
-
-            CheckContextMenu(GUILayoutUtility.GetLastRect(), playable);
         }
 
         /************************************************************************************************************************/
@@ -401,6 +365,8 @@ namespace Animancer.Editor
 
             AddUpdateModeFunctions(menu, playable);
             AnimancerEditorUtilities.AddContextMenuIK(menu, playable);
+            AnimancerGraphControls.AddAddAnimationFunction(menu);
+
             AddRootFunctions(menu, playable);
 
             menu.AddSeparator("");

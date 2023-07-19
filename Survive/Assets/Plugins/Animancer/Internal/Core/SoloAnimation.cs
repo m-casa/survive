@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using Animancer.Units;
 using System;
@@ -88,8 +88,13 @@ namespace Animancer
         /// </remarks>
         public bool StopOnDisable
         {
+#if UNITY_2022_2_OR_NEWER
+            get => !_Animator.keepAnimatorStateOnDisable;
+            set => _Animator.keepAnimatorStateOnDisable = !value;
+#else
             get => !_Animator.keepAnimatorControllerStateOnDisable;
             set => _Animator.keepAnimatorControllerStateOnDisable = !value;
+#endif
         }
 
         /************************************************************************************************************************/

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections;
@@ -160,7 +160,9 @@ namespace Animancer
 
                 OptionalWarning.LockedEvents.Log(
                     $"The {nameof(AnimancerEvent)}.{nameof(Sequence)} being modified should not be modified because " +
-                    ShouldNotModifyReason);
+                    ShouldNotModifyReason +
+                    $"\n\nThis warning can be prevented by calling state.Events.{nameof(SetShouldNotModifyReason)}(null);" +
+                    $" before making any modifications.");
 
                 // Clear the reason so it doesn't trigger this warning again. No point in wasting performance.
                 ShouldNotModifyReason = null;
@@ -1171,6 +1173,24 @@ namespace Animancer
             public void CopyTo(AnimancerEvent[] array, int index)
             {
                 Array.Copy(_Events, 0, array, index, Count);
+            }
+
+            /************************************************************************************************************************/
+
+            /// <summary>Are all events in this sequence identical to the ones in the `other` sequence?</summary>
+            public bool ContentsAreEqual(Sequence other)
+            {
+                if (_EndEvent != other._EndEvent)
+                    return false;
+
+                if (Count != other.Count)
+                    return false;
+
+                for (int i = Count - 1; i >= 0; i--)
+                    if (this[i] != other[i])
+                        return false;
+
+                return true;
             }
 
             /************************************************************************************************************************/

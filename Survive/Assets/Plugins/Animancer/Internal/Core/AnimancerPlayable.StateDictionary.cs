@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections;
@@ -273,9 +273,9 @@ namespace Animancer
             /// <summary>Returns an error message explaining that a state already exists with the specified `key`.</summary>
             public static string GetClipMismatchError(object key, AnimationClip oldClip, AnimationClip newClip)
                 => $"A state already exists using the specified '{nameof(key)}', but has a different {nameof(AnimationClip)}:" +
-                $"\n - Key: {key}" +
-                $"\n - Old Clip: {oldClip}" +
-                $"\n - New Clip: {newClip}";
+                $"\n• Key: {key}" +
+                $"\n• Old Clip: {oldClip}" +
+                $"\n• New Clip: {newClip}";
 
             /************************************************************************************************************************/
 

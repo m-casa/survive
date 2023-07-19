@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -73,6 +73,17 @@ namespace Animancer
 
         /// <inheritdoc/>
         public override int GetParameterHash(int index) => _ParameterID;
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override AnimancerState Clone(AnimancerPlayable root)
+        {
+            var clone = new Float1ControllerState(Controller, _ParameterID);
+            clone.SetNewCloneRoot(root);
+            ((ICopyable<ControllerState>)clone).CopyFrom(this);
+            return clone;
+        }
 
         /************************************************************************************************************************/
     }

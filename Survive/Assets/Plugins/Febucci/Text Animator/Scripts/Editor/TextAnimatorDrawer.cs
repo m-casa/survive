@@ -875,6 +875,7 @@ namespace Febucci.UI.Core.Editors
         SerializedProperty triggerTypeWriter;
         SerializedProperty isResettingEffectsOnNewText;
         SerializedProperty timeScale;
+        SerializedProperty updateMode;
         SerializedProperty tags_fallbackBehaviors;
         SerializedProperty tags_fallbackAppearances;
         SerializedProperty tags_fallbackDisappearances;
@@ -1010,6 +1011,7 @@ namespace Febucci.UI.Core.Editors
 
             triggerTypeWriter = serializedObject.FindProperty("triggerAnimPlayerOnChange");
             timeScale = serializedObject.FindProperty("timeScale");
+            updateMode = serializedObject.FindProperty("updateMode");
             tags_fallbackBehaviors = serializedObject.FindProperty("tags_fallbackBehaviors");
 
             scriptable_globalAppearancesValues = serializedObject.FindProperty("scriptable_globalAppearancesValues");
@@ -1305,6 +1307,8 @@ namespace Febucci.UI.Core.Editors
                         EditorGUILayout.PropertyField(timeScale);
                         EditorGUILayout.PropertyField(isResettingEffectsOnNewText);
                     }
+
+                    EditorGUILayout.PropertyField(updateMode);
                     
                     EditorGUILayout.PropertyField(effectIntensity);
 

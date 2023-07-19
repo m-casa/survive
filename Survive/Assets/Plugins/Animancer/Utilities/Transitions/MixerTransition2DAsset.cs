@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -20,7 +20,7 @@ namespace Animancer
         [Serializable]
         public new class UnShared :
             UnShared<MixerTransition2DAsset, MixerTransition2D, MixerState<Vector2>>,
-            MixerState.ITransition2D
+            ManualMixerState.ITransition2D
         { }
     }
 
@@ -28,11 +28,11 @@ namespace Animancer
     /// https://kybernetik.com.au/animancer/api/Animancer/MixerTransition2D
     [Serializable]
     public class MixerTransition2D : MixerTransition<MixerState<Vector2>, Vector2>,
-        MixerState.ITransition2D, ICopyable<MixerTransition2D>
+        ManualMixerState.ITransition2D, ICopyable<MixerTransition2D>
     {
         /************************************************************************************************************************/
 
-        /// <summary>A type of <see cref="MixerState"/> that can be created by a <see cref="MixerTransition2D"/>.</summary>
+        /// <summary>A type of <see cref="ManualMixerState"/> that can be created by a <see cref="MixerTransition2D"/>.</summary>
         public enum MixerType
         {
             /// <summary><see cref="CartesianMixerState"/></summary>
@@ -46,7 +46,7 @@ namespace Animancer
         private MixerType _Type;
 
         /// <summary>[<see cref="SerializeField"/>]
-        /// The type of <see cref="MixerState"/> that this transition will create.
+        /// The type of <see cref="ManualMixerState"/> that this transition will create.
         /// </summary>
         public ref MixerType Type => ref _Type;
 

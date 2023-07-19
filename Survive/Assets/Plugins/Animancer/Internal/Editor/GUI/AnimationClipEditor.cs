@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -181,7 +181,8 @@ namespace Animancer.Editor
 
         private void InitializeSpritePreview(UnityEditor.Editor editor, AnimationClip clip)
         {
-            if (_HasInitializedSpritePreview)
+            if (_HasInitializedSpritePreview
+                || editor == null)
                 return;
 
             _HasInitializedSpritePreview = true;

@@ -19,15 +19,27 @@ namespace Febucci.UI
     /// <summary>
     /// The main TextAnimator component. Add this near to a TextMeshPro component in order to enable effects. It can also be used in combination with a TextAnimatorPlayer in order to display letters dynamically (like a typewriter).<br/>
     /// - See also: <seealso cref="TextAnimatorPlayer"/><br/>
-    /// - Manual: <see href="https://www.febucci.com/text-animator-unity/docs/how-to-add-effects-to-your-texts/">How to add effects to your texts</see><br/>
+    /// - Manual: <see href="https://www.febucci.com/text-animator-unity/docs/1.X/how-to-add-effects-to-your-texts/">How to add effects to your texts</see><br/>
     /// </summary>
-    [HelpURL("https://www.febucci.com/text-animator-unity/docs/how-to-add-effects-to-your-texts/")]
+    [HelpURL("https://www.febucci.com/text-animator-unity/docs/1.X/how-to-add-effects-to-your-texts/")]
     [AddComponentMenu("Febucci/TextAnimator/TextAnimator")]
     [RequireComponent(typeof(TMP_Text)), DisallowMultipleComponent]
     public class TextAnimator : MonoBehaviour
     {
 
         #region Types (Structs + Enums)
+
+        public enum UpdateMode
+        {
+            /// <summary>
+            /// Update Loop
+            /// </summary>
+            Auto = 0,
+            /// <summary>
+            /// Via Script
+            /// </summary>
+            Manual = 1
+        }
 
         /// <summary>
         /// Contains TextAnimator's current time values.
@@ -167,6 +179,13 @@ namespace Febucci.UI
         }
 
         #region Inspector
+
+        /// <summary>
+        /// Controls how Text Animator should update its effects. Set to Manual in order to update effects manually from script, invoking <see cref="UpdateEffects"/>.
+        /// </summary>
+        [Tooltip("Controls how Text Animator should update its effects. Set to Manual in order to update effects manually from script, otherwise leave it to Auto.")]
+        public UpdateMode updateMode = UpdateMode.Auto;
+
 
         [SerializeField, Tooltip("If true, the typewriter is triggered automatically once the TMPro text changes (requires a TextAnimatorPlayer component). Otherwise, it shows the entire text instantly.")]
         bool triggerAnimPlayerOnChange = false;
@@ -674,6 +693,20 @@ namespace Febucci.UI
         Dictionary<string, Type> localBehaviors = new Dictionary<string, Type>();
         Dictionary<string, Type> localAppearances = new Dictionary<string, Type>();
 
+
+        public void AssignSharedAppearancesData(BuiltinAppearancesDataScriptable scriptable)
+        {
+            scriptable_globalAppearancesValues = scriptable;
+            appearancesContainer.values.defaults = scriptable.effectValues;
+        }
+        
+        
+        public void AssignSharedBehaviorsData(BuiltinBehaviorsDataScriptable scriptable)
+        {
+            scriptable_globalBehaviorsValues = scriptable;
+            behaviorValues.defaults = scriptable.effectValues;
+        }
+        
         void BuildTagsDatabase()
         {
 
@@ -1805,17 +1838,24 @@ namespace Febucci.UI
                 return;
             }
 
+            //applies effects
+            if(updateMode == UpdateMode.Auto)
+                UpdateEffects();
+        }
+
+        /// <summary>
+        /// Invoke this to manually update the effects, when <see cref="updateMode"/> is set to <see cref="UpdateMode.Manual"/>.
+        /// </summary>
+        public void UpdateEffects()
+        {
             if (!hasText)
                 return;
 
-            //applies effects
             UpdateEffectsToMesh();
         }
 
         void UpdateEffectsToMesh()
         {
-            
-
             m_time.UpdateDeltaTime(timeScale);
             m_time.IncreaseTime();
 

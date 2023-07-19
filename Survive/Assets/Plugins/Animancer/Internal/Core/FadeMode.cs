@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 
@@ -40,7 +40,7 @@ namespace Animancer
         ///
         /// <exception cref="ArgumentOutOfRangeException">
         /// More states have been created for the <see cref="AnimancerState.Clip"/> than the
-        /// <see cref="AnimancerLayer.MaxStateDepth"/> allows.
+        /// <see cref="AnimancerLayer.MaxCloneCount"/> allows.
         /// </exception>
         FixedSpeed,
 

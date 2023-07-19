@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -178,7 +178,12 @@ namespace Animancer.Editor.Tools
                 importer.maxTextureSize = Math.Max(packedTexture.width, packedTexture.height);
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Multiple;
-                importer.spritesheet = new SpriteMetaData[0];
+
+                var data = new SpriteDataEditor(importer)
+                {
+                    SpriteCount = 0
+                };
+
                 CopyCompressionSettings(importer, textures);
                 EditorUtility.SetDirty(importer);
                 importer.SaveAndReimport();
@@ -186,11 +191,11 @@ namespace Animancer.Editor.Tools
                 // Use the UV coordinates to set up sprites for the new texture.
                 EditorUtility.DisplayProgressBar(ProgressTitle, "Generating Sprites", 0.7f);
 
-                var spriteSheet = new List<SpriteMetaData>();
+                data.SpriteCount = tightSprites.Count;
                 index = 0;
                 foreach (var sprite in tightSprites)
                 {
-                    var rect = packedUVs[index++];
+                    var rect = packedUVs[index];
                     rect.x *= packedTexture.width;
                     rect.y *= packedTexture.height;
                     rect.width *= packedTexture.width;
@@ -206,19 +211,18 @@ namespace Animancer.Editor.Tools
                     pivot.x /= rect.width;
                     pivot.y /= rect.height;
 
-                    spriteSheet.Add(new SpriteMetaData
-                    {
-                        name = sprite.name,
-                        rect = spriteRect,
-                        alignment = (int)GetAlignment(sprite.pivot),
-                        pivot = pivot,
-                        border = sprite.border,
-                    });
+                    data.SetName(index, sprite.name);
+                    data.SetRect(index, spriteRect);
+                    data.SetAlignment(index, GetAlignment(sprite.pivot));
+                    data.SetPivot(index, pivot);
+                    data.SetBorder(index, sprite.border);
+
+                    index++;
                 }
 
                 EditorUtility.DisplayProgressBar(ProgressTitle, "Saving", 0.9f);
 
-                importer.spritesheet = spriteSheet.ToArray();
+                data.Apply();
 
                 EditorUtility.SetDirty(importer);
                 importer.SaveAndReimport();

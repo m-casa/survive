@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections;
@@ -194,7 +194,7 @@ namespace Animancer
             /// Lowering this value will destroy any layers beyond the specified value.
             /// <para></para>
             /// Changing this value will cause the allocation of a new array and garbage collection of the old one, so
-            /// you should generally set the <see cref="DefaultCapacity"/> before initialising this list.
+            /// you should generally set the <see cref="DefaultCapacity"/> before initializing this list.
             /// </remarks>
             /// 
             /// <exception cref="ArgumentOutOfRangeException">The value is not greater than 0.</exception>

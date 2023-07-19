@@ -1,9 +1,15 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Shared File Last Modified: 2022-12-05.
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
+// FlexiMotion // https://kybernetik.com.au/flexi-motion // Copyright 2018-2023 Kybernetik //
+
+#define ANIMANCER
+// #define FLEXI_MOTION
 
 namespace Animancer
 {
     /// <summary>Interface for objects that can be copied.</summary>
     /// https://kybernetik.com.au/animancer/api/Animancer/ICopyable_1
+    /// https://kybernetik.com.au/flexi-motion/api/FlexiMotion/ICopyable_1
     /// 
     public interface ICopyable<T>
     {

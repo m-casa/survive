@@ -1,4 +1,4 @@
-// Animancer // Copyright 2022 Kybernetik //
+// Animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 

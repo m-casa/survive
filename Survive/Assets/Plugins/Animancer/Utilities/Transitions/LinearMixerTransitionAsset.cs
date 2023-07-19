@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -82,8 +82,8 @@ namespace Animancer
         /// <inheritdoc/>
         public override void Apply(AnimancerState state)
         {
-            State.ExtrapolateSpeed = _ExtrapolateSpeed;
             base.Apply(state);
+            State.ExtrapolateSpeed = _ExtrapolateSpeed;
         }
 
         /************************************************************************************************************************/
@@ -184,12 +184,10 @@ namespace Animancer
                     if (previousThreshold.floatValue >= currentThreshold.floatValue)
                     {
                         if (_SortingErrorContent == null)
-                        {
                             _SortingErrorContent = new GUIContent(Editor.AnimancerGUI.LoadIcon("console.erroricon.sml"))
                             {
                                 tooltip = "Linear Mixer Thresholds must always be unique and sorted in ascending order (click to sort)"
                             };
-                        }
 
                         if (_SortingErrorStyle == null)
                             _SortingErrorStyle = new GUIStyle(GUI.skin.label)

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -62,6 +62,10 @@ namespace Animancer
 
             var description = node.ToString();
 
+            var stackTrace = AnimancerNode.GetConstructorStackTrace(node);
+            if (stackTrace != null)
+                description += "\n\n" + stackTrace;
+
             if (node is AnimancerState state)
                 state.Destroy();
 
@@ -74,8 +78,10 @@ namespace Animancer
                     $"\n• State: {description}");
             else
                 throw new InvalidOperationException(
-                    $"{nameof(AnimancerNode)}.{nameof(IPlayableWrapper.Playable)} has not been created." +
-                    $" {nameof(AnimancerNode.CreatePlayable)} likely needs to be called on it before performing this operation." +
+                    $"{nameof(AnimancerNode)}.{nameof(IPlayableWrapper.Playable)}" +
+                    $" has either been destroyed or was never created." +
+                    $" {nameof(AnimancerNode.CreatePlayable)} likely needs" +
+                    $" to be called on it before performing this operation." +
                     $"\n• State: {description}");
 #endif
         }
@@ -91,7 +97,7 @@ namespace Animancer
         /// The <see cref="AnimancerNode.Index"/> is larger than the number of `states`.
         /// </exception>
         [System.Diagnostics.Conditional(Strings.Assertions)]
-        public static void AssertCanRemoveChild(AnimancerState state, IList<AnimancerState> states)
+        public static void AssertCanRemoveChild(AnimancerState state, IList<AnimancerState> childStates, int childCount)
         {
 #if UNITY_ASSERTIONS
             var index = state.Index;
@@ -100,16 +106,16 @@ namespace Animancer
                 throw new InvalidOperationException(
                     $"Cannot remove a child state that did not have an {nameof(state.Index)} assigned");
 
-            if (index > states.Count)
+            if (index > childCount)
                 throw new IndexOutOfRangeException(
                     $"{nameof(AnimancerState)}.{nameof(state.Index)} ({state.Index})" +
-                    $" is outside the collection of states (count {states.Count})");
+                    $" is outside the collection of states (count {childCount})");
 
-            if (states[state.Index] != state)
+            if (childStates[state.Index] != state)
                 throw new InvalidOperationException(
                     $"Cannot remove a child state that was not actually connected to its port on {state.Parent}:" +
                     $"\n• Port: {state.Index}" +
-                    $"\n• Connected Child: {AnimancerUtilities.ToStringOrNull(states[state.Index])}" +
+                    $"\n• Connected Child: {AnimancerUtilities.ToStringOrNull(childStates[state.Index])}" +
                     $"\n• Disconnecting Child: {AnimancerUtilities.ToStringOrNull(state)}");
 #endif
         }

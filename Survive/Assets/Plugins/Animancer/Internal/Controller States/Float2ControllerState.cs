@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -128,6 +128,17 @@ namespace Animancer
                 case 1: return _ParameterYID;
                 default: throw new ArgumentOutOfRangeException(nameof(index));
             };
+        }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override AnimancerState Clone(AnimancerPlayable root)
+        {
+            var clone = new Float2ControllerState(Controller, _ParameterXID, _ParameterYID);
+            clone.SetNewCloneRoot(root);
+            ((ICopyable<ControllerState>)clone).CopyFrom(this);
+            return clone;
         }
 
         /************************************************************************************************************************/

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value.
 
@@ -96,7 +96,7 @@ namespace Animancer
 
                 /// <summary>
                 /// The runtime <see cref="Sequence"/> compiled from this <see cref="Serializable"/>.
-                /// Each call after the first will return the same value.
+                /// Each call after the first will return the same reference.
                 /// </summary>
                 /// <remarks>
                 /// Unlike <see cref="GetEventsOptional"/>, this property will create an empty
@@ -122,7 +122,7 @@ namespace Animancer
 
                 /// <summary>
                 /// Returns the runtime <see cref="Sequence"/> compiled from this <see cref="Serializable"/>.
-                /// Each call after the first will return the same value.
+                /// Each call after the first will return the same reference.
                 /// </summary>
                 /// <remarks>
                 /// This method returns null if the sequence would be empty anyway and is used by the implicit

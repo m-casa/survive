@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections;
@@ -31,9 +31,6 @@ namespace Animancer
         /// <summary>[Internal] Creates a new <see cref="AnimancerLayer"/>.</summary>
         internal AnimancerLayer(AnimancerPlayable root, int index)
         {
-#if UNITY_ASSERTIONS
-            GC.SuppressFinalize(this);
-#endif
 
             Root = root;
             Index = index;
@@ -194,7 +191,7 @@ namespace Animancer
         protected internal override void OnRemoveChild(AnimancerState state)
         {
             var index = state.Index;
-            Validate.AssertCanRemoveChild(state, States);
+            Validate.AssertCanRemoveChild(state, States, States.Count);
 
             if (_Playable.GetInput(index).IsValid())
                 Root._Graph.Disconnect(_Playable, index);
@@ -233,7 +230,8 @@ namespace Animancer
         /// <remarks>
         /// <see cref="AnimancerPlayable.GetKey"/> is used to determine the <see cref="AnimancerState.Key"/>.
         /// </remarks>
-        public ClipState CreateState(AnimationClip clip) => CreateState(Root.GetKey(clip), clip);
+        public ClipState CreateState(AnimationClip clip)
+            => CreateState(Root.GetKey(clip), clip);
 
         /// <summary>
         /// Creates and returns a new <see cref="ClipState"/> to play the `clip` and registers it with the `key`.
@@ -246,6 +244,64 @@ namespace Animancer
             };
             AddChild(state);
             return state;
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>Returns a state registered with the `key` and attached to this layer or null if none exist.</summary>
+        /// <exception cref="ArgumentNullException">The `key` is null.</exception>
+        /// <remarks>
+        /// If a state is registered with the `key` but on a different layer, this method will use that state as the
+        /// key and try to look up another state with it. This allows it to associate multiple states with the same
+        /// original key.
+        /// </remarks>
+        public AnimancerState GetState(ref object key)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            // Check through any states backwards in the key chain.
+            var earlierKey = key;
+            while (earlierKey is AnimancerState keyState)
+            {
+                if (keyState.Parent == this)// If the state is on this layer, return it.
+                {
+                    key = keyState.Key;
+                    return keyState;
+                }
+                else if (keyState.Parent == null)// If the state is on no layer, attach it to this one and return it.
+                {
+                    key = keyState.Key;
+                    AddChild(keyState);
+                    return keyState;
+                }
+                else// Otherwise the state is on a different layer.
+                {
+                    earlierKey = keyState.Key;
+                }
+            }
+
+            while (true)
+            {
+                // If no state is registered with the key, return null.
+                if (!Root.States.TryGet(key, out var state))
+                    return null;
+
+                if (state.Parent == this)// If the state is on this layer, return it.
+                {
+                    return state;
+                }
+                else if (state.Parent == null)// If the state is on no layer, attach it to this one and return it.
+                {
+                    AddChild(state);
+                    return state;
+                }
+                else// Otherwise the state is on a different layer.
+                {
+                    // Use it as the key and try to look up the next state in a chain.
+                    key = state;
+                }
+            }
         }
 
         /************************************************************************************************************************/
@@ -308,7 +364,7 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Calls <see cref="AnimancerPlayable.GetKey"/> and returns the state which registered with that key or
+        /// Calls <see cref="AnimancerPlayable.GetKey"/> and returns the state registered with that key or
         /// creates one if it doesn't exist.
         /// <para></para>
         /// If the state already exists but has the wrong <see cref="AnimancerState.Clip"/>, the `allowSetClip`
@@ -329,60 +385,240 @@ namespace Animancer
         /// </summary>
         public AnimancerState GetOrCreateState(ITransition transition)
         {
-            var state = Root.States.GetOrCreate(transition);
-            state.LayerIndex = Index;
+            var key = transition.Key;
+            var state = GetState(ref key);
+
+            if (state == null)
+            {
+                state = transition.CreateState();
+                state.Key = key;
+                AddChild(state);
+            }
+
             return state;
         }
 
-        /// <summary>
-        /// Returns the state which registered with the `key` or creates one if it doesn't exist.
-        /// <para></para>
+        /// <summary>Returns the state registered with the `key` or creates one if it doesn't exist.</summary>
+        /// <exception cref="ArgumentException"/>
+        /// <exception cref="ArgumentNullException">The `key` is null.</exception>
+        /// <remarks>
         /// If the state already exists but has the wrong <see cref="AnimancerState.Clip"/>, the `allowSetClip`
         /// parameter determines what will happen. False causes it to throw an <see cref="ArgumentException"/> while
         /// true allows it to change the <see cref="AnimancerState.Clip"/>. Note that the change is somewhat costly to
         /// performance to use with caution.
-        /// <seealso cref="AnimancerState"/>
-        /// </summary>
-        /// <exception cref="ArgumentException"/>
-        /// <exception cref="ArgumentNullException">The `key` is null.</exception>
-        /// <remarks>
+        /// <para></para>
         /// See also: <see cref="AnimancerPlayable.StateDictionary.GetOrCreate(object, AnimationClip, bool)"/>.
         /// </remarks>
         public AnimancerState GetOrCreateState(object key, AnimationClip clip, bool allowSetClip = false)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            var state = GetState(ref key);
+            if (state == null)
+                return CreateState(key, clip);
 
-            if (Root.States.TryGet(key, out var state))
+            // If a state exists but has the wrong clip, either change it or complain.
+            if (!ReferenceEquals(state.Clip, clip))
             {
-                // If a state exists with the 'key' but has the wrong clip, either change it or complain.
-                if (!ReferenceEquals(state.Clip, clip))
+                if (allowSetClip)
                 {
-                    if (allowSetClip)
+                    state.Clip = clip;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        AnimancerPlayable.StateDictionary.GetClipMismatchError(key, state.Clip, clip));
+                }
+            }
+
+            return state;
+        }
+
+        /// <summary>Returns the `state` if it's a child of this layer. Otherwise makes a clone of it.</summary>
+        public AnimancerState GetOrCreateState(AnimancerState state)
+        {
+            if (state.Parent == this)
+                return state;
+
+            if (state.Parent == null)
+            {
+                AddChild(state);
+                return state;
+            }
+
+            var key = state.Key;
+            if (key == null)
+                key = state;
+
+            var stateOnThisLayer = GetState(ref key);
+
+            if (stateOnThisLayer == null)
+            {
+                stateOnThisLayer = state.Clone(Root);
+                stateOnThisLayer.Key = key;
+                AddChild(stateOnThisLayer);
+            }
+
+            return stateOnThisLayer;
+        }
+
+        /************************************************************************************************************************/
+
+        /// <summary>
+        /// The maximum <see cref="AnimancerNode.Weight"/> that <see cref="GetOrCreateWeightlessState"/> will treat as
+        /// being weightless. Default = 0.1.
+        /// </summary>
+        /// <remarks>This allows states with very small weights to be reused instead of needing to create new ones.</remarks>
+        public static float WeightlessThreshold { get; set; } = 0.1f;
+
+        /// <summary>
+        /// The maximum number of duplicate states that can be created for a single clip when trying to get a
+        /// weightless state. Exceeding this limit will cause it to just use the state with the lowest weight.
+        /// Default = 3.
+        /// </summary>
+        public static int MaxCloneCount { get; private set; } = 3;
+
+        /// <summary>
+        /// If the `state`'s <see cref="AnimancerNode.Weight"/> is not currently low, this method finds or creates a
+        /// copy of it which is low. he returned <see cref="AnimancerState.Time"/> is also set to 0.
+        /// </summary>
+        /// <remarks>
+        /// If this method would exceed the <see cref="MaxCloneCount"/>, it returns the clone with the lowest weight.
+        /// <para></para>
+        /// "Low" weight is defined as less than or equal to the <see cref="WeightlessThreshold"/>.
+        /// <para></para>
+        /// The <see href="https://kybernetik.com.au/animancer/docs/manual/blending/fading/modes">Fade Modes</see> page
+        /// explains why clones are created.
+        /// </remarks>
+        public AnimancerState GetOrCreateWeightlessState(AnimancerState state)
+        {
+            if (state.Parent == null)
+            {
+                state.Weight = 0;
+                goto GotState;
+            }
+
+            if (state.Parent == this &&
+                state.Weight <= WeightlessThreshold)
+                goto GotState;
+
+            float lowestWeight = float.PositiveInfinity;
+            AnimancerState lowestWeightState = null;
+
+            int cloneCount = 0;
+
+            // Use any earlier state that is weightless.
+            var keyState = state;
+            while (true)
+            {
+                keyState = keyState.Key as AnimancerState;
+                if (keyState == null)
+                {
+                    break;
+                }
+                else if (keyState.Parent == this)
+                {
+                    if (keyState.Weight <= WeightlessThreshold)
                     {
-                        state.Clip = clip;
+                        state = keyState;
+                        goto GotState;
+                    }
+                    else if (lowestWeight > keyState.Weight)
+                    {
+                        lowestWeight = keyState.Weight;
+                        lowestWeightState = keyState;
+                    }
+                }
+                else if (keyState.Parent == null)
+                {
+                    AddChild(keyState);
+                    goto GotState;
+                }
+
+                cloneCount++;
+            }
+
+            if (state.Parent == this)
+            {
+                lowestWeight = state.Weight;
+                lowestWeightState = state;
+            }
+
+            keyState = state;
+
+            // If that state is not at low weight, get or create another state registered using the previous state as a key.
+            // Keep going through states in this manner until you find one at low weight.
+            while (true)
+            {
+                var key = (object)state;
+                if (!Root.States.TryGet(key, out state))
+                {
+                    if (cloneCount >= MaxCloneCount && lowestWeightState != null)
+                    {
+                        state = lowestWeightState;
+                        goto GotState;
                     }
                     else
                     {
-                        throw new ArgumentException(AnimancerPlayable.StateDictionary.GetClipMismatchError(key, state.Clip, clip));
+#if UNITY_ASSERTIONS
+                        var cloneTimer = OptionalWarning.CloneComplexState.IsEnabled() && !(keyState is ClipState)
+                            ? SimpleTimer.Start()
+                            : default;
+#endif
+
+                        state = keyState.Clone(Root);
+                        state.SetDebugName($"[{cloneCount + 1}] {keyState}");
+                        state.Weight = 0;
+                        state._Key = key;
+                        Root.States.Register(state);
+                        AddChild(state);
+
+#if UNITY_ASSERTIONS
+                        if (cloneTimer.Stop())
+                        {
+                            OptionalWarning.CloneComplexState.Log(
+                                $"A {keyState.GetType().Name} was cloned in {cloneTimer.total * 1000} milliseconds." +
+                                $" This performance cost may be notable and complex states generally have parameters" +
+                                $" that need to be controlled which may result in undesired behaviour if your scripts" +
+                                $" are only expecting to have one state to control so you may wish to avoid cloning." +
+                                $"\n\nThe Fade Modes page explains why clones are created: {Strings.DocsURLs.FadeModes}",
+                                Root?.Component);
+                        }
+#endif
+
+                        goto GotState;
                     }
                 }
-                else// Otherwise make sure it is on the correct layer.
+                else if (state.Parent == this)
+                {
+                    if (state.Weight <= WeightlessThreshold)
+                    {
+                        goto GotState;
+                    }
+                    else if (lowestWeight > state.Weight)
+                    {
+                        lowestWeight = state.Weight;
+                        lowestWeightState = state;
+                    }
+                }
+                else if (state.Parent == null)
                 {
                     AddChild(state);
+                    goto GotState;
                 }
+
+                cloneCount++;
             }
-            else
-            {
-                state = CreateState(key, clip);
-            }
+
+            GotState:
+
+            state.TimeD = 0;
 
             return state;
         }
 
         /************************************************************************************************************************/
 
-        /// <summary>Destroys all states connected to this layer. This operation cannot be undone.</summary>
+        /// <summary>Destroys all states connected to this layer.</summary>
+        /// <remarks>This operation cannot be undone.</remarks>
         public void DestroyStates()
         {
             for (int i = States.Count - 1; i >= 0; i--)
@@ -427,12 +663,25 @@ namespace Animancer
         /// <para></para>
         /// This method is safe to call repeatedly without checking whether the `state` was already playing.
         /// </remarks>
+        /// <exception cref="InvalidOperationException">
+        /// The <see cref="AnimancerState.Parent"/> is another state (likely a <see cref="ManualMixerState"/>).
+        /// It must be either null or a layer.
+        /// </exception>
         public AnimancerState Play(AnimancerState state)
         {
+#if UNITY_ASSERTIONS
+            if (state.Parent is AnimancerState)
+                throw new InvalidOperationException(
+                    $"A layer can't Play a state which is the child of another state." +
+                    $"\n- State: {state}" +
+                    $"\n- Parent: {state.Parent}" +
+                    $"\n- Layer: {this}");
+#endif
+
             if (Weight == 0 && TargetWeight == 0)
                 Weight = 1;
 
-            AddChild(state);
+            state = GetOrCreateState(state);
 
             CurrentState = state;
 
@@ -468,7 +717,7 @@ namespace Animancer
         /// <em>Animancer Lite only allows the default `fadeDuration` (0.25 seconds) in runtime builds.</em>
         /// </remarks>
         public AnimancerState Play(AnimationClip clip, float fadeDuration, FadeMode mode = default)
-            => Play(Root.States.GetOrCreate(clip), fadeDuration, mode);
+            => Play(GetOrCreateState(clip), fadeDuration, mode);
 
         /// <summary>
         /// Starts fading in the `state` over the course of the `fadeDuration` while fading out all others in this
@@ -491,11 +740,13 @@ namespace Animancer
             if (fadeDuration <= 0 ||// There is no duration.
                 (Root.SkipFirstFade && Index == 0 && Weight == 0))// Or this is Layer 0 and it has no weight.
             {
-                if (mode == FadeMode.FromStart || mode == FadeMode.NormalizedFromStart)
-                    state.Time = 0;
-
                 Weight = 1;
-                return Play(state);
+                state = Play(state);
+
+                if (mode == FadeMode.FromStart || mode == FadeMode.NormalizedFromStart)
+                    state.TimeD = 0;
+
+                return state;
             }
 
             EvaluateFadeMode(mode, ref state, ref fadeDuration, out var layerFadeDuration);
@@ -504,7 +755,7 @@ namespace Animancer
             if (Weight == 0)
                 return Play(state);
 
-            AddChild(state);
+            state = GetOrCreateState(state);
 
             CurrentState = state;
 
@@ -556,7 +807,7 @@ namespace Animancer
         /// </remarks>
         public AnimancerState Play(ITransition transition, float fadeDuration, FadeMode mode = default)
         {
-            var state = Root.States.GetOrCreate(transition);
+            var state = GetOrCreateState(transition);
             state = Play(state, fadeDuration, mode);
             transition.Apply(state);
             return state;
@@ -620,13 +871,6 @@ namespace Animancer
                     break;
 
                 case FadeMode.FromStart:
-#if UNITY_ASSERTIONS
-                    if (!(state is ClipState))
-                        throw new ArgumentException(
-                            $"{nameof(FadeMode)}.{nameof(FadeMode.FromStart)} can only be used on {nameof(ClipState)}s." +
-                            $" State = {state}");
-#endif
-
                     state = GetOrCreateWeightlessState(state);
                     break;
 
@@ -648,13 +892,6 @@ namespace Animancer
 
                 case FadeMode.NormalizedFromStart:
                     {
-#if UNITY_ASSERTIONS
-                        if (!(state is ClipState))
-                            throw new ArgumentException(
-                                $"{nameof(FadeMode)}.{nameof(FadeMode.NormalizedFromStart)} can only be used on {nameof(ClipState)}s." +
-                                $" State = {state}");
-#endif
-
                         state = GetOrCreateWeightlessState(state);
 
                         var length = state.Length;
@@ -666,112 +903,6 @@ namespace Animancer
                 default:
                     throw AnimancerUtilities.CreateUnsupportedArgumentException(mode);
             }
-        }
-
-        /************************************************************************************************************************/
-
-#if UNITY_ASSERTIONS
-        /// <summary>[Assert-Only]
-        /// The maximum number of duplicate states that can be created by <see cref="GetOrCreateWeightlessState"/> for
-        /// a single clip before it will start giving usage warnings. Default = 5.
-        /// </summary>
-        /// <remarks>This value can be set by <see cref="SetMaxStateDepth"/>.</remarks>
-        public static int MaxStateDepth { get; private set; } = 5;
-#endif
-
-        /// <summary>[Assert-Conditional] Sets the <see cref="MaxStateDepth"/>.</summary>
-        /// <remarks>This would not need to be a separate method if C# supported conditional property setters.</remarks>
-        [System.Diagnostics.Conditional(Strings.Assertions)]
-        public static void SetMaxStateDepth(int depth)
-        {
-#if UNITY_ASSERTIONS
-            MaxStateDepth = depth;
-#endif
-        }
-
-        /************************************************************************************************************************/
-
-        /// <summary>
-        /// The maximum <see cref="AnimancerNode.Weight"/> that <see cref="GetOrCreateWeightlessState"/> will treat as
-        /// being weightless. Default = 0.01.
-        /// </summary>
-        /// <remarks>This allows states with very small weights to be reused instead of needing to create new ones.</remarks>
-        public static float WeightlessThreshold { get; set; } = 0.01f;
-
-        /************************************************************************************************************************/
-
-        /// <summary>
-        /// If the `state` is not currently at low <see cref="AnimancerNode.Weight"/>, this method finds a copy of it
-        /// which is at low or creates a new one.
-        /// </summary>
-        /// <remarks>"Low" weight is defined as less than or equal to the <see cref="WeightlessThreshold"/>.</remarks>
-        /// <exception cref="InvalidOperationException">The <see cref="AnimancerState.Clip"/> is null.</exception>
-        public AnimancerState GetOrCreateWeightlessState(AnimancerState state)
-        {
-            if (state.Weight > WeightlessThreshold)
-            {
-                var clip = state.Clip;
-                if (clip == null)
-                {
-                    // We could probably support any state type by giving them a Clone method, but cloning mixers and
-                    // other state types would be expensive and you'd need to control the parameters of all clones.
-                    throw new InvalidOperationException(
-                        $"{nameof(GetOrCreateWeightlessState)} can only be used on {nameof(ClipState)}s. State = " + state);
-                }
-
-                // Use any earlier state that is weightless.
-                var keyState = state;
-                while (true)
-                {
-                    keyState = keyState.Key as AnimancerState;
-                    if (keyState == null)
-                    {
-                        break;
-                    }
-                    else if (keyState.Weight <= WeightlessThreshold)
-                    {
-                        state = keyState;
-                        goto GotWeightlessState;
-                    }
-                }
-
-#if UNITY_ASSERTIONS
-                int depth = 0;
-#endif
-
-                // If that state is not at low weight, get or create another state registered using the previous state as a key.
-                // Keep going through states in this manner until you find one at low weight.
-                do
-                {
-                    // Explicitly cast the state to an object to avoid the overload that warns about using a state as a key.
-                    state = Root.States.GetOrCreate((object)state, clip);
-
-#if UNITY_ASSERTIONS
-                    if (++depth == MaxStateDepth)
-                    {
-                        OptionalWarning.MaxStateDepth.Log(
-                            $"{nameof(AnimancerLayer)}.{nameof(GetOrCreateWeightlessState)}" +
-                            $" has created {MaxStateDepth} states for a single clip." +
-                            $" This is most likely a result of repeated calls on consecutive frames." +
-                            $" This can be avoided by using a different {nameof(FadeMode)}," +
-                            $" having the Start Time toggle disabled on a Transition," +
-                            $" or by calling {nameof(AnimancerLayer)}.{nameof(SetMaxStateDepth)}" +
-                            $" to increase the threshold for this warning.",
-                            Root?.Component);
-                    }
-#endif
-                }
-                while (state.Weight > WeightlessThreshold);
-            }
-
-            GotWeightlessState:
-
-            // Make sure it's on this layer and at time 0.
-            AddChild(state);
-            state.Time = 0;
-            state.Weight = 0;
-
-            return state;
         }
 
         /************************************************************************************************************************/
@@ -817,10 +948,8 @@ namespace Animancer
         public bool IsAnyStatePlaying()
         {
             for (int i = States.Count - 1; i >= 0; i--)
-            {
                 if (States[i].IsPlaying)
                     return true;
-            }
 
             return false;
         }
@@ -831,7 +960,8 @@ namespace Animancer
         /// This method is called by <see cref="IEnumerator.MoveNext"/> so this object can be used as a custom yield
         /// instruction to wait until it finishes.
         /// </summary>
-        protected internal override bool IsPlayingAndNotEnding() => _CurrentState != null && _CurrentState.IsPlayingAndNotEnding();
+        public override bool IsPlayingAndNotEnding()
+            => _CurrentState != null && _CurrentState.IsPlayingAndNotEnding();
 
         /************************************************************************************************************************/
 

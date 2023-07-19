@@ -1,4 +1,4 @@
-// Serialization // Copyright 2022 Kybernetik //
+// Serialization // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -11,7 +11,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-// Shared File Last Modified: 2021-11-23
+// Shared File Last Modified: 2023-02-24
 namespace Animancer.Editor
 // namespace InspectorGadgets.Editor
 // namespace UltEvents.Editor
@@ -776,6 +776,9 @@ namespace Animancer.Editor
         public static void RemoveArrayElement(SerializedProperty property, int index)
         {
             var count = property.arraySize;
+            if ((uint)index >= count)
+                return;
+
             property.DeleteArrayElementAtIndex(index);
             if (property.arraySize == count)
                 property.DeleteArrayElementAtIndex(index);

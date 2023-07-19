@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -8,6 +8,8 @@ using System;
 
 #if UNITY_2D_SPRITE
 using UnityEditor.U2D.Sprites;
+#else
+#pragma warning disable CS0618 // Type or member is obsolete.
 #endif
 
 namespace Animancer.Editor.Tools
@@ -15,35 +17,6 @@ namespace Animancer.Editor.Tools
     /// <summary>A wrapper around the '2D Sprite' package features for editing Sprite data.</summary>
     public class SpriteDataEditor
     {
-        /************************************************************************************************************************/
-
-        /// <summary>Is the '2D Sprite' package currently in the project?</summary>
-        public static bool Is2dPackagePresent;
-
-        static SpriteDataEditor()
-        {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (assembly.GetName().Name == "Unity.2D.Sprite.Editor")
-                {
-                    Is2dPackagePresent = true;
-                    break;
-                }
-            }
-        }
-
-        /************************************************************************************************************************/
-
-        /// <summary>The scripting define symbol used to enable the features from the '2D Sprite' package.</summary>
-        public const string SpritePackageDefineSymbol = "UNITY_2D_SPRITE";
-
-        /// <summary>Is the <see cref="SpritePackageDefineSymbol"/> defined in the current platform?</summary>
-        public static bool IsSpritePackageSymbolDefined
-        {
-            get => ScriptingDefineSymbols.IsSymbolDefined(SpritePackageDefineSymbol);
-            set => ScriptingDefineSymbols.SetSymbolDefined(SpritePackageDefineSymbol, value);
-        }
-
         /************************************************************************************************************************/
 #if UNITY_2D_SPRITE
         /************************************************************************************************************************/
@@ -67,83 +40,91 @@ namespace Animancer.Editor.Tools
         /************************************************************************************************************************/
 
         private readonly ISpriteEditorDataProvider Provider;
-        private readonly SpriteRect[] SpriteRects;
+        private SpriteRect[] _SpriteRects;
 
         /************************************************************************************************************************/
 
         /// <summary>The number of sprites in the target data.</summary>
-        public int SpriteCount => SpriteRects.Length;
+        public int SpriteCount
+        {
+            get => _SpriteRects.Length;
+            set => Array.Resize(ref _SpriteRects, value);
+        }
 
         /// <summary>Returns the name of the sprite at the specified `index`.</summary>
-        public string GetName(int index) => SpriteRects[index].name;
+        public string GetName(int index) => _SpriteRects[index].name;
 
         /// <summary>Sets the name of the sprite at the specified `index`.</summary>
-        public void SetName(int index, string name) => SpriteRects[index].name = name;
+        public void SetName(int index, string name) => _SpriteRects[index].name = name;
 
         /// <summary>Returns the rect of the sprite at the specified `index`.</summary>
-        public Rect GetRect(int index) => SpriteRects[index].rect;
+        public Rect GetRect(int index) => _SpriteRects[index].rect;
 
         /// <summary>Sets the rect of the sprite at the specified `index`.</summary>
-        public void SetRect(int index, Rect rect) => SpriteRects[index].rect = rect;
+        public void SetRect(int index, Rect rect) => _SpriteRects[index].rect = rect;
 
         /// <summary>Returns the pivot of the sprite at the specified `index`.</summary>
-        public Vector2 GetPivot(int index) => SpriteRects[index].pivot;
+        public Vector2 GetPivot(int index) => _SpriteRects[index].pivot;
 
         /// <summary>Sets the pivot of the sprite at the specified `index`.</summary>
-        public void SetPivot(int index, Vector2 pivot) => SpriteRects[index].pivot = pivot;
+        public void SetPivot(int index, Vector2 pivot) => _SpriteRects[index].pivot = pivot;
 
         /// <summary>Returns the alignment of the sprite at the specified `index`.</summary>
-        public SpriteAlignment GetAlignment(int index) => SpriteRects[index].alignment;
+        public SpriteAlignment GetAlignment(int index) => _SpriteRects[index].alignment;
 
         /// <summary>Sets the alignment of the sprite at the specified `index`.</summary>
-        public void SetAlignment(int index, SpriteAlignment alignment) => SpriteRects[index].alignment = alignment;
+        public void SetAlignment(int index, SpriteAlignment alignment) => _SpriteRects[index].alignment = alignment;
 
         /// <summary>Returns the border of the sprite at the specified `index`.</summary>
-        public Vector4 GetBorder(int index) => SpriteRects[index].border;
+        public Vector4 GetBorder(int index) => _SpriteRects[index].border;
 
         /// <summary>Sets the border of the sprite at the specified `index`.</summary>
-        public void SetBorder(int index, Vector4 border) => SpriteRects[index].border = border;
+        public void SetBorder(int index, Vector4 border) => _SpriteRects[index].border = border;
 
         /************************************************************************************************************************/
 #else
         /************************************************************************************************************************/
 
-        private readonly SpriteMetaData[] SpriteSheet;
+        private SpriteMetaData[] _SpriteSheet;
 
         /************************************************************************************************************************/
 
         /// <summary>The number of sprites in the target data.</summary>
-        public int SpriteCount => SpriteSheet.Length;
+        public int SpriteCount
+        {
+            get => _SpriteSheet.Length;
+            set => Array.Resize(ref _SpriteSheet, value);
+        }
 
         /// <summary>Returns the name of the sprite at the specified `index`.</summary>
-        public string GetName(int index) => SpriteSheet[index].name;
+        public string GetName(int index) => _SpriteSheet[index].name;
 
         /// <summary>Sets the name of the sprite at the specified `index`.</summary>
-        public void SetName(int index, string name) => SpriteSheet[index].name = name;
+        public void SetName(int index, string name) => _SpriteSheet[index].name = name;
 
         /// <summary>Returns the rect of the sprite at the specified `index`.</summary>
-        public Rect GetRect(int index) => SpriteSheet[index].rect;
+        public Rect GetRect(int index) => _SpriteSheet[index].rect;
 
         /// <summary>Sets the rect of the sprite at the specified `index`.</summary>
-        public void SetRect(int index, Rect rect) => SpriteSheet[index].rect = rect;
+        public void SetRect(int index, Rect rect) => _SpriteSheet[index].rect = rect;
 
         /// <summary>Returns the pivot of the sprite at the specified `index`.</summary>
-        public Vector2 GetPivot(int index) => SpriteSheet[index].pivot;
+        public Vector2 GetPivot(int index) => _SpriteSheet[index].pivot;
 
         /// <summary>Sets the pivot of the sprite at the specified `index`.</summary>
-        public void SetPivot(int index, Vector2 pivot) => SpriteSheet[index].pivot = pivot;
+        public void SetPivot(int index, Vector2 pivot) => _SpriteSheet[index].pivot = pivot;
 
         /// <summary>Returns the alignment of the sprite at the specified `index`.</summary>
-        public SpriteAlignment GetAlignment(int index) => (SpriteAlignment)SpriteSheet[index].alignment;
+        public SpriteAlignment GetAlignment(int index) => (SpriteAlignment)_SpriteSheet[index].alignment;
 
         /// <summary>Sets the alignment of the sprite at the specified `index`.</summary>
-        public void SetAlignment(int index, SpriteAlignment alignment) => SpriteSheet[index].alignment = (int)alignment;
+        public void SetAlignment(int index, SpriteAlignment alignment) => _SpriteSheet[index].alignment = (int)alignment;
 
         /// <summary>Returns the border of the sprite at the specified `index`.</summary>
-        public Vector4 GetBorder(int index) => SpriteSheet[index].border;
+        public Vector4 GetBorder(int index) => _SpriteSheet[index].border;
 
         /// <summary>Sets the border of the sprite at the specified `index`.</summary>
-        public void SetBorder(int index, Vector4 border) => SpriteSheet[index].border = border;
+        public void SetBorder(int index, Vector4 border) => _SpriteSheet[index].border = border;
 
         /************************************************************************************************************************/
 #endif
@@ -162,9 +143,9 @@ namespace Animancer.Editor.Tools
             Provider = Factories.GetSpriteEditorDataProviderFromObject(importer);
             Provider.InitSpriteEditorDataProvider();
 
-            SpriteRects = Provider.GetSpriteRects();
+            _SpriteRects = Provider.GetSpriteRects();
 #else
-            SpriteSheet = importer.spritesheet;
+            _SpriteSheet = importer.spritesheet;
 #endif
         }
 
@@ -240,10 +221,10 @@ namespace Animancer.Editor.Tools
         public void Apply()
         {
 #if UNITY_2D_SPRITE
-            Provider.SetSpriteRects(SpriteRects);
+            Provider.SetSpriteRects(_SpriteRects);
             Provider.Apply();
 #else
-            Importer.spritesheet = SpriteSheet;
+            Importer.spritesheet = _SpriteSheet;
             EditorUtility.SetDirty(Importer);
 #endif
 

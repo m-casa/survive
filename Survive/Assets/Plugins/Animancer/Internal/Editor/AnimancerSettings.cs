@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -169,11 +169,31 @@ namespace Animancer.Editor
         /************************************************************************************************************************/
 
         [SerializeField]
+        [Seconds(Rule = Validate.Value.IsNotNegative)]
+        [DefaultValue(0.02f)]
+        [Tooltip("The amount of time that will be added by a single frame step")]
+        private float _FrameStep = 0.02f;
+
+        /// <summary>The amount of time that will be added by a single frame step (in seconds).</summary>
+        public static float FrameStep => Instance._FrameStep;
+
+        /************************************************************************************************************************/
+
+        [SerializeField]
         [Tooltip("The frame rate to use for new animations")]
         private float _NewAnimationFrameRate = 12;
 
         /// <summary>The frame rate to use for new animations.</summary>
         public static SerializedProperty NewAnimationFrameRate => GetSerializedProperty(nameof(_NewAnimationFrameRate));
+
+        /************************************************************************************************************************/
+
+        [SerializeField]
+        [Tooltip("Should Animancer Event Callbacks be hidden in the Inspector?")]
+        private bool _HideEventCallbacks;
+
+        /// <summary>Should Animancer Event Callbacks be hidden in the Inspector?</summary>
+        public static bool HideEventCallbacks => Instance._HideEventCallbacks;
 
         /************************************************************************************************************************/
 
@@ -209,6 +229,6 @@ namespace Animancer.Editor
 
         /************************************************************************************************************************/
     }
-}
+    }
 
 #endif

@@ -7,9 +7,9 @@ namespace Febucci.UI
     /// Default TextAnimatorPlayer, which can show letters dynamically (like a typewriter).<br/>
     /// To enable it, add this component near a <see cref="TextAnimator"/> one<br/>
     /// - Base class: <see cref="Core.TAnimPlayerBase"/><br/>
-    /// - Manual: <see href="https://www.febucci.com/text-animator-unity/docs/text-animator-players/">TextAnimatorPlayers</see>
+    /// - Manual: <see href="https://www.febucci.com/text-animator-unity/docs/1.X/text-animator-players/">TextAnimatorPlayers</see>
     /// </summary>
-    [HelpURL("https://www.febucci.com/text-animator-unity/docs/text-animator-players/")]
+    [HelpURL("https://www.febucci.com/text-animator-unity/docs/1.X/text-animator-players/")]
     [AddComponentMenu("Febucci/TextAnimator/TextAnimatorPlayer")]
     public class TextAnimatorPlayer : Core.TAnimPlayerBase
     {
@@ -53,7 +53,7 @@ namespace Febucci.UI
                 }
 
                 //skips waiting for a new line
-                if (IsUnicodeNewLine(textAnimator.latestCharacterShown.textElement.unicode))
+                if (textAnimator.latestCharacterShown.textElement != null && IsUnicodeNewLine(textAnimator.latestCharacterShown.textElement.unicode))
                     return 0;
             }
 

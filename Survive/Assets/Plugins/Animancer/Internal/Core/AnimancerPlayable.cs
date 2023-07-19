@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections;
@@ -26,7 +26,7 @@ namespace Animancer
     /// 
     /// https://kybernetik.com.au/animancer/api/Animancer/AnimancerPlayable
     /// 
-    public sealed partial class AnimancerPlayable : PlayableBehaviour,
+    public partial class AnimancerPlayable : PlayableBehaviour,
         IEnumerator, IPlayableWrapper, IAnimationClipCollection
     {
         /************************************************************************************************************************/
@@ -322,15 +322,6 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>
-        /// Since <see cref="ScriptPlayable{T}.Create(PlayableGraph, int)"/> needs to clone an existing instance, we
-        /// keep a static template to avoid allocating an extra garbage one every time. This is why the fields are
-        /// assigned in <see cref="OnPlayableCreate"/> rather than being readonly with field initializers.
-        /// </summary>
-        private static readonly AnimancerPlayable Template = new AnimancerPlayable();
-
-        /************************************************************************************************************************/
-
-        /// <summary>
         /// Creates a new <see cref="PlayableGraph"/> containing an <see cref="AnimancerPlayable"/>.
         /// <para></para>
         /// The caller is responsible for calling <see cref="DestroyGraph()"/> on the returned object, except in Edit Mode
@@ -351,18 +342,35 @@ namespace Animancer
             var graph = PlayableGraph.Create();
 #endif
 
-            return ScriptPlayable<AnimancerPlayable>.Create(graph, Template, 2)
-                .GetBehaviour();
+            return Create(graph);
         }
 
         /************************************************************************************************************************/
 
+        /// <summary>
+        /// Since <see cref="ScriptPlayable{T}.Create(PlayableGraph, int)"/> needs to clone an existing instance, we
+        /// keep a static template to avoid allocating an extra garbage one every time. This is why the fields are
+        /// assigned in <see cref="OnPlayableCreate"/> rather than being readonly with field initializers.
+        /// </summary>
+        private static readonly AnimancerPlayable Template = new AnimancerPlayable();
+
         /// <summary>Creates an <see cref="AnimancerPlayable"/> in an existing <see cref="PlayableGraph"/>.</summary>
         public static AnimancerPlayable Create(PlayableGraph graph)
-        {
-            return ScriptPlayable<AnimancerPlayable>.Create(graph, Template, 2)
+            => Create(graph, Template);
+
+        /************************************************************************************************************************/
+
+        /// <summary>Creates an <see cref="AnimancerPlayable"/> in an existing <see cref="PlayableGraph"/>.</summary>
+        /// <example>
+        /// When inheriting from <see cref="AnimancerPlayable"/>, it is recommended to give your class a field like the
+        /// following to use as the `template` for this method:
+        /// <code>
+        /// private static readonly MyAnimancerPlayable Template = new MyAnimancerPlayable();
+        /// </code></example>
+        protected static T Create<T>(PlayableGraph graph, T template)
+            where T : AnimancerPlayable, new()
+            => ScriptPlayable<T>.Create(graph, template, 2)
                 .GetBehaviour();
-        }
 
         /************************************************************************************************************************/
 
@@ -489,6 +497,7 @@ namespace Animancer
             SkipFirstFade = isHumanoid || animator.runtimeAnimatorController == null;
 
 #pragma warning disable CS0618 // Type or member is obsolete.
+            // Unity 2022 marked this method as [Obsolete] even though it's the only way to use Animate Physics mode.
             AnimationPlayableUtilities.Play(animator, _RootPlayable, _Graph);
 #pragma warning restore CS0618 // Type or member is obsolete.
 
@@ -688,9 +697,7 @@ namespace Animancer
         /// This method is safe to call repeatedly without checking whether the `state` was already playing.
         /// </remarks>
         public AnimancerState Play(AnimancerState state)
-        {
-            return GetLocalLayer(state).Play(state);
-        }
+            => GetLocalLayer(state).Play(state);
 
         /************************************************************************************************************************/
         // Cross Fade.
@@ -1470,8 +1477,14 @@ namespace Animancer
             if (initial == null)
                 return false;
 
+#if UNITY_2023_1_OR_NEWER
+            var wasAnimatePhysics = initial.Value == AnimatorUpdateMode.Fixed;
+            var isAnimatePhysics = current == AnimatorUpdateMode.Fixed;
+#else
             var wasAnimatePhysics = initial.Value == AnimatorUpdateMode.AnimatePhysics;
             var isAnimatePhysics = current == AnimatorUpdateMode.AnimatePhysics;
+#endif
+
             return wasAnimatePhysics != isAnimatePhysics;
         }
 

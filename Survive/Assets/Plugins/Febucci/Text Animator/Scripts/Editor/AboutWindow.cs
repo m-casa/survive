@@ -7,7 +7,7 @@ namespace Febucci.UI
 {
     public class AboutWindow : EditorWindow
     {
-        const string currentVersion = "1.3.2";
+        const string currentVersion = "1.3.4";
 
 
         #region Utilties
@@ -17,9 +17,7 @@ namespace Febucci.UI
         const string utilsCategory = "Utils/";
 
         const string page_docs_name = "📄 Documentation";
-        const string page_docs_url = "https://www.febucci.com/text-animator-unity/docs/";
-        const string page_roadmap_name = "📅 Roadmap";
-        const string page_roadmap_url = "https://www.febucci.com/text-animator-unity/roadmap/";
+        const string page_docs_url = "https://www.febucci.com/text-animator-unity/docs/1.X/";
         const string page_changelog_name = "📝 Patch Notes";
         const string page_changelog_url = "https://www.febucci.com/text-animator-unity/changelog/";
         const string page_support_name = "🆘 Support";
@@ -113,28 +111,22 @@ namespace Febucci.UI
             if (GUILayout.Button(page_support_name)) Application.OpenURL(page_support_url);
             //Patch notes
             if (GUILayout.Button(page_changelog_name)) Application.OpenURL(page_changelog_url);
-            //Roadmap
-            if (GUILayout.Button(page_roadmap_name)) Application.OpenURL(page_roadmap_url);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(5);
 
             //--Extras--
             GUILayout.Label("Extras", EditorStyles.boldLabel);
-            
-            
-            GUILayout.Label("Would you like to be included in a future Text Animator showcase?",
-                EditorStyles.wordWrappedMiniLabel);
-            if (GUILayout.Button("-> Submit your game/project"))
-                Application.OpenURL("https://www.febucci.com/text-animator-unity/showcase/");
-            
-            GUILayout.Space(1);
-            GUILayout.Label("Please consider writing a review for the asset. It takes one minute but it really helps. Thanks!",
-                EditorStyles.wordWrappedMiniLabel);
-            if (GUILayout.Button("♥ Review on the Asset Store"))
-                Application.OpenURL("https://assetstore.unity.com/packages/slug/158707");
-            
 
+
+            GUILayout.Label("[!!!] IMPORTANT", EditorStyles.largeLabel);
+            GUILayout.Label("Text Animator 2.X is OUT!! It's a huge update with many improvements and new features." +
+                            "To upgrade please visit the Asset Store, thanks!", EditorStyles.wordWrappedLabel);
+            if (GUILayout.Button("-> Get 2.X"))
+                Application.OpenURL("https://www.febucci.com/text-animator-unity/");
+            
+            GUILayout.Label("For any help with the update, don't hesitate to ask for support! We'll be happy to help, thanks!", EditorStyles.wordWrappedLabel);
+            
             GUILayout.Space(5);
             GUILayout.Label("Cheers! @febucci", EditorStyles.centeredGreyMiniLabel);
             GUILayout.EndArea();

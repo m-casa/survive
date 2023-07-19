@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/ControllerState
     /// 
-    public partial class ControllerState : AnimancerState
+    public partial class ControllerState : AnimancerState, ICopyable<ControllerState>
     {
         /************************************************************************************************************************/
 
@@ -46,7 +46,7 @@ namespace Animancer
         }
 
         /// <summary>The internal system which plays the <see cref="RuntimeAnimatorController"/>.</summary>
-        public AnimatorControllerPlayable Playable
+        public new AnimatorControllerPlayable Playable
         {
             get
             {
@@ -101,8 +101,9 @@ namespace Animancer
         public int[] DefaultStateHashes { get; set; }
 
         /************************************************************************************************************************/
-
 #if UNITY_ASSERTIONS
+        /************************************************************************************************************************/
+
         /// <summary>[Assert-Only] Animancer Events doesn't work properly on <see cref="ControllerState"/>s.</summary>
         protected override string UnsupportedEventsMessage =>
             "Animancer Events on " + nameof(ControllerState) + "s will probably not work as expected." +
@@ -118,8 +119,9 @@ namespace Animancer
             "s so there is no way to directly control their speed." +
             " The Animator Controller Speed page explains a possible workaround for this issue:" +
             " https://kybernetik.com.au/animancer/docs/bugs/animator-controller-speed";
-#endif
 
+        /************************************************************************************************************************/
+#endif
         /************************************************************************************************************************/
 
         /// <summary>[Assert-Conditional] Asserts that the `value` is valid.</summary>
@@ -134,7 +136,7 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>IK cannot be dynamically enabled on a <see cref="ControllerState"/>.</summary>
-        public override void CopyIKFlags(AnimancerNode node) { }
+        public override void CopyIKFlags(AnimancerNode copyFrom) { }
 
         /************************************************************************************************************************/
 
@@ -255,7 +257,7 @@ namespace Animancer
         /// <summary>
         /// The <see cref="AnimatorStateInfo.normalizedTime"/> * <see cref="AnimatorStateInfo.length"/> of layer 0.
         /// </summary>
-        protected override float RawTime
+        public override double RawTime
         {
             get
             {
@@ -265,7 +267,7 @@ namespace Animancer
             set
             {
                 Validate.AssertPlayable(this);
-                _Playable.PlayInFixedTime(0, 0, value);
+                _Playable.PlayInFixedTime(0, 0, (float)value);
 
                 if (!IsPlaying)
                 {
@@ -318,6 +320,9 @@ namespace Animancer
                 Events = null;
 
             ApplyActionsOnStop();
+
+            if (_SmoothingVelocities != null)
+                _SmoothingVelocities.Clear();
         }
 
         /// <summary>Applies the <see cref="ActionsOnStop"/> to their corresponding layers.</summary>
@@ -375,6 +380,45 @@ namespace Animancer
         {
             _Controller = null;
             base.Destroy();
+        }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override AnimancerState Clone(AnimancerPlayable root)
+        {
+            var clone = new ControllerState(_Controller);
+            clone.SetNewCloneRoot(root);
+            ((ICopyable<ControllerState>)clone).CopyFrom(this);
+            return clone;
+        }
+
+        /// <inheritdoc/>
+        void ICopyable<ControllerState>.CopyFrom(ControllerState copyFrom)
+        {
+            _ActionsOnStop = copyFrom._ActionsOnStop;
+
+            if (copyFrom.Root != null &&
+                Root != null)
+            {
+                var layerCount = copyFrom._Playable.GetLayerCount();
+                for (int i = 0; i < layerCount; i++)
+                {
+                    var info = copyFrom._Playable.GetCurrentAnimatorStateInfo(i);
+                    _Playable.Play(info.shortNameHash, i, info.normalizedTime);
+                }
+
+                var parameterCount = copyFrom._Playable.GetParameterCount();
+                for (int i = 0; i < parameterCount; i++)
+                {
+                    AnimancerUtilities.CopyParameterValue(
+                        copyFrom._Playable,
+                        _Playable,
+                        copyFrom._Playable.GetParameter(i));
+                }
+            }
+
+            ((ICopyable<AnimancerState>)this).CopyFrom(copyFrom);
         }
 
         /************************************************************************************************************************/
@@ -518,15 +562,73 @@ namespace Animancer
         /// <summary>Resets the specified trigger parameter to false.</summary>
         public void ResetTrigger(string name) => Playable.ResetTrigger(name);
 
+        /// <summary>Indicates whether the specified parameter is controlled by an <see cref="AnimationClip"/>.</summary>
+        public bool IsParameterControlledByCurve(int id) => Playable.IsParameterControlledByCurve(id);
+        /// <summary>Indicates whether the specified parameter is controlled by an <see cref="AnimationClip"/>.</summary>
+        public bool IsParameterControlledByCurve(string name) => Playable.IsParameterControlledByCurve(name);
+
         /// <summary>Gets the details of one of the <see cref="Controller"/>'s parameters.</summary>
         public AnimatorControllerParameter GetParameter(int index) => Playable.GetParameter(index);
         /// <summary>Gets the number of parameters in the <see cref="Controller"/>.</summary>
         public int GetParameterCount() => Playable.GetParameterCount();
 
-        /// <summary>Indicates whether the specified parameter is controlled by an <see cref="AnimationClip"/>.</summary>
-        public bool IsParameterControlledByCurve(int id) => Playable.IsParameterControlledByCurve(id);
-        /// <summary>Indicates whether the specified parameter is controlled by an <see cref="AnimationClip"/>.</summary>
-        public bool IsParameterControlledByCurve(string name) => Playable.IsParameterControlledByCurve(name);
+        /************************************************************************************************************************/
+
+        /// <summary>The number of parameters in the <see cref="Controller"/>.</summary>
+        public int parameterCount => Playable.GetParameterCount();
+
+        /************************************************************************************************************************/
+
+        private AnimatorControllerParameter[] _Parameters;
+
+        /// <summary>The parameters in the <see cref="Controller"/>.</summary>
+        /// <remarks>
+        /// This property allocates a new array when first accessed. To avoid that, you can use
+        /// <see cref="GetParameterCount"/> and <see cref="GetParameter"/> instead.
+        /// </remarks>
+        public AnimatorControllerParameter[] parameters
+        {
+            get
+            {
+                if (_Parameters == null)
+                {
+                    var count = GetParameterCount();
+                    _Parameters = new AnimatorControllerParameter[count];
+                    for (int i = 0; i < count; i++)
+                        _Parameters[i] = GetParameter(i);
+                }
+
+                return _Parameters;
+            }
+        }
+
+        /************************************************************************************************************************/
+        #endregion
+        /************************************************************************************************************************/
+        #region Smoothed Set Float
+        /************************************************************************************************************************/
+
+        private Dictionary<int, float> _SmoothingVelocities;
+
+        /// <summary>Sets the value of the specified float parameter with smoothing.</summary>
+        public float SetFloat(string name, float value, float dampTime, float deltaTime, float maxSpeed = float.PositiveInfinity)
+            => SetFloat(Animator.StringToHash(name), value, dampTime, deltaTime, maxSpeed);
+
+        /// <summary>Sets the value of the specified float parameter with smoothing.</summary>
+        public float SetFloat(int id, float value, float dampTime, float deltaTime, float maxSpeed = float.PositiveInfinity)
+        {
+            if (_SmoothingVelocities == null)
+                _SmoothingVelocities = new Dictionary<int, float>();
+
+            _SmoothingVelocities.TryGetValue(id, out var velocity);
+
+            value = Mathf.SmoothDamp(GetFloat(id), value, ref velocity, dampTime, maxSpeed, deltaTime);
+            SetFloat(id, value);
+
+            _SmoothingVelocities[id] = velocity;
+
+            return value;
+        }
 
         /************************************************************************************************************************/
         #endregion
@@ -543,6 +645,8 @@ namespace Animancer
 
         /// <summary>Gets the number of layers in the <see cref="Controller"/>.</summary>
         public int GetLayerCount() => Playable.GetLayerCount();
+        /// <summary>The number of layers in the <see cref="Controller"/>.</summary>
+        public int layerCount => Playable.GetLayerCount();
 
         /// <summary>Gets the index of the layer with the specified name.</summary>
         public int GetLayerIndex(string layerName) => Playable.GetLayerIndex(layerName);

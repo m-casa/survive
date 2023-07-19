@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -17,7 +17,7 @@ namespace Animancer
     /// </remarks>
     /// https://kybernetik.com.au/animancer/api/Animancer/PlayableAssetState
     /// 
-    public class PlayableAssetState : AnimancerState
+    public class PlayableAssetState : AnimancerState, ICopyable<PlayableAssetState>
     {
         /************************************************************************************************************************/
 
@@ -74,7 +74,7 @@ namespace Animancer
         /************************************************************************************************************************/
 
         /// <summary>IK cannot be dynamically enabled on a <see cref="PlayableAssetState"/>.</summary>
-        public override void CopyIKFlags(AnimancerNode node) { }
+        public override void CopyIKFlags(AnimancerNode copyFrom) { }
 
         /************************************************************************************************************************/
 
@@ -281,6 +281,25 @@ namespace Animancer
         {
             _Asset = null;
             base.Destroy();
+        }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override AnimancerState Clone(AnimancerPlayable root)
+        {
+            var clone = new PlayableAssetState(_Asset);
+            clone.SetNewCloneRoot(root);
+            ((ICopyable<PlayableAssetState>)clone).CopyFrom(this);
+            return clone;
+        }
+
+        /// <inheritdoc/>
+        void ICopyable<PlayableAssetState>.CopyFrom(PlayableAssetState copyFrom)
+        {
+            _Length = copyFrom._Length;
+
+            ((ICopyable<AnimancerState>)this).CopyFrom(copyFrom);
         }
 
         /************************************************************************************************************************/

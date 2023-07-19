@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -88,10 +88,13 @@ namespace Animancer.Editor
             height += EventTimeAttribute.GetPropertyHeight(null, null) + AnimancerGUI.StandardSpacing;
 
             // Callback.
-            height += index < context.Callbacks.Count ?
-                EditorGUI.GetPropertyHeight(context.Callbacks.GetElement(index), null, false) :
-                DummySerializableCallback.Height;
-            height += AnimancerGUI.StandardSpacing;
+            if (!AnimancerSettings.HideEventCallbacks || context.Callbacks.Count > 0)
+            {
+                height += index < context.Callbacks.Count ?
+                    EditorGUI.GetPropertyHeight(context.Callbacks.GetElement(index), null, false) :
+                    DummySerializableCallback.Height;
+                height += AnimancerGUI.StandardSpacing;
+            }
 
             return height;
         }
@@ -105,12 +108,12 @@ namespace Animancer.Editor
             {
                 DoHeaderGUI(ref area, label, context);
 
-                if (!property.hasMultipleDifferentValues)
-                {
-                    EditorGUI.indentLevel++;
-                    DoAllEventsGUI(ref area, context);
-                    EditorGUI.indentLevel--;
-                }
+                if (property.hasMultipleDifferentValues)
+                    return;
+
+                EditorGUI.indentLevel++;
+                DoAllEventsGUI(ref area, context);
+                EditorGUI.indentLevel--;
 
                 var sequence = context.Sequence?.InitializedEvents;
                 if (sequence != null)
@@ -128,6 +131,11 @@ namespace Animancer.Editor
 
         private void DoHeaderGUI(ref Rect area, GUIContent label, Context context)
         {
+#if UNITY_2022_2_OR_NEWER
+            if (!EditorGUIUtility.hierarchyMode)
+                EditorGUI.indentLevel--;
+#endif
+
             area.height = AnimancerGUI.LineHeight;
             var headerArea = area;
             AnimancerGUI.NextVerticalArea(ref area);
@@ -178,6 +186,11 @@ namespace Animancer.Editor
                 EditorGUI.Foldout(headerArea, context.Property.isExpanded, GUIContent.none, true);
             if (EditorGUI.EndChangeCheck())
                 context.SelectedEvent = -1;
+
+#if UNITY_2022_2_OR_NEWER
+            if (!EditorGUIUtility.hierarchyMode)
+                EditorGUI.indentLevel++;
+#endif
         }
 
         /************************************************************************************************************************/
@@ -299,7 +312,12 @@ namespace Animancer.Editor
                 var nameProperty = context.Names.GetElement(index);
 
                 EditorGUI.BeginProperty(fieldArea, GUIContent.none, nameProperty);
-                name = nameProperty.stringValue = DoEventNameTextField(fieldArea, context, nameProperty.stringValue);
+
+                EditorGUI.BeginChangeCheck();
+                name = DoEventNameTextField(fieldArea, context, nameProperty.stringValue);
+                if (EditorGUI.EndChangeCheck())
+                    nameProperty.stringValue = name;
+
                 EditorGUI.EndProperty();
             }
             else
@@ -531,6 +549,9 @@ namespace Animancer.Editor
         /// <summary>Draws the GUI fields for the event at the specified `index`.</summary>
         public static void DoCallbackGUI(ref Rect area, Context context, int index, bool autoSort, string callbackLabel)
         {
+            if (AnimancerSettings.HideEventCallbacks && context.Callbacks.Count == 0)
+                return;
+
             EditorGUI.BeginChangeCheck();
 
             using (ObjectPool.Disposable.AcquireContent(out var label, callbackLabel))
@@ -1000,7 +1021,7 @@ namespace Animancer.Editor
                 Names.Property = property.FindPropertyRelative(Sequence.NamesField);
                 Callbacks.Property = property.FindPropertyRelative(Sequence.CallbacksField);
 
-                if (Names.Count >= Times.Count)
+                if (Names.Count > Times.Count)
                     Names.Count = Times.Count;
                 if (Callbacks.Count > Times.Count)
                     Callbacks.Count = Times.Count;

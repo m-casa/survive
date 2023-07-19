@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -95,7 +95,10 @@ namespace Animancer.Editor.Tools
 
             _Display.elementHeightCallback = (elementIndex) =>
             {
-                var lineCount = _NameToSprites[_Names[elementIndex]].Count + 1;
+                var lineCount = _NameToSprites.Count > 0 && _Names.Count > 0
+                    ? _NameToSprites[_Names[elementIndex]].Count + 1
+                    : 0;
+
                 return
                     EditorGUIUtility.singleLineHeight * lineCount +
                     EditorGUIUtility.standardVerticalSpacing * lineCount;
@@ -148,8 +151,8 @@ namespace Animancer.Editor.Tools
             }
 
             EditorGUILayout.HelpBox("This function is also available via:" +
-                "\n - The 'Assets/Create/Animancer' menu." +
-                "\n - The Cog icon in the top right of the Inspector for Sprite and Texture assets",
+                "\n• The 'Assets/Create/Animancer' menu." +
+                "\n• The Cog icon in the top right of the Inspector for Sprite and Texture assets",
                 MessageType.Info);
         }
 

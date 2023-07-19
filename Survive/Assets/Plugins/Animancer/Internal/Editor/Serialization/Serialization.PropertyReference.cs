@@ -1,4 +1,4 @@
-// Serialization // Copyright 2022 Kybernetik //
+// Serialization // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 

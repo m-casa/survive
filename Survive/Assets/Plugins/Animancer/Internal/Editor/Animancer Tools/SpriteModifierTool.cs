@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 #if UNITY_EDITOR
 
@@ -52,42 +52,15 @@ namespace Animancer.Editor.Tools
         /// <inheritdoc/>
         public override void DoBodyGUI()
         {
-            const string Message = "This tool works best with Unity's '2D Sprite' package.";
+#if !UNITY_2D_SPRITE
+            EditorGUILayout.HelpBox(
+                "This tool works best with Unity's '2D Sprite' package." +
+                " You should import it via the Package Manager before using this tool.",
+                MessageType.Warning);
 
-            if (!SpriteDataEditor.Is2dPackagePresent)
-            {
-                EditorGUILayout.HelpBox(
-                    Message + " You should import it via the Package Manager before using this tool.",
-                    MessageType.Warning);
-
-                if (AnimancerGUI.TryUseClickEventInLastRect())
-                    EditorApplication.ExecuteMenuItem("Window/Package Manager");
-            }
-            else
-            {
-                EditorGUI.BeginChangeCheck();
-
-                var isDefined = SpriteDataEditor.IsSpritePackageSymbolDefined;
-
-                if (!isDefined)
-                {
-                    EditorGUILayout.HelpBox(Message, MessageType.Warning);
-                    if (AnimancerGUI.TryUseClickEventInLastRect())
-                        EditorApplication.ExecuteMenuItem("Window/Package Manager");
-                }
-
-                using (ObjectPool.Disposable.AcquireContent(out var label,
-                    "Use 2D Sprite Package",
-                    "This toggle adds or removes the scripting define symbol '" +
-                    SpriteDataEditor.SpritePackageDefineSymbol + "'" +
-                    " so you will need to wait for Unity to recompile everything if you change it."))
-                {
-                    isDefined = EditorGUILayout.ToggleLeft(label, isDefined);
-                }
-
-                if (EditorGUI.EndChangeCheck())
-                    SpriteDataEditor.IsSpritePackageSymbolDefined = isDefined;
-            }
+            if (AnimancerGUI.TryUseClickEventInLastRect())
+                EditorApplication.ExecuteMenuItem("Window/Package Manager");
+#endif
         }
 
         /************************************************************************************************************************/

@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -68,11 +68,7 @@ namespace Animancer
         /// <inheritdoc/>
         public override bool ApplyAnimatorIK
         {
-            get
-            {
-                Validate.AssertPlayable(this);
-                return ((AnimationClipPlayable)_Playable).GetApplyPlayableIK();
-            }
+            get => _Playable.IsValid() && ((AnimationClipPlayable)_Playable).GetApplyPlayableIK();
             set
             {
                 Validate.AssertPlayable(this);
@@ -85,11 +81,7 @@ namespace Animancer
         /// <inheritdoc/>
         public override bool ApplyFootIK
         {
-            get
-            {
-                Validate.AssertPlayable(this);
-                return ((AnimationClipPlayable)_Playable).GetApplyFootIK();
-            }
+            get => _Playable.IsValid() && ((AnimationClipPlayable)_Playable).GetApplyFootIK();
             set
             {
                 Validate.AssertPlayable(this);
@@ -118,8 +110,7 @@ namespace Animancer
         /// <summary>Creates and assigns the <see cref="AnimationClipPlayable"/> managed by this node.</summary>
         protected override void CreatePlayable(out Playable playable)
         {
-            var clipPlayable = AnimationClipPlayable.Create(Root._Graph, _Clip);
-            playable = clipPlayable;
+            playable = AnimationClipPlayable.Create(Root._Graph, _Clip);
         }
 
         /************************************************************************************************************************/
@@ -129,6 +120,17 @@ namespace Animancer
         {
             _Clip = null;
             base.Destroy();
+        }
+
+        /************************************************************************************************************************/
+
+        /// <inheritdoc/>
+        public override AnimancerState Clone(AnimancerPlayable root)
+        {
+            var clone = new ClipState(_Clip);
+            clone.SetNewCloneRoot(root);
+            ((ICopyable<AnimancerState>)clone).CopyFrom(this);
+            return clone;
         }
 
         /************************************************************************************************************************/

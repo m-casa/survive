@@ -518,8 +518,10 @@ namespace Febucci.UI.Core
             
             if (disappearanceOrientation == DisappearanceOrientation.SameAsTypewriter)
             {
-                var charInfo = textAnimator.tmproText.textInfo.characterInfo;
-                while (CanDisappear() && textAnimator.firstVisibleCharacter<charInfo.Length)
+                var textInfo = textAnimator.tmproText.textInfo;
+                int charCount = textInfo.characterCount;
+                var charInfo = textInfo.characterInfo;
+                while (CanDisappear() && textAnimator.firstVisibleCharacter<charCount)
                 {
                     textAnimator.firstVisibleCharacter++;
 
@@ -569,7 +571,7 @@ namespace Febucci.UI.Core
                 yield return null;
 
             //Fires the event if the entire text has been hidden (so, this method has not been interrupted)
-            if (textAnimator.firstVisibleCharacter > textAnimator.maxVisibleCharacters && textAnimator.allLettersShown || textAnimator.maxVisibleCharacters == 0)
+            if ((textAnimator.firstVisibleCharacter >= textAnimator.maxVisibleCharacters && textAnimator.allLettersShown) || textAnimator.maxVisibleCharacters == 0)
             {
                 onTextDisappeared.Invoke();
             }

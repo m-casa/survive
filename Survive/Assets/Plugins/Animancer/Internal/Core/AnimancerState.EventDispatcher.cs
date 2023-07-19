@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using UnityEngine;
@@ -364,8 +364,8 @@ namespace Animancer
                     if (OptionalWarning.EndEventInterrupt.IsEnabled())
                         OptionalWarning.EndEventInterrupt.Log(
                             "An End Event did not actually end the animation:" +
-                            $"\n - State: {_State}" +
-                            $"\n - Callback: {callback.Method.DeclaringType.Name}.{callback.Method.Name}" +
+                            $"\n• State: {_State}" +
+                            $"\n• Callback: {callback.Method.DeclaringType.Name}.{callback.Method.Name}" +
                             "\n\nEnd Events are triggered every frame after their time has passed," +
                             " so if that is not desired behaviour then it might be necessary to explicitly set the" +
                             $" state.{nameof(AnimancerState.Events)}.{nameof(AnimancerEvent.Sequence.OnEnd)} = null" +
@@ -394,8 +394,8 @@ namespace Animancer
                                 $"The {nameof(AnimancerEvent)}.{nameof(AnimancerEvent.Sequence)}.{nameof(AnimancerEvent.Sequence.OnEnd)}" +
                                 " callback being invoked contains multiple identical delegates which may mean" +
                                 " that they are being unintentionally added multiple times." +
-                                $"\n - State: {_State}" +
-                                $"\n - Method: {a.Method.Name}",
+                                $"\n• State: {_State}" +
+                                $"\n• Method: {a.Method.Name}",
                                 _State.Root?.Component);
                         }
                         else if (a?.Method == b?.Method)
@@ -407,8 +407,8 @@ namespace Animancer
                                 " in which case it can be avoided by giving each object its own" +
                                 $" {nameof(AnimancerEvent)}.{nameof(AnimancerEvent.Sequence)} as explained in the documentation:" +
                                 $" {Strings.DocsURLs.SharedEventSequences}" +
-                                $"\n - State: {_State}" +
-                                $"\n - Method: {a.Method.Name}",
+                                $"\n• State: {_State}" +
+                                $"\n• Method: {a.Method.Name}",
                                 _State.Root?.Component);
                         }
                     }
@@ -446,6 +446,7 @@ namespace Animancer
                 else return false;// Speed 0.
             }
 #endif
+
             /************************************************************************************************************************/
             #endregion
             /************************************************************************************************************************/

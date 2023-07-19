@@ -1,4 +1,4 @@
-// Animancer // https://kybernetik.com.au/animancer // Copyright 2022 Kybernetik //
+// Animancer // https://kybernetik.com.au/animancer // Copyright 2018-2023 Kybernetik //
 
 using System;
 using System.Collections.Generic;
@@ -112,7 +112,8 @@ namespace Animancer
 
             /// <summary>[Editor-Only] Returns the hash mapped to the type of all parameters in the `controller`.</summary>
             /// <remarks>This doesn't work for if the `controller` was loaded from an Asset Bundle.</remarks>
-            private static Dictionary<int, AnimatorControllerParameterType> GetParameterDetails(RuntimeAnimatorController controller)
+            private static Dictionary<int, AnimatorControllerParameterType> GetParameterDetails(
+                RuntimeAnimatorController controller)
             {
                 Editor.AnimancerEditorUtilities.InitializeCleanDictionary(ref _ControllerToParameterHashAndType);
 
