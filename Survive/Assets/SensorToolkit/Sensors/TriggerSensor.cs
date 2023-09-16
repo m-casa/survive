@@ -13,11 +13,12 @@ namespace Micosmo.SensorToolkit
      * using this sensor.
      */
     [AddComponentMenu("Sensors/Trigger Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/trigger")]
     public class TriggerSensor : BaseVolumeSensor {
 
         #region Configurations
         [SerializeField]
-        ObservableBool runInSafeMode;
+        ObservableBool runInSafeMode = new ObservableBool();
         #endregion
 
         #region Events

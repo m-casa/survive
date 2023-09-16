@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 namespace Micosmo.SensorToolkit {
     [AddComponentMenu("Sensors/LOS Targets")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/los#test-points")]
     public class LOSTargets : MonoBehaviour {
         public List<Transform> Targets;
 

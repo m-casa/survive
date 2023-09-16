@@ -11,6 +11,7 @@ namespace Micosmo.SensorToolkit {
      * all objects along its path up until it hits an Obstructing Collider. It will not detect objects beyond the obstruction.
      */
     [AddComponentMenu("Sensors/Ray Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/ray")]
     public class RaySensor : Sensor, IRayCastingSensor, IPulseRoutine {
 
         #region Configurations
@@ -59,7 +60,7 @@ namespace Micosmo.SensorToolkit {
         public Vector3 SlopeUpDirection = Vector3.up;
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
         #endregion
 
         #region Events
@@ -100,6 +101,12 @@ namespace Micosmo.SensorToolkit {
         public float PulseInterval {
             get => pulseRoutine.Interval.Value;
             set => pulseRoutine.Interval.Value = value;
+        }
+
+        // Change at runtime if the sensor will pulse in Update or FixedUpdate
+        public PulseRoutine.UpdateFunctions PulseUpdateFunction {
+            get => pulseRoutine.UpdateFunction;
+            set => pulseRoutine.UpdateFunction = value;
         }
 
         // The array size allocated for storing results from Physics.RaycastNonAlloc. Will automatically

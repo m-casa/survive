@@ -9,15 +9,16 @@ namespace Micosmo.SensorToolkit {
      * requires another sensor as input. The Signals from the input sensor are each tested for line of sight.
      */
     [AddComponentMenu("Sensors/2D LOS Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/los")]
     public class LOSSensor2D : Sensor, IPulseRoutine {
 
         #region Configurations
         [SerializeField]
         [Tooltip("A Sensor whose Signals will be tested for line of sight.")]
-        ObservableSensor inputSensor;
+        ObservableSensor inputSensor = new ObservableSensor();
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
 
         [Tooltip("Layermask for which physics layers block line of sight rays.")]
         public LayerMask BlocksLineOfSight;
@@ -87,6 +88,12 @@ namespace Micosmo.SensorToolkit {
         public float PulseInterval {
             get => pulseRoutine.Interval.Value;
             set => pulseRoutine.Interval.Value = value;
+        }
+
+        // Change at runtime if the sensor will pulse in Update or FixedUpdate
+        public PulseRoutine.UpdateFunctions PulseUpdateFunction {
+            get => pulseRoutine.UpdateFunction;
+            set => pulseRoutine.UpdateFunction = value;
         }
 
         // Displays the results of line of sight tests during OnDrawGizmosSelected for objects in this set.

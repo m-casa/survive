@@ -13,6 +13,7 @@ namespace Micosmo.SensorToolkit {
      */
     [AddComponentMenu("Sensors/2D Steering Sensor")]
     [ExecuteAlways]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/steering")]
     public class SteeringSensor2D : BasePulsableSensor, IPulseRoutine, ISteeringSensor {
 
         #region Configurations
@@ -31,7 +32,7 @@ namespace Micosmo.SensorToolkit {
         [SerializeField] SteerDecision decision = new SteerDecision();
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
 
         [Tooltip("Enables the built-in locomotion if this is any value other then None.")]
         public LocomotionMode2D LocomotionMode;
@@ -64,6 +65,12 @@ namespace Micosmo.SensorToolkit {
         public float PulseInterval {
             get => pulseRoutine.Interval.Value;
             set => pulseRoutine.Interval.Value = value;
+        }
+
+        // Change at runtime if the sensor will pulse in Update or FixedUpdate
+        public PulseRoutine.UpdateFunctions PulseUpdateFunction {
+            get => pulseRoutine.UpdateFunction;
+            set => pulseRoutine.UpdateFunction = value;
         }
 
         public SteerSeek Seek => seek;

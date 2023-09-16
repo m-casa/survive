@@ -10,6 +10,7 @@ namespace Micosmo.SensorToolkit {
      * A detected object will have one or more Collider that overlaps the detection volume.
      */
     [AddComponentMenu("Sensors/Range Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/range")]
     public class RangeSensor : BaseVolumeSensor, IPulseRoutine {
 
         #region Configurations
@@ -32,7 +33,7 @@ namespace Micosmo.SensorToolkit {
         public bool IgnoreTriggerColliders;
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
         #endregion
 
         #region Events
@@ -50,6 +51,12 @@ namespace Micosmo.SensorToolkit {
         public float PulseInterval {
             get => pulseRoutine.Interval.Value;
             set => pulseRoutine.Interval.Value = value;
+        }
+
+        // Change at runtime if the sensor will pulse in Update or FixedUpdate
+        public PulseRoutine.UpdateFunctions PulseUpdateFunction {
+            get => pulseRoutine.UpdateFunction;
+            set => pulseRoutine.UpdateFunction = value;
         }
 
         // The array size allocated for storing results from Physics.RaycastNonAlloc. Will automatically

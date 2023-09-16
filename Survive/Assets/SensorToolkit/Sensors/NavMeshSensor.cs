@@ -13,6 +13,7 @@ namespace Micosmo.SensorToolkit {
      * NavMesh.SamplePosition. It doesn't detect Signals and therefore it's not derived from Sensor.
      */
     [AddComponentMenu("Sensors/NavMesh Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/navmesh")]
     public class NavMeshSensor : BasePulsableSensor, IRayCastingSensor, IPulseRoutine {
 
         #region Configurations
@@ -32,7 +33,7 @@ namespace Micosmo.SensorToolkit {
         public int AreaMask;
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
         #endregion
 
         #region Events

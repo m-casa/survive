@@ -9,10 +9,11 @@ namespace Micosmo.SensorToolkit {
      * signals of each sensor via logical And or logical Or.
      */
     [AddComponentMenu("Sensors/Boolean Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/boolean")]
     public class BooleanSensor : Sensor {
 
         #region Configurations
-        public enum OperationType { And, Or }
+        public enum OperationType { And, Or, ExclusiveOr }
 
         [System.Serializable]
         public class ObservableOperationType : Observable<OperationType> { }
@@ -198,8 +199,10 @@ namespace Micosmo.SensorToolkit {
         bool SatisfiesBooleanOp(int n) {
             if (Operation == OperationType.And) {
                 return n == sensorCount;
-            } else {
+            } else if (Operation == OperationType.Or) {
                 return n > 0;
+            } else {
+                return n == 1;
             }
         }
         #endregion

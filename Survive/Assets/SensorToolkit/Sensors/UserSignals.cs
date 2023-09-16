@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace Micosmo.SensorToolkit {
     [AddComponentMenu("Sensors/User Signals")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/user-signals")]
     public class UserSignals : Sensor {
 
         [Serializable]

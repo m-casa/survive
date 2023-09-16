@@ -13,11 +13,12 @@ namespace Micosmo.SensorToolkit
      * using this sensor.
      */
     [AddComponentMenu("Sensors/2D Trigger Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/trigger")]
     public class TriggerSensor2D : BaseAreaSensor {
 
         #region Configurations
         [SerializeField]
-        ObservableBool runInSafeMode;
+        ObservableBool runInSafeMode = new ObservableBool();
         #endregion
 
         #region Events

@@ -9,6 +9,7 @@ namespace Micosmo.SensorToolkit {
      * objects up to the first obstruction. The arc is broken up into line segments and a raycast is done on each.
      */
     [AddComponentMenu("Sensors/2D Arc Sensor")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/sensors/arc")]
     public class ArcSensor2D : Sensor, IRayCastingSensor, IPulseRoutine {
 
         #region Configurations
@@ -42,7 +43,7 @@ namespace Micosmo.SensorToolkit {
         public bool IgnoreTriggerColliders;
 
         [SerializeField]
-        PulseRoutine pulseRoutine;
+        PulseRoutine pulseRoutine = new PulseRoutine();
         #endregion
 
         #region Events
@@ -83,6 +84,12 @@ namespace Micosmo.SensorToolkit {
         public float PulseInterval {
             get => pulseRoutine.Interval.Value;
             set => pulseRoutine.Interval.Value = value;
+        }
+
+        // Change at runtime if the sensor will pulse in Update or FixedUpdate
+        public PulseRoutine.UpdateFunctions PulseUpdateFunction {
+            get => pulseRoutine.UpdateFunction;
+            set => pulseRoutine.UpdateFunction = value;
         }
 
         // The array size allocated for storing results from Physics.RaycastNonAlloc. Will automatically

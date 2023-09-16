@@ -104,6 +104,12 @@ namespace Micosmo.SensorToolkit {
             var shortWait = new WaitForSeconds(interval * 0.2f);
             var tinyWait = new WaitForSeconds(interval * 0.1f);
 
+            // If we change pulse interval and restart this routine it's possible it will pulse immediately. In case a user
+            // has changed the interval in response to a detection event we wait a frame. Otherwise we may get enumerable
+            // has changed errors.
+            // The implication is that if the interval is changed every frame then the sensor will not get a chance to pulse.
+            yield return null;
+
             while (true) {
                 var targetPulseTime = (Mathf.Floor(prevPulseTime / interval) + 1) * interval + (steppedPulseDelay * interval);
                 var deltaTime = Time.time - targetPulseTime;

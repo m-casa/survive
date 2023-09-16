@@ -14,6 +14,7 @@ namespace Micosmo.SensorToolkit {
      * detected separately.
      */
     [AddComponentMenu("Sensors/Signal Proxy")]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/proxy")]
     public class SignalProxy : MonoBehaviour {
 
         public GameObject ProxyTarget;

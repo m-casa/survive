@@ -105,12 +105,26 @@ namespace Micosmo.SensorToolkit {
             }
 
             for (int i = 0; i < config.NumberOfRays; i++) {
+                int nAttempts = 0;
+                Start:
+                
                 var nextSobol = sobol.Next();
                 var randomPoint = LOSUtils.GetRandomPointInTriangles(projectedTriangles, nextSobol);
 
                 float boundsDist;
                 var ray = new Ray(config.Origin, (randomPoint - config.Origin).normalized);
                 bounds.IntersectRay(ray, out boundsDist);
+
+                if (boundsDist == 0f) {
+                    if (nAttempts < 2) {
+                        // Very rarely the random point will be outside the bounds, try again.
+                        nAttempts++;
+                        goto Start;
+                    }
+                    // Tried three times and still no good. Ignore this point. Doubt this will ever happen. But don't want to
+                    // search forever in case there's a configuration that would cause infinite loops.
+                    continue;
+                }
 
                 var intBoundsInPoint = ray.origin + ray.direction * boundsDist;
                 var intBoundsOutPoint = LOSUtils.RaycastBoundsOutPoint(intBoundsInPoint, (intBoundsInPoint - config.Origin).normalized, bounds);

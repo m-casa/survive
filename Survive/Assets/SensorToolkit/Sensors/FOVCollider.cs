@@ -10,6 +10,7 @@ namespace Micosmo.SensorToolkit
      */
     [RequireComponent(typeof(MeshCollider))]
     [ExecuteInEditMode]
+    [HelpURL("https://micosmo.com/sensortoolkit2/docs/manual/fov")]
     public class FOVCollider : MonoBehaviour {
         [Tooltip("The length of the field of view cone in world units.")]
         public float Length = 5f;
