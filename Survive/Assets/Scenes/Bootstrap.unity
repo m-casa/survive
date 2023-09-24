@@ -154,7 +154,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &96188980996288444
+--- !u!1001 &1553877108
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -165,14 +165,6 @@ PrefabInstance:
     - target: {fileID: 919947693415453591, guid: 9aca812dc6959e842bca773d31555ed8, type: 3}
       propertyPath: m_Name
       value: Steamworks
-      objectReference: {fileID: 0}
-    - target: {fileID: 919947693415453591, guid: 9aca812dc6959e842bca773d31555ed8, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 919947693415453608, guid: 9aca812dc6959e842bca773d31555ed8, type: 3}
-      propertyPath: m_RootOrder
-      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 919947693415453608, guid: 9aca812dc6959e842bca773d31555ed8, type: 3}
       propertyPath: m_LocalPosition.x
@@ -351,5 +343,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 599847651}
   - {fileID: 2061345762501632516}
-  - {fileID: 96188980996288444}
+  - {fileID: 1553877108}
   - {fileID: 7314871366682169811}
